@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { clearToken } from '@/lib/api-client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { adminLogout } from '@/store/slices/adminAuthSlice';
@@ -21,6 +22,7 @@ export default function AdminSidebar() {
   );
 
   const handleLogout = () => {
+    clearToken();
     dispatch(adminLogout());
     router.push('/admin/login');
   };

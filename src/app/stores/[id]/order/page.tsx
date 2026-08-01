@@ -2,12 +2,10 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Navbar from '@/components/landing/Navbar';
 import NotFoundState from '@/components/store-detail/NotFoundState';
-import { getStoreById, MOCK_STORE_DETAILS } from '@/lib/mock-data/stores';
+import { getStoreDetail } from '@/lib/server/store-queries';
 import OrderPageLogic from './OrderPageLogic';
 
-export function generateStaticParams() {
-  return MOCK_STORE_DETAILS.map((store) => ({ id: store.id }));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -15,13 +13,13 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const store = getStoreById(id);
+  const store = await getStoreDetail(id);
   return { title: store ? `Order from ${store.name}` : 'Place an order' };
 }
 
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const store = getStoreById(id);
+  const store = await getStoreDetail(id);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">

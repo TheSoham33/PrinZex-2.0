@@ -4,10 +4,9 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSellerPricing } from '@/lib/api/seller-inventory';
 import {
-  MOCK_BULK_TIERS,
   type BulkTier,
   type SellerPricingEntry,
-} from '@/lib/mock-data/seller-inventory';
+} from '@/lib/types/seller-inventory';
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
@@ -21,7 +20,7 @@ export default function SellerPricingPage() {
   });
 
   const [pricing, setPricing] = useState<SellerPricingEntry[]>([]);
-  const [tiers, setTiers] = useState<BulkTier[]>(MOCK_BULK_TIERS);
+  const [tiers, setTiers] = useState<BulkTier[]>([]);
   const [editingTier, setEditingTier] = useState<string | null>(null);
   const [tierDraft, setTierDraft] = useState('');
   const [rushEnabled, setRushEnabled] = useState(true);

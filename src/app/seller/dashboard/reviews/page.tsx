@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSellerReviews } from '@/lib/api/seller-inventory';
-import type { SellerReview } from '@/lib/mock-data/seller-inventory';
+import type { SellerReview } from '@/lib/types/seller-inventory';
 import ReviewResponseCard from '@/components/seller-dashboard/ReviewResponseCard';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconRefreshCw, IconStar } from '@/components/icons';

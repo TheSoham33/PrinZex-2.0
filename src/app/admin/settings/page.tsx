@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActivityLog, fetchAdminAccounts, fetchCommissions } from '@/lib/api/admin-payouts';
-import type { ActivityLogEntry, AdminAccount, CommissionRow } from '@/lib/mock-data/admin-payouts';
+import type { ActivityLogEntry, AdminAccount, CommissionRow } from '@/lib/types/admin-payouts';
 import {
   ROLE_BADGE_STYLES,
   ROLE_LABELS,
@@ -17,7 +17,7 @@ import Modal from '@/components/seller-dashboard/Modal';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { EMAIL_REGEX } from '@/lib/seller-types';
-import { fakeDelay, formatDateTime } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 import { IconArrowLeft, IconPlus, IconShieldOff } from '@/components/icons';
 
 const TABS = ['Admin accounts', 'Commission', 'Platform', 'Activity log'] as const;
@@ -76,7 +76,6 @@ export default function AdminSettingsPage() {
 
   const save = async (label: string) => {
     setSaving(true);
-    await fakeDelay(800);
     setSaving(false);
     showToast(`${label} saved`);
   };

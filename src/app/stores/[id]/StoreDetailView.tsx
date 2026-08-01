@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { StoreDetail } from '@/lib/mock-data/stores';
+import type { StoreDetail } from '@/lib/types/stores';
 import StoreHeader from '@/components/store-detail/StoreHeader';
 import StoreInfoBar from '@/components/store-detail/StoreInfoBar';
 import StoreTabs from '@/components/store-detail/StoreTabs';

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import StoreCard from '@/components/stores/StoreCard';
 import StoreCardSkeleton from '@/components/stores/StoreCardSkeleton';
 import StoreSearchBar from '@/components/stores/StoreSearchBar';
@@ -12,7 +13,8 @@ import StoreFilters, {
   SORT_OPTIONS,
   type FilterState,
 } from '@/components/stores/StoreFilters';
-import { MOCK_STORES, type Store } from '@/lib/mock-data/stores';
+import { fetchStores } from '@/lib/api/stores';
+import type { Store } from '@/lib/types/stores';
 import { IconSettings, IconX } from '@/components/icons';
 
 /** Rough minutes-to-ready parsed from a store's ETA label, for delivery filtering. */
@@ -36,17 +38,13 @@ export default function StoreListing() {
     return service ? { ...INITIAL_FILTERS } : INITIAL_FILTERS;
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  // Simulate the network round-trip the real API will make.
-  useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(timer);
-  }, [query, location, filters]);
+  const storesQuery = useQuery({ queryKey: ['stores'], queryFn: fetchStores });
+  const stores = storesQuery.data ?? [];
+  const loading = storesQuery.isLoading;
 
   const results = useMemo(() => {
-    let list = [...MOCK_STORES];
+    let list = [...stores];
 
     const term = query.trim().toLowerCase();
     if (term) {
@@ -95,7 +93,7 @@ export default function StoreListing() {
     }
 
     return list;
-  }, [query, filters]);
+  }, [stores, query, filters]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();

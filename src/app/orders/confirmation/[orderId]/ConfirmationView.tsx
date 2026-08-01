@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { Order } from '@/lib/mock-data/stores';
-import { DELIVERY_SPEEDS } from '@/lib/mock-data/stores';
+import type { Order } from '@/lib/types/stores';
+import { DELIVERY_SPEEDS } from '@/lib/types/stores';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   IconArrowRight,

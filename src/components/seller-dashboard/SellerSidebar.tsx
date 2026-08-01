@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { clearToken } from '@/lib/api-client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAppDispatch } from '@/store/hooks';
@@ -45,6 +46,7 @@ export default function SellerSidebar() {
   const newCount = useNewOrderCount();
 
   const handleLogout = () => {
+    clearToken();
     dispatch(sellerLogout());
     router.push('/seller/login');
   };

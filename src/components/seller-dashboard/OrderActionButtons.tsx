@@ -7,7 +7,7 @@ import {
   SELLER_STATUS_LABELS,
   type SellerOrder,
   type SellerOrderStatus,
-} from '@/lib/mock-data/seller-orders';
+} from '@/lib/types/seller-orders';
 import { IconAlertCircle, IconCheckCircle, IconX } from '@/components/icons';
 
 interface OrderActionButtonsProps {

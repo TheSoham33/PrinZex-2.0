@@ -12,7 +12,7 @@ import {
   YAxis,
   type TooltipContentProps,
 } from 'recharts';
-import type { PlatformDaily } from '@/lib/mock-data/admin-analytics';
+import type { PlatformDaily } from '@/lib/types/admin-analytics';
 import { formatCurrency } from '@/lib/utils';
 import ChartDataTable from '@/components/seller-dashboard/ChartDataTable';
 

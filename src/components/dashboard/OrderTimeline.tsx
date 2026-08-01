@@ -1,4 +1,4 @@
-import type { OrderTimelineEvent } from '@/lib/mock-data/orders';
+import type { OrderTimelineEvent } from '@/lib/types/orders';
 import { formatDateTime } from '@/lib/utils';
 import { IconCheckCircle, IconX } from '@/components/icons';
 

@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { clearToken } from '@/lib/api-client';
 import {
   IconChevronDown,
   IconLogOut,
@@ -73,6 +74,7 @@ export default function Navbar() {
   }, [menuOpen]);
 
   const handleLogout = () => {
+    clearToken();
     dispatch(logout());
     setDropdownOpen(false);
     setMenuOpen(false);

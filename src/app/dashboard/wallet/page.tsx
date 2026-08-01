@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTransactions, fetchWalletBalance, MOCK_COUPONS } from '@/lib/api/wallet';
+import { fetchTransactions, fetchWalletBalance, type Coupon } from '@/lib/api/wallet';
+
+const COUPONS: Coupon[] = [];
 import WalletCard from '@/components/dashboard/WalletCard';
 import TransactionRow from '@/components/dashboard/TransactionRow';
 import { formatDate } from '@/lib/utils';
@@ -85,7 +87,7 @@ export default function WalletPage() {
           )
         ) : (
           <div className="space-y-3">
-            {MOCK_COUPONS.map((coupon) => (
+            {COUPONS.map((coupon) => (
               <div
                 key={coupon.code}
                 className="flex flex-wrap items-center gap-4 rounded-xl border border-dashed border-slate-300 p-4"

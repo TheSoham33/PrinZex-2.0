@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAdminSellers } from '@/lib/api/admin-sellers';
-import type { AdminSeller } from '@/lib/mock-data/admin-sellers';
+import type { AdminSeller } from '@/lib/types/admin-sellers';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';

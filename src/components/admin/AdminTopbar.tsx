@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { clearToken } from '@/lib/api-client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -136,6 +137,7 @@ export default function AdminTopbar() {
                 <button
                   type="button"
                   onClick={() => {
+                    clearToken();
                     dispatch(adminLogout());
                     router.push('/admin/login');
                   }}

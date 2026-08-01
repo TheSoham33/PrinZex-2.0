@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { DashboardOrder } from '@/lib/mock-data/orders';
+import type { DashboardOrder } from '@/lib/types/orders';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import OrderStatusBadge from './OrderStatusBadge';
 import { IconChevronRight, IconMapPin, IconStore, IconTruck } from '@/components/icons';

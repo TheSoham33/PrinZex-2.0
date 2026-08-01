@@ -11,7 +11,7 @@ import {
   type PaymentMethod,
   type ServiceOffering,
   type UploadedFile,
-} from '@/lib/mock-data/stores';
+} from '@/lib/types/stores';
 
 export interface OrderState {
   step: number;

@@ -1,6 +1,6 @@
 'use client';
 
-import type { CostBreakdown, ServiceOffering } from '@/lib/mock-data/stores';
+import type { CostBreakdown, ServiceOffering } from '@/lib/types/stores';
 import { formatCurrency } from '@/lib/utils';
 import { IconShieldCheck } from '@/components/icons';
 

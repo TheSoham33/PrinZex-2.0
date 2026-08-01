@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchDeliveryBoys } from '@/lib/api/admin-delivery';
-import { DELIVERY_ZONES, type DeliveryBoy } from '@/lib/mock-data/admin-delivery';
+import { DELIVERY_ZONES, type DeliveryBoy } from '@/lib/types/admin-delivery';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';

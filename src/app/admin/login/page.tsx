@@ -1,20 +1,20 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   adminLoginStart,
   adminLoginSuccess,
+  adminLoginFailure,
   buildAdmin,
-  DEMO_ACCOUNTS,
   ROLE_LABELS,
   type AdminRole,
 } from '@/store/slices/adminAuthSlice';
 import PasswordInput from '@/components/auth/PasswordInput';
 import { IconAlertCircle, IconPrinter, IconShieldCheck } from '@/components/icons';
 import { EMAIL_REGEX } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
+import { login } from '@/lib/api/auth';
 
 const ROLES: AdminRole[] = [
   'super_admin',
@@ -30,16 +30,11 @@ export default function AdminLoginPage() {
   const status = useAppSelector((state) => state.adminAuth.status);
 
   const [role, setRole] = useState<AdminRole>('super_admin');
-  const [email, setEmail] = useState(DEMO_ACCOUNTS.super_admin.email);
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const loading = status === 'loading';
-
-  // Keep the email in sync with the selected demo role.
-  useEffect(() => {
-    setEmail(DEMO_ACCOUNTS[role].email);
-  }, [role]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -53,9 +48,25 @@ export default function AdminLoginPage() {
     if (Object.keys(next).length > 0) return;
 
     dispatch(adminLoginStart());
-    await fakeDelay(800);
-    dispatch(adminLoginSuccess({ ...buildAdmin(role), email: email.trim() }));
-    router.push('/admin/dashboard');
+    try {
+      const result = await login(email.trim(), password, 'admin');
+      dispatch(
+        adminLoginSuccess(
+          buildAdmin(role, {
+            id: result.user.id,
+            name: result.user.name,
+            email: result.user.email,
+          }),
+        ),
+      );
+      router.push('/admin/dashboard');
+    } catch (err) {
+      dispatch(adminLoginFailure());
+      setErrors({
+        password:
+          err instanceof Error && err.message ? err.message : 'Unable to sign you in. Try again.',
+      });
+    }
   };
 
   return (
@@ -109,9 +120,9 @@ export default function AdminLoginPage() {
               )}
             </div>
 
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <label htmlFor="admin-role" className="label">
-                Demo role — for testing only
+                Admin role
               </label>
               <select
                 id="admin-role"
@@ -127,8 +138,7 @@ export default function AdminLoginPage() {
                 ))}
               </select>
               <p id="role-hint" className="mt-2 text-xs text-slate-500">
-                Selecting a role fills in matching demo credentials and grants that role&apos;s
-                permissions on login. Not part of the real sign-in flow.
+                The role determines which admin sections you can view.
               </p>
             </div>
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPlatformUsers } from '@/lib/api/admin-users';
-import type { PlatformUser } from '@/lib/mock-data/admin-users';
+import type { PlatformUser } from '@/lib/types/admin-users';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';

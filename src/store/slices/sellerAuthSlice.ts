@@ -31,6 +31,9 @@ const sellerAuthSlice = createSlice({
       state.seller = action.payload;
       state.status = 'idle';
     },
+    sellerLoginFailure(state) {
+      state.status = 'idle';
+    },
     sellerLogout(state) {
       state.seller = null;
       state.status = 'idle';
@@ -46,6 +49,7 @@ const sellerAuthSlice = createSlice({
 export const {
   sellerLoginStart,
   sellerLoginSuccess,
+  sellerLoginFailure,
   sellerLogout,
   restoreSellerSession,
 } = sellerAuthSlice.actions;

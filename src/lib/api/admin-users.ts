@@ -1,12 +1,13 @@
-import { fakeDelay } from '@/lib/utils';
-import { MOCK_PLATFORM_USERS, type PlatformUser } from '@/lib/mock-data/admin-users';
+import { api } from '@/lib/api-client';
+import type { PlatformUser } from '@/lib/types/admin-users';
 
-export const fetchPlatformUsers = async (): Promise<PlatformUser[]> => {
-  await fakeDelay();
-  return MOCK_PLATFORM_USERS;
-};
+export const fetchPlatformUsers = async (): Promise<PlatformUser[]> =>
+  api.get<PlatformUser[]>('/api/admin/users');
 
 export const fetchPlatformUserById = async (id: string): Promise<PlatformUser | null> => {
-  await fakeDelay();
-  return MOCK_PLATFORM_USERS.find((u) => u.id === id) ?? null;
+  try {
+    return await api.get<PlatformUser>(`/api/admin/users/${encodeURIComponent(id)}`);
+  } catch {
+    return null;
+  }
 };

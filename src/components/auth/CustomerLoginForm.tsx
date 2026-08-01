@@ -4,13 +4,13 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { loginStart, loginSuccess } from '@/store/slices/authSlice';
+import { loginStart, loginSuccess, loginFailure } from '@/store/slices/authSlice';
 import PasswordInput from '@/components/auth/PasswordInput';
 import AuthDivider from '@/components/auth/AuthDivider';
 import SocialLoginButton from '@/components/auth/SocialLoginButton';
 import { IconAlertCircle } from '@/components/icons';
 import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
+import { login } from '@/lib/api/auth';
 
 /** The original customer login form, unchanged in behaviour. */
 export default function CustomerLoginForm() {
@@ -44,11 +44,19 @@ export default function CustomerLoginForm() {
     return Object.keys(next).length === 0;
   };
 
-  const signIn = async (name: string, email: string) => {
+  const signIn = async (email: string) => {
     dispatch(loginStart());
-    await fakeDelay();
-    dispatch(loginSuccess({ id: 'user-1', name, email }));
-    router.push('/');
+    try {
+      const result = await login(email, password, undefined);
+      dispatch(loginSuccess({ id: result.user.id, name: result.user.name, email: result.user.email }));
+      router.push('/');
+    } catch (err) {
+      dispatch(loginFailure());
+      setErrors({
+        password:
+          err instanceof Error && err.message ? err.message : 'Unable to sign you in. Try again.',
+      });
+    }
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -56,7 +64,7 @@ export default function CustomerLoginForm() {
     if (!validate()) return;
     const value = identifier.trim();
     const email = EMAIL_REGEX.test(value) ? value : `${value.replace(/\D/g, '')}@prinzex.in`;
-    await signIn('Ananya Sen', email);
+    await signIn(email);
   };
 
   return (
@@ -116,7 +124,7 @@ export default function CustomerLoginForm() {
 
       <SocialLoginButton
         disabled={loading}
-        onClick={() => signIn('Ananya Sen', 'ananya.sen@gmail.com')}
+        onClick={() => signIn('ananya.sen@gmail.com')}
       />
 
       <p className="mt-8 text-center text-sm text-slate-600">
@@ -126,9 +134,6 @@ export default function CustomerLoginForm() {
         </Link>
       </p>
 
-      <p className="mt-6 rounded-lg bg-slate-50 px-4 py-3 text-center text-xs text-slate-500">
-        Demo build — any valid-looking email and a 6+ character password will sign you in.
-      </p>
     </div>
   );
 }

@@ -50,9 +50,6 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Simulated network latency used by every mock API function. */
-export const fakeDelay = (ms = 600) => new Promise<void>((res) => setTimeout(res, ms));
-
 /** Compact relative time, e.g. "32 min ago", "3 hr ago", "2 days ago". */
 export function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();

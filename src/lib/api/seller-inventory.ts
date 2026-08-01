@@ -1,38 +1,23 @@
-import { fakeDelay } from '@/lib/utils';
-import {
-  MOCK_INVENTORY,
-  MOCK_PAYOUTS,
-  MOCK_SELLER_PRICING,
-  MOCK_SELLER_REVIEWS,
-  MOCK_TEAM,
-  type InventoryItem,
-  type Payout,
-  type SellerPricingEntry,
-  type SellerReview,
-  type TeamMember,
-} from '@/lib/mock-data/seller-inventory';
+import { api } from '@/lib/api-client';
+import type {
+  InventoryItem,
+  Payout,
+  SellerPricingEntry,
+  SellerReview,
+  TeamMember,
+} from '@/lib/types/seller-inventory';
 
-export const fetchInventory = async (): Promise<InventoryItem[]> => {
-  await fakeDelay();
-  return MOCK_INVENTORY;
-};
+export const fetchInventory = async (): Promise<InventoryItem[]> =>
+  api.get<InventoryItem[]>('/api/seller/inventory');
 
-export const fetchPayouts = async (): Promise<Payout[]> => {
-  await fakeDelay();
-  return MOCK_PAYOUTS;
-};
+export const fetchPayouts = async (): Promise<Payout[]> =>
+  api.get<Payout[]>('/api/seller/payouts');
 
-export const fetchSellerPricing = async (): Promise<SellerPricingEntry[]> => {
-  await fakeDelay();
-  return MOCK_SELLER_PRICING;
-};
+export const fetchSellerPricing = async (): Promise<SellerPricingEntry[]> =>
+  api.get<SellerPricingEntry[]>('/api/seller/pricing');
 
-export const fetchSellerReviews = async (): Promise<SellerReview[]> => {
-  await fakeDelay();
-  return MOCK_SELLER_REVIEWS;
-};
+export const fetchSellerReviews = async (): Promise<SellerReview[]> =>
+  api.get<SellerReview[]>('/api/seller/reviews');
 
-export const fetchTeam = async (): Promise<TeamMember[]> => {
-  await fakeDelay();
-  return MOCK_TEAM;
-};
+export const fetchTeam = async (): Promise<TeamMember[]> =>
+  api.get<TeamMember[]>('/api/seller/team');

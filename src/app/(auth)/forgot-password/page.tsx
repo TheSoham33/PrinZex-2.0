@@ -4,7 +4,6 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { IconAlertCircle, IconArrowLeft, IconMailCheck, IconPrinter } from '@/components/icons';
 import { EMAIL_REGEX } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -24,7 +23,6 @@ export default function ForgotPasswordPage() {
     }
     setError(null);
     setSending(true);
-    await fakeDelay(800);
     setSending(false);
     setSent(true);
   };

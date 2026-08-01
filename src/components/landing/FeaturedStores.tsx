@@ -1,10 +1,16 @@
+'use client';
+
 import Link from 'next/link';
-import { MOCK_STORES } from '@/lib/mock-data/stores';
+import { useQuery } from '@tanstack/react-query';
+import { fetchStores } from '@/lib/api/stores';
 import StoreCard from '@/components/stores/StoreCard';
 import { IconArrowRight } from '@/components/icons';
 
 export default function FeaturedStores() {
-  const featured = [...MOCK_STORES].sort((a, b) => b.rating - a.rating).slice(0, 3);
+  const storesQuery = useQuery({ queryKey: ['stores'], queryFn: fetchStores });
+  const featured = [...(storesQuery.data ?? [])]
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 3);
 
   return (
     <section className="bg-slate-50 py-16 sm:py-20">
@@ -27,9 +33,11 @@ export default function FeaturedStores() {
         </div>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((store) => (
-            <StoreCard key={store.id} store={store} />
-          ))}
+          {storesQuery.isLoading
+            ? Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-40 animate-pulse rounded-2xl bg-slate-200" />
+              ))
+            : featured.map((store) => <StoreCard key={store.id} store={store} />)}
         </div>
       </div>
     </section>

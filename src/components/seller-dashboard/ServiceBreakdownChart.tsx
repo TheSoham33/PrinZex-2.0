@@ -9,7 +9,7 @@ import {
   Tooltip,
   type TooltipContentProps,
 } from 'recharts';
-import type { ServiceBreakdown } from '@/lib/mock-data/seller-analytics';
+import type { ServiceBreakdown } from '@/lib/types/seller-analytics';
 import { formatCurrency } from '@/lib/utils';
 import ChartDataTable from './ChartDataTable';
 

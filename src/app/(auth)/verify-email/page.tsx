@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import { IconAlertCircle, IconCheckCircle, IconMailCheck } from '@/components/icons';
-import { fakeDelay } from '@/lib/utils';
 
 const OTP_LENGTH = 6;
 
@@ -63,7 +62,6 @@ export default function VerifyEmailPage() {
       return;
     }
     setVerifying(true);
-    await fakeDelay(900);
     setVerifying(false);
     setVerified(true);
     setTimeout(() => router.push('/dashboard'), 1400);
@@ -149,10 +147,6 @@ export default function VerifyEmailPage() {
               Resend code
             </button>
           )}
-        </p>
-
-        <p className="mt-6 rounded-lg bg-slate-50 px-4 py-3 text-center text-xs text-slate-500">
-          Demo build — any {OTP_LENGTH} digits will verify.
         </p>
 
         <p className="mt-6 text-center text-sm">

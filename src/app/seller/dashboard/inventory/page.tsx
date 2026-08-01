@@ -7,7 +7,7 @@ import {
   INVENTORY_CATEGORIES,
   INVENTORY_UNITS,
   type InventoryItem,
-} from '@/lib/mock-data/seller-inventory';
+} from '@/lib/types/seller-inventory';
 import InventoryRow from '@/components/seller-dashboard/InventoryRow';
 import LowStockAlert from '@/components/seller-dashboard/LowStockAlert';
 import Modal from '@/components/seller-dashboard/Modal';

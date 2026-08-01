@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { MOCK_ADDRESSES, type DeliveryAddress } from '@/lib/mock-data/stores';
+import { fetchAddresses, createAddress } from '@/lib/api/addresses';
+import type { DeliveryAddress } from '@/lib/types/stores';
 import { IconAlertCircle, IconMapPin, IconPlus, IconTrash, IconX } from '@/components/icons';
 
 export default function AddressesPage() {
-  const [addresses, setAddresses] = useState<DeliveryAddress[]>(MOCK_ADDRESSES);
-  const [defaultId, setDefaultId] = useState(MOCK_ADDRESSES[0]?.id ?? '');
+  const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
+  const [defaultId, setDefaultId] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ label: '', fullAddress: '', phone: '' });
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +19,16 @@ export default function AddressesPage() {
     };
   }, [modalOpen]);
 
-  const handleSubmit = (event: FormEvent) => {
+  useEffect(() => {
+    fetchAddresses()
+      .then((list) => {
+        setAddresses(list);
+        setDefaultId(list[0]?.id ?? '');
+      })
+      .catch(() => setAddresses([]));
+  }, []);
+
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.label.trim() || !form.fullAddress.trim() || !form.phone.trim()) {
       setError('All fields are required');
@@ -28,18 +38,19 @@ export default function AddressesPage() {
       setError('Enter a valid 10-digit Indian mobile number');
       return;
     }
-    setAddresses((previous) => [
-      ...previous,
-      {
-        id: `addr-${Date.now()}`,
+    try {
+      const created = await createAddress({
         label: form.label.trim(),
         fullAddress: form.fullAddress.trim(),
         phone: form.phone.trim(),
-      },
-    ]);
-    setForm({ label: '', fullAddress: '', phone: '' });
-    setError(null);
-    setModalOpen(false);
+      });
+      setAddresses((previous) => [...previous, created]);
+      setForm({ label: '', fullAddress: '', phone: '' });
+      setError(null);
+      setModalOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save address');
+    }
   };
 
   const remove = (id: string) => {

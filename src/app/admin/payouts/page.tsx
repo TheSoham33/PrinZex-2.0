@@ -4,11 +4,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchDeliveryPayouts, fetchSellerPayouts } from '@/lib/api/admin-payouts';
 import {
-  NEXT_SCHEDULED_PAYOUT,
   type DeliveryPayout,
   type PayoutBreakdownRow,
   type SellerPayout,
-} from '@/lib/mock-data/admin-payouts';
+} from '@/lib/types/admin-payouts';
+
+/** The next payout run is scheduled for the next Monday. */
+const NEXT_SCHEDULED_PAYOUT = (() => {
+  const date = new Date();
+  const day = date.getDay();
+  const daysToMonday = day === 0 ? 1 : 8 - day;
+  date.setDate(date.getDate() + daysToMonday);
+  return date.toISOString().slice(0, 10);
+})();
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';

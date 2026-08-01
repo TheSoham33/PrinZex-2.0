@@ -1,66 +1,39 @@
-import { fakeDelay } from '@/lib/utils';
-import {
-  MOCK_ACTIVITY_LOG,
-  MOCK_ADMIN_ACCOUNTS,
-  MOCK_BANNERS,
-  MOCK_CATEGORIES,
-  MOCK_COMMISSIONS,
-  MOCK_DELIVERY_PAYOUTS,
-  MOCK_FAQS,
-  MOCK_SELLER_PAYOUTS,
-  MOCK_TEMPLATES,
-  type ActivityLogEntry,
-  type AdminAccount,
-  type Banner,
-  type CommissionRow,
-  type DeliveryPayout,
-  type FaqCategory,
-  type SellerPayout,
-  type ServiceCategoryRow,
-  type TemplateRow,
-} from '@/lib/mock-data/admin-payouts';
+import { api } from '@/lib/api-client';
+import type {
+  SellerPayout,
+  DeliveryPayout,
+  Banner,
+  ServiceCategoryRow,
+  TemplateRow,
+  FaqCategory,
+  AdminAccount,
+  CommissionRow,
+  ActivityLogEntry,
+} from '@/lib/types/admin-payouts';
 
-export const fetchSellerPayouts = async (): Promise<SellerPayout[]> => {
-  await fakeDelay();
-  return MOCK_SELLER_PAYOUTS;
-};
+export const fetchSellerPayouts = async (): Promise<SellerPayout[]> =>
+  api.get<SellerPayout[]>('/api/admin/payouts');
 
-export const fetchDeliveryPayouts = async (): Promise<DeliveryPayout[]> => {
-  await fakeDelay();
-  return MOCK_DELIVERY_PAYOUTS;
-};
+export const fetchDeliveryPayouts = async (): Promise<DeliveryPayout[]> =>
+  api.get<DeliveryPayout[]>('/api/admin/payouts/delivery');
 
-export const fetchBanners = async (): Promise<Banner[]> => {
-  await fakeDelay();
-  return MOCK_BANNERS;
-};
+export const fetchBanners = async (): Promise<Banner[]> =>
+  api.get<Banner[]>('/api/admin/content/banners');
 
-export const fetchCategories = async (): Promise<ServiceCategoryRow[]> => {
-  await fakeDelay();
-  return MOCK_CATEGORIES;
-};
+export const fetchCategories = async (): Promise<ServiceCategoryRow[]> =>
+  api.get<ServiceCategoryRow[]>('/api/admin/content/categories');
 
-export const fetchTemplates = async (): Promise<TemplateRow[]> => {
-  await fakeDelay();
-  return MOCK_TEMPLATES;
-};
+export const fetchTemplates = async (): Promise<TemplateRow[]> =>
+  api.get<TemplateRow[]>('/api/admin/content/templates');
 
-export const fetchFaqs = async (): Promise<FaqCategory[]> => {
-  await fakeDelay();
-  return MOCK_FAQS;
-};
+export const fetchFaqs = async (): Promise<FaqCategory[]> =>
+  api.get<FaqCategory[]>('/api/admin/content/faqs');
 
-export const fetchAdminAccounts = async (): Promise<AdminAccount[]> => {
-  await fakeDelay();
-  return MOCK_ADMIN_ACCOUNTS;
-};
+export const fetchAdminAccounts = async (): Promise<AdminAccount[]> =>
+  api.get<AdminAccount[]>('/api/admin/content/accounts');
 
-export const fetchCommissions = async (): Promise<CommissionRow[]> => {
-  await fakeDelay();
-  return MOCK_COMMISSIONS;
-};
+export const fetchCommissions = async (): Promise<CommissionRow[]> =>
+  api.get<CommissionRow[]>('/api/admin/content/commissions');
 
-export const fetchActivityLog = async (): Promise<ActivityLogEntry[]> => {
-  await fakeDelay();
-  return MOCK_ACTIVITY_LOG;
-};
+export const fetchActivityLog = async (): Promise<ActivityLogEntry[]> =>
+  api.get<ActivityLogEntry[]>('/api/admin/content/activity');

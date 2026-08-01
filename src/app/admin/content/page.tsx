@@ -13,7 +13,7 @@ import type {
   FaqCategory,
   ServiceCategoryRow,
   TemplateRow,
-} from '@/lib/mock-data/admin-payouts';
+} from '@/lib/types/admin-payouts';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import Modal from '@/components/seller-dashboard/Modal';

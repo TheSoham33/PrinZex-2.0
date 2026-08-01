@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CostBreakdown, PaymentMethod } from '@/lib/mock-data/stores';
+import type { CostBreakdown, PaymentMethod } from '@/lib/types/stores';
 import { formatCurrency } from '@/lib/utils';
 import { applyCoupon, type OrderAction } from './orderReducer';
 import {

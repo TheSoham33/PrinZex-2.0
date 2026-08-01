@@ -1,12 +1,14 @@
-import { fakeDelay } from '@/lib/utils';
-import { MOCK_DELIVERY_BOYS, type DeliveryBoy } from '@/lib/mock-data/admin-delivery';
+import { api } from '@/lib/api-client';
+import type { DeliveryBoy } from '@/lib/types/admin-delivery';
 
-export const fetchDeliveryBoys = async (): Promise<DeliveryBoy[]> => {
-  await fakeDelay();
-  return MOCK_DELIVERY_BOYS;
-};
+export const fetchDeliveryBoys = async (): Promise<DeliveryBoy[]> =>
+  api.get<DeliveryBoy[]>('/api/admin/delivery');
 
 export const fetchDeliveryBoyById = async (id: string): Promise<DeliveryBoy | null> => {
-  await fakeDelay();
-  return MOCK_DELIVERY_BOYS.find((d) => d.id === id) ?? null;
+  try {
+    const list = await api.get<DeliveryBoy[]>('/api/admin/delivery');
+    return list.find((d) => d.id === id) ?? null;
+  } catch {
+    return null;
+  }
 };

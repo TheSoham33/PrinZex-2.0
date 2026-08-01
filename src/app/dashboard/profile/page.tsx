@@ -4,7 +4,6 @@ import { useState, type FormEvent } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { loginSuccess } from '@/store/slices/authSlice';
 import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
 import { IconAlertCircle, IconCheckCircle, IconUser } from '@/components/icons';
 
 export default function ProfilePage() {
@@ -41,7 +40,6 @@ export default function ProfilePage() {
     if (Object.keys(next).length > 0) return;
 
     setSaving(true);
-    await fakeDelay(700);
     dispatch(
       loginSuccess({ id: user?.id ?? 'user-1', name: form.name.trim(), email: form.email.trim() }),
     );

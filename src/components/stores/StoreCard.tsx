@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import type { Store } from '@/lib/mock-data/stores';
-import { storeGradient } from '@/lib/mock-data/stores';
+import type { Store } from '@/lib/types/stores';
+import { storeGradient } from '@/lib/types/stores';
 import { IconBadgeCheck, IconClock, IconMapPin, IconStar, IconStore } from '@/components/icons';
 
 export default function StoreCard({ store }: { store: Store }) {

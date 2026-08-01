@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAdminSellerById } from '@/lib/api/admin-sellers';
-import type { AdminSeller, SellerDocument, SellerOrderRow } from '@/lib/mock-data/admin-sellers';
+import type { AdminSeller, SellerDocument, SellerOrderRow } from '@/lib/types/admin-sellers';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';

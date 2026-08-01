@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { clearToken } from '@/lib/api-client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
@@ -38,6 +39,7 @@ export default function AdminMobileNav() {
   const overflow = permitted.slice(4);
 
   const handleLogout = () => {
+    clearToken();
     dispatch(adminLogout());
     setSheetOpen(false);
     router.push('/admin/login');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { DeliveryBoy } from '@/lib/mock-data/orders';
+import type { DeliveryBoy } from '@/lib/types/orders';
 import { IconMapPin, IconStore, IconTruck } from '@/components/icons';
 
 /**

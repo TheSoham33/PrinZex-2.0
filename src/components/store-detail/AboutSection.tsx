@@ -1,4 +1,4 @@
-import type { StoreDetail } from '@/lib/mock-data/stores';
+import type { StoreDetail } from '@/lib/types/stores';
 import { IconMailCheck, IconMapPin, IconPhone } from '@/components/icons';
 
 export default function AboutSection({ store }: { store: StoreDetail }) {

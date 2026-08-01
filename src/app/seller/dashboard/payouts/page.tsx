@@ -4,10 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchPayouts } from '@/lib/api/seller-inventory';
 import {
   COMMISSION_RATE,
-  NEXT_PAYOUT_DATE,
   PAYOUT_STATUS_STYLES,
-  PENDING_BALANCE,
-} from '@/lib/mock-data/seller-inventory';
+} from '@/lib/types/seller-inventory';
 import PayoutCard from '@/components/seller-dashboard/PayoutCard';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -27,6 +25,18 @@ export default function SellerPayoutsPage() {
   });
 
   const payouts = data ?? [];
+
+  const pendingBalance = payouts
+    .filter((payout) => payout.status !== 'paid')
+    .reduce((sum, payout) => sum + payout.amount, 0);
+
+  // Next payout run is the upcoming Monday.
+  const nextPayoutDate = (() => {
+    const date = new Date();
+    const day = date.getDay();
+    date.setDate(date.getDate() + (day === 0 ? 1 : 8 - day));
+    return date.toISOString().slice(0, 10);
+  })();
 
   const handleDownload = () => {
     // TODO: generate a real PDF statement server-side.
@@ -61,8 +71,8 @@ export default function SellerPayoutsPage() {
 
       <div className="mt-6">
         <PayoutCard
-          balance={PENDING_BALANCE}
-          nextPayoutDate={NEXT_PAYOUT_DATE}
+          balance={pendingBalance}
+          nextPayoutDate={nextPayoutDate}
           onRequestEarly={() => showToast('Early payout requested — we’ll review within 24 hours.')}
         />
       </div>

@@ -1,14 +1,16 @@
-import { fakeDelay } from '@/lib/utils';
-import { MOCK_SELLER_ORDERS, type SellerOrder } from '@/lib/mock-data/seller-orders';
+import { api } from '@/lib/api-client';
+import type { SellerOrder } from '@/lib/types/seller-orders';
 
-/** Mock API — the seller's full order queue. */
+/** The seller's full order queue. */
 export const fetchSellerOrders = async (): Promise<SellerOrder[]> => {
-  await fakeDelay();
-  return MOCK_SELLER_ORDERS;
+  return api.get<SellerOrder[]>('/api/seller/orders');
 };
 
-/** Mock API — a single order, or null when the id is unknown. */
+/** A single order, or null when the id is unknown. */
 export const fetchSellerOrderById = async (orderId: string): Promise<SellerOrder | null> => {
-  await fakeDelay();
-  return MOCK_SELLER_ORDERS.find((order) => order.id === orderId) ?? null;
+  try {
+    return await api.get<SellerOrder>(`/api/seller/orders/${encodeURIComponent(orderId)}`);
+  } catch {
+    return null;
+  }
 };

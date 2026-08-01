@@ -7,7 +7,7 @@ import {
   ACTIVE_STATUSES,
   HISTORY_STATUSES,
   type SellerOrder,
-} from '@/lib/mock-data/seller-orders';
+} from '@/lib/types/seller-orders';
 import OrderQueueCard from '@/components/seller-dashboard/OrderQueueCard';
 import { IconAlertCircle, IconPackageOpen, IconRefreshCw } from '@/components/icons';
 

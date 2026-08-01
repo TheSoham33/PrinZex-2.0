@@ -10,7 +10,7 @@ import {
   TICKET_CATEGORY_LABELS,
   type SupportTicket,
   type TicketStatus,
-} from '@/lib/mock-data/admin-orders';
+} from '@/lib/types/admin-orders';
 import { useAppSelector } from '@/store/hooks';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';

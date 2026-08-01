@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { clearToken } from '@/lib/api-client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch } from '@/store/hooks';
@@ -47,6 +48,7 @@ export default function SellerMobileNav() {
   }, [sheetOpen]);
 
   const handleLogout = () => {
+    clearToken();
     dispatch(sellerLogout());
     setSheetOpen(false);
     router.push('/seller/login');

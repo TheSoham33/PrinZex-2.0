@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   DELIVERY_SPEEDS,
-  MOCK_ADDRESSES,
   type DeliveryAddress,
   type Order,
   type OrderSpecifications,
   type StoreDetail,
-} from '@/lib/mock-data/stores';
+} from '@/lib/types/stores';
+import { fetchAddresses } from '@/lib/api/addresses';
+import { placeOrder as placeOrderApi } from '@/lib/api/orders';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -38,7 +39,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     orderReducer,
     createInitialState(store.id, store.name, serviceParam),
   );
-  const [addresses, setAddresses] = useState<DeliveryAddress[]>(MOCK_ADDRESSES);
+  const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
   const [agreed, setAgreed] = useState(false);
   const [maxReached, setMaxReached] = useState(1);
   const [placing, setPlacing] = useState(false);
@@ -62,6 +63,12 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   useEffect(() => {
     setMaxReached((previous) => Math.max(previous, state.step));
   }, [state.step]);
+
+  useEffect(() => {
+    fetchAddresses()
+      .then(setAddresses)
+      .catch(() => setAddresses([]));
+  }, []);
 
   const validateStep = (step: number): string | null => {
     if (step === 1) {
@@ -109,15 +116,14 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     }
   };
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
     setPlacing(true);
-    const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
     const etaDays = state.order.deliverySpeed === 'standard' ? 3 : 1;
     const estimated = new Date();
     estimated.setDate(estimated.getDate() + etaDays);
 
     const finalOrder: Order = {
-      id: orderId,
+      id: '',
       storeId: store.id,
       storeName: store.name,
       specifications: specs,
@@ -132,12 +138,29 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     };
 
     try {
-      sessionStorage.setItem(orderId, JSON.stringify(finalOrder));
-    } catch {
-      /* storage unavailable — the confirmation page falls back gracefully */
-    }
+      const result = await placeOrderApi({
+        storeId: store.id,
+        serviceName: service?.name,
+        quantity: specs.quantity,
+        total: cost.subtotal,
+        addressId: state.order.address?.id,
+        deliverySpeed: state.order.deliverySpeed,
+        notes: state.order.specialInstructions ?? '',
+        items: [{ name: service?.name ?? 'Print order', quantity: specs.quantity, unitPrice: cost.subtotal }],
+      });
+      finalOrder.id = result.id;
 
-    setTimeout(() => router.push(`/orders/confirmation/${orderId}`), 900);
+      try {
+        sessionStorage.setItem(result.id, JSON.stringify(finalOrder));
+      } catch {
+        /* storage unavailable — the confirmation page falls back gracefully */
+      }
+
+      router.push(`/orders/confirmation/${result.id}`);
+    } catch {
+      dispatch({ type: 'SET_ERROR', payload: 'Could not place your order. Please try again.' });
+      setPlacing(false);
+    }
   };
 
   return (

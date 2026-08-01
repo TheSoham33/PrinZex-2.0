@@ -2,13 +2,11 @@ import type { Metadata } from 'next';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
 import NotFoundState from '@/components/store-detail/NotFoundState';
-import { getStoreById, MOCK_STORE_DETAILS } from '@/lib/mock-data/stores';
+import { getStoreDetail } from '@/lib/server/store-queries';
 import StoreDetailView from './StoreDetailView';
 
-/** Pre-render every known store at build time. */
-export function generateStaticParams() {
-  return MOCK_STORE_DETAILS.map((store) => ({ id: store.id }));
-}
+/** Stores are rendered on-demand against the live database. */
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -16,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const store = getStoreById(id);
+  const store = await getStoreDetail(id);
   if (!store) return { title: 'Store not found' };
   return {
     title: store.name,
@@ -26,7 +24,7 @@ export async function generateMetadata({
 
 export default async function StoreDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const store = getStoreById(id);
+  const store = await getStoreDetail(id);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">

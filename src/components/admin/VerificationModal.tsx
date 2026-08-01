@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { REJECTION_REASONS } from '@/lib/mock-data/admin-sellers';
+import { REJECTION_REASONS } from '@/lib/types/admin-sellers';
 import { IconAlertTriangle, IconCheckCircle, IconX } from '@/components/icons';
 
 const FOCUSABLE =

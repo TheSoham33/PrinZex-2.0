@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { StoreDetail, StoreHours } from '@/lib/mock-data/stores';
+import type { StoreDetail, StoreHours } from '@/lib/types/stores';
 import { IconClock, IconMessageSquare, IconTruck, IconWallet } from '@/components/icons';
 
 /** True when the current local time falls inside today's opening window. */

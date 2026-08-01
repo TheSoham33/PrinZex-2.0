@@ -1,4 +1,4 @@
-import type { Review } from '@/lib/mock-data/stores';
+import type { Review } from '@/lib/types/stores';
 import { formatDate } from '@/lib/utils';
 import { IconStar } from '@/components/icons';
 

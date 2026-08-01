@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAdminOrders } from '@/lib/api/admin-orders';
-import type { AdminOrder } from '@/lib/mock-data/admin-orders';
+import type { AdminOrder } from '@/lib/types/admin-orders';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';

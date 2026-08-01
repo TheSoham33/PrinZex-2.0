@@ -79,21 +79,15 @@ export const ROLE_BADGE_STYLES: Record<AdminRole, string> = {
   content_manager: 'bg-pink-50 text-pink-700 ring-pink-600/20',
 };
 
-/** Demo credential set surfaced by the role selector on the login screen. */
-export const DEMO_ACCOUNTS: Record<AdminRole, { name: string; email: string }> = {
-  super_admin: { name: 'Aditi Verma', email: 'aditi.verma@prinzex.in' },
-  ops_manager: { name: 'Rohan Iyer', email: 'rohan.iyer@prinzex.in' },
-  support_agent: { name: 'Farah Khan', email: 'farah.khan@prinzex.in' },
-  finance_manager: { name: 'Deepak Nair', email: 'deepak.nair@prinzex.in' },
-  content_manager: { name: 'Sara Mathew', email: 'sara.mathew@prinzex.in' },
-};
-
-export function buildAdmin(role: AdminRole): AdminUser {
-  const account = DEMO_ACCOUNTS[role];
+/** Build an admin session for a real signed-in user. */
+export function buildAdmin(
+  role: AdminRole,
+  user: { id: string; name: string; email: string },
+): AdminUser {
   return {
-    id: `admin-${role}`,
-    name: account.name,
-    email: account.email,
+    id: user.id,
+    name: user.name,
+    email: user.email,
     role,
     permissions: ROLE_PERMISSIONS[role],
   };
@@ -112,6 +106,9 @@ const adminAuthSlice = createSlice({
       state.admin = action.payload;
       state.status = 'idle';
     },
+    adminLoginFailure(state) {
+      state.status = 'idle';
+    },
     adminLogout(state) {
       state.admin = null;
       state.status = 'idle';
@@ -123,7 +120,12 @@ const adminAuthSlice = createSlice({
   },
 });
 
-export const { adminLoginStart, adminLoginSuccess, adminLogout, restoreAdminSession } =
-  adminAuthSlice.actions;
+export const {
+  adminLoginStart,
+  adminLoginSuccess,
+  adminLoginFailure,
+  adminLogout,
+  restoreAdminSession,
+} = adminAuthSlice.actions;
 
 export default adminAuthSlice.reducer;

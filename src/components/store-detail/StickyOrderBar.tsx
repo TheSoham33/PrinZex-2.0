@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ServiceOffering } from '@/lib/mock-data/stores';
+import type { ServiceOffering } from '@/lib/types/stores';
 import { formatCurrency } from '@/lib/utils';
 import { IconArrowRight, IconHelpCircle } from '@/components/icons';
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { clearToken } from '@/lib/api-client';
 import {
   IconBell,
   IconLayoutDashboard,
@@ -42,6 +43,7 @@ export default function DashboardSidebar() {
     : '';
 
   const handleLogout = () => {
+    clearToken();
     dispatch(logout());
     router.push('/');
   };

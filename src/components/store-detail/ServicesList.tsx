@@ -1,6 +1,6 @@
 'use client';
 
-import type { ServiceOffering } from '@/lib/mock-data/stores';
+import type { ServiceOffering } from '@/lib/types/stores';
 import ServiceCard from './ServiceCard';
 
 interface ServicesListProps {

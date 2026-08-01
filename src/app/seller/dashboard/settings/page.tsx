@@ -4,7 +4,6 @@ import { useState, type FormEvent } from 'react';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { BUSINESS_TYPES, type BusinessType } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
 import { IconAlertCircle, IconPlus, IconX } from '@/components/icons';
 
 const TABS = ['Store info', 'Service hours', 'Delivery radius', 'Notifications'] as const;
@@ -32,16 +31,16 @@ export default function SellerSettingsPage() {
   const [saving, setSaving] = useState(false);
 
   const [storeInfo, setStoreInfo] = useState({
-    storeName: 'Demo Print Shop',
-    ownerName: 'Rajesh Kumar',
-    email: 'rajesh@demoprintshop.in',
-    phone: '9830012345',
-    gstNumber: '19AAAAA0000A1Z5',
-    businessType: 'sole_proprietor' as BusinessType,
-    storeAddress: '23A, BD Block, Sector 1, Salt Lake City',
-    city: 'Kolkata',
-    state: 'West Bengal',
-    pincode: '700064',
+    storeName: '',
+    ownerName: '',
+    email: '',
+    phone: '',
+    gstNumber: '',
+    businessType: '' as BusinessType,
+    storeAddress: '',
+    city: '',
+    state: '',
+    pincode: '',
   });
 
   const [hours, setHours] = useState<DayHours[]>(
@@ -94,7 +93,6 @@ export default function SellerSettingsPage() {
   const save = async (event: FormEvent, label: string) => {
     event.preventDefault();
     setSaving(true);
-    await fakeDelay(800);
     setSaving(false);
     showToast(`${label} saved`);
   };

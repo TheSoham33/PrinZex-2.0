@@ -4,13 +4,13 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { loginStart, loginSuccess } from '@/store/slices/authSlice';
+import { loginStart, loginSuccess, loginFailure } from '@/store/slices/authSlice';
 import PasswordInput from '@/components/auth/PasswordInput';
 import AuthDivider from '@/components/auth/AuthDivider';
 import SocialLoginButton from '@/components/auth/SocialLoginButton';
 import { IconAlertCircle, IconPrinter } from '@/components/icons';
 import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
+import { register } from '@/lib/api/auth';
 
 interface FormState {
   fullName: string;
@@ -71,11 +71,19 @@ export default function SignupPage() {
     if (!validate()) return;
 
     dispatch(loginStart());
-    await fakeDelay(800);
-    dispatch(
-      loginSuccess({ id: 'user-new', name: form.fullName.trim(), email: form.email.trim() }),
-    );
-    router.push('/verify-email');
+    try {
+      const result = await register(form.fullName.trim(), form.email.trim(), form.password);
+      dispatch(
+        loginSuccess({ id: result.user.id, name: result.user.name, email: result.user.email }),
+      );
+      router.push('/');
+    } catch (err) {
+      setErrors((previous) => ({
+        ...previous,
+        email: err instanceof Error && err.message ? err.message : 'Could not create your account.',
+      }));
+      dispatch(loginFailure());
+    }
   };
 
   return (
@@ -232,13 +240,8 @@ export default function SignupPage() {
       <SocialLoginButton
         disabled={loading}
         label="Sign up with Google"
-        onClick={async () => {
-          dispatch(loginStart());
-          await fakeDelay();
-          dispatch(
-            loginSuccess({ id: 'user-g', name: 'Ananya Sen', email: 'ananya.sen@gmail.com' }),
-          );
-          router.push('/');
+        onClick={() => {
+          /* Social sign-up requires an OAuth provider — coming in a later release. */
         }}
       />
 

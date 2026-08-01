@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOrders } from '@/lib/api/orders';
-import { isActiveOrder } from '@/lib/mock-data/orders';
+import { isActiveOrder } from '@/lib/types/orders';
 import OrderStatusBadge from '@/components/dashboard/OrderStatusBadge';
 import { formatDateTime } from '@/lib/utils';
 import { IconChevronRight, IconPackageOpen, IconTruck } from '@/components/icons';

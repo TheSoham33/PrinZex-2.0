@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { clearToken } from '@/lib/api-client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -35,6 +36,7 @@ export default function SellerNavbar() {
   }, [menuOpen]);
 
   const handleLogout = () => {
+    clearToken();
     dispatch(sellerLogout());
     setMenuOpen(false);
     router.push('/seller/login');

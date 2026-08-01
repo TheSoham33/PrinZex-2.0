@@ -11,7 +11,7 @@ import {
   SELLER_STATUS_LABELS,
   SELLER_STATUS_STYLES,
   type SellerOrder,
-} from '@/lib/mock-data/seller-orders';
+} from '@/lib/types/seller-orders';
 import OrderActionButtons from '@/components/seller-dashboard/OrderActionButtons';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, formatDateTime, maskPhone } from '@/lib/utils';

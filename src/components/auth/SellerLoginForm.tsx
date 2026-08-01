@@ -4,11 +4,15 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { sellerLoginStart, sellerLoginSuccess } from '@/store/slices/sellerAuthSlice';
+import {
+  sellerLoginStart,
+  sellerLoginSuccess,
+  sellerLoginFailure,
+} from '@/store/slices/sellerAuthSlice';
 import PasswordInput from '@/components/auth/PasswordInput';
 import { IconAlertCircle, IconStore } from '@/components/icons';
 import { EMAIL_REGEX } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
+import { login } from '@/lib/api/auth';
 
 /** Seller-side login. No social sign-in by design. */
 export default function SellerLoginForm() {
@@ -36,17 +40,30 @@ export default function SellerLoginForm() {
     if (Object.keys(next).length > 0) return;
 
     dispatch(sellerLoginStart());
-    await fakeDelay(800);
-    dispatch(
-      sellerLoginSuccess({
-        id: 'seller-1',
-        storeName: 'Demo Print Shop',
-        ownerName: 'Rajesh Kumar',
-        email: email.trim(),
-        status: 'approved',
-      }),
-    );
-    router.push('/seller/dashboard');
+    try {
+      const result = await login(email.trim(), password, 'seller');
+      if (!result.seller) {
+        throw new Error('No store is linked to this account');
+      }
+      dispatch(
+        sellerLoginSuccess({
+          id: result.seller.id,
+          storeName: result.seller.storeName,
+          ownerName: result.seller.ownerName,
+          email: result.seller.email,
+          status: result.seller.status as 'pending' | 'approved' | 'suspended',
+        }),
+      );
+      router.push(
+        result.seller.status === 'approved' ? '/seller/dashboard' : '/seller/pending',
+      );
+    } catch (err) {
+      dispatch(sellerLoginFailure());
+      setErrors({
+        password:
+          err instanceof Error && err.message ? err.message : 'Unable to sign you in. Try again.',
+      });
+    }
   };
 
   return (
@@ -114,9 +131,6 @@ export default function SellerLoginForm() {
         </Link>
       </p>
 
-      <p className="mt-6 rounded-lg bg-slate-50 px-4 py-3 text-center text-xs text-slate-500">
-        Demo build — any valid email and a 6+ character password signs you in as an approved seller.
-      </p>
     </div>
   );
 }
