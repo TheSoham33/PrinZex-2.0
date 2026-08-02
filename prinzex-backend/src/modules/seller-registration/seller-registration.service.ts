@@ -6,6 +6,7 @@ import { ApiError } from '../../utils/ApiError';
 import { invalidateCachePattern } from '../../utils/cache';
 import { sendSellerWelcomeEmail } from '../../utils/email';
 import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service';
+import { emitAdminGlobalEvent } from '../../realtime/realtime.emitters';
 import {
   DOCUMENT_DIR,
   SELLER_DOCUMENT_TYPES,
@@ -137,6 +138,13 @@ export async function register(userId: string, input: RegisterSellerInput): Prom
 
   // 4b. KPI cache (pending sellers count) — significant event, step 8.
   await invalidateAdminStats();
+
+  // 4c. Admin live feed (step 9): new seller registration on the dashboard.
+  emitAdminGlobalEvent('seller.registered', {
+    sellerId: seller.id,
+    storeName: seller.storeName,
+    city: seller.city,
+  });
 
   // 5. Welcome email (stub).
   await sendSellerWelcomeEmail(seller.email, seller.ownerName, seller.storeName);

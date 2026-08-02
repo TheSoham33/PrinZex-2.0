@@ -14,6 +14,7 @@ import {
   type PaginatedResponse,
 } from '../../utils/pagination';
 import { computeCheckoutSignature, razorpayClient, razorpayConfigured } from './razorpay.client';
+import { emitAdminGlobalEvent, emitNewOrder, emitNotificationNew } from '../../realtime/realtime.emitters';
 import type {
   AdminRefundInput,
   PaymentHistoryQuery,
@@ -38,6 +39,7 @@ async function notify(
   data: Record<string, unknown>,
 ): Promise<void> {
   await NotificationModel.create({ recipientId, recipientType, type, title, body, data, channel: ['push'] });
+  emitNotificationNew(recipientType, recipientId, { type, title, body, data }); // step 9 realtime
 }
 
 async function runSideEffects(label: string, effects: Array<() => Promise<unknown>>): Promise<void> {
@@ -132,6 +134,15 @@ export async function markOrderPaid(orderId: string, paymentId: string): Promise
   // notifies immediately for wallet/cod instead).
   const shortId = order.id.slice(-6).toUpperCase();
   await runSideEffects('order.paid', [
+    async () => {
+      // Real-time (step 9): the seller's first signal for gateway orders.
+      emitNewOrder(order.sellerId, {
+        orderId: order.id,
+        total: Number(order.total),
+        paymentMethod: order.paymentMethod,
+        timestamp: new Date(),
+      });
+    },
     () =>
       notify(
         order.sellerId,
@@ -165,6 +176,7 @@ export async function markOrderPaymentFailed(orderId: string, paymentId?: string
     data: { paymentStatus: 'failed', ...(paymentId ? { paymentId } : {}) },
   });
   await runSideEffects('order.payment_failed', [
+    async () => emitAdminGlobalEvent('payment.failed', { orderId: order.id, paymentId: paymentId ?? null }),
     () =>
       notify(
         order.customerId,

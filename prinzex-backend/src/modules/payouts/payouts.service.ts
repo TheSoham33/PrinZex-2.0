@@ -4,6 +4,7 @@ import { REDIS_KEYS, REDIS_TTL } from '../../config/redis';
 import { NotificationModel } from '../../models/mongo/Notification.model';
 import { ActivityLogModel } from '../../models/mongo/ActivityLog.model';
 import { ApiError } from '../../utils/ApiError';
+import { emitNotificationNew, emitPayoutProcessed } from '../../realtime/realtime.emitters';
 import { getCache, setCache } from '../../utils/cache';
 import { roundMoney } from '../../utils/financial';
 import {
@@ -51,15 +52,18 @@ async function notifyRecipient(
 ): Promise<void> {
   const recipientId = payout.recipientType === 'seller' ? payout.sellerId : payout.deliveryBoyId;
   if (!recipientId) return;
+  const recipientType = payout.recipientType === 'seller' ? 'seller' : 'delivery_boy';
+  const data = { payoutId: payout.id, amount: Number(payout.amount) };
   await NotificationModel.create({
     recipientId,
-    recipientType: payout.recipientType === 'seller' ? 'seller' : 'delivery_boy',
+    recipientType,
     type,
     title,
     body,
-    data: { payoutId: payout.id, amount: Number(payout.amount) },
+    data,
     channel: ['push'],
   });
+  emitNotificationNew(recipientType, recipientId, { type, title, body, data }); // step 9 realtime
 }
 
 // ── GET /api/admin/payouts ─────────────────────────────────────────────────
@@ -248,6 +252,17 @@ export async function markPayoutPaid(meta: AdminActionMeta, payoutId: string, tr
       `Your payout of ₹${Number(payout.amount)} has been transferred (ref ${transactionRef}).`,
     ),
   ]);
+
+  // Real-time (step 9): payout:processed → the seller's /orders room (rider
+  // payouts go to the delivery room — rooms already exist there).
+  const recipientId = payout.recipientType === 'seller' ? payout.sellerId : payout.deliveryBoyId;
+  if (recipientId) {
+    emitPayoutProcessed(
+      payout.recipientType === 'seller' ? 'seller' : 'delivery_boy',
+      recipientId,
+      { payoutId: payout.id, amount: Number(payout.amount), transactionRef, timestamp: new Date() },
+    );
+  }
 
   return { payoutId, status: 'PAID', transactionRef };
 }

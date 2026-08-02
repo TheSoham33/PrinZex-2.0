@@ -232,6 +232,45 @@ Deviation notes: `@types/razorpay` does not exist on npm (the request 404s) — 
 
 Deviation notes: the spec's file-structure list names 6 admin sub-modules but its endpoint list also includes review management (`/api/admin/reviews`) and the activity-log viewer (`/api/admin/activity-log`) — these live in their own `admin/reviews/` and `admin/logs/` folders (one-folder-per-feature). Admin JWTs gained a `name` claim so fire-and-forget audit logs carry `adminName` without a per-action DB lookup.
 
+## Real-Time Layer (Step 9) — Socket.io + Redis pub/sub
+
+**Topology** — `server.ts` builds `http.createServer(app)` and attaches Socket.io to the SAME server (`initSocketServer(httpServer)`; never `app.listen`). Ping 10s / timeout 20s, websocket+polling. Horizontal scaling: a **`redis` (v4-lineage) pub/sub client pair** drives `@socket.io/redis-adapter` (two separate clients, as required — a subscribed client cannot issue commands). Fail-open everywhere: unreachable Redis → adapter unattached (single-node) and the tracking bridge disabled — the server boots and REST never breaks.
+
+**`realtime/socket.registry.ts`** — dependency-free Io handle (`registerSocketServer` / `getSocketServer` [throws] / `getSocketServerOrNull` [null-safe] / `clearSocketServer`). Service files emit via **`realtime/realtime.emitters.ts`**, which reads the registry per-emission — import graph is cycle-free by construction (emitters never import socket.server). Event + room names exist ONLY there (`RT_EVENTS`, `RT_ROOMS` — same discipline as `REDIS_KEYS`). Every helper is a safe no-op when sockets are down and swallows its own errors, so REST services emit unconditionally post-commit.
+
+**Auth** — `socket.auth.ts` middleware on every namespace: token from `handshake.auth.token` or the `Authorization: Bearer` header, verified with the REST `verifyAccessToken`; payload pinned to `socket.data.user`. `/admin` adds a second middleware rejecting non-ADMIN roles at the connection (`connect_error: "Admin only"`).
+
+**Namespaces**
+
+| NS | Joins | Events (server → client) |
+|---|---|---|
+| `/tracking` | `join:order` (customer + DB ownership check; immediate last-known location from the Redis hot cache) | `location:update` to `order:{orderId}` |
+| `/orders` | auto-rooms on connect: `customer:{userId}`, `seller:{sellerId}`, `delivery:{deliveryBoyId}` | `order:new`, `order:status_changed`, `delivery:assigned`, `payout:processed`, `notification:new` |
+| `/chat` | `chat:join` (customer-owns OR seller-owns the order; last 20 msgs replayed) | `chat:history`, `chat:message`, `chat:read_ack` |
+| `/admin` | `admin:global`; `admin:watch_delivery` → `delivery:watch:{deliveryId}` | `admin:event` envelope, `location:update` (watched deliveries) |
+
+**GPS fan-out** — rider pings (REST hot path, step 6) → ioredis `PUBLISH tracking:{deliveryId}` (self-describing `{deliveryId, orderId, lat, lng, etaMinutes}` payload) → the socket server's dedicated ioredis `PSUBSCRIBE tracking:*` bridge → `location:update` to the customer's order room AND the admin watch room; the Redis adapter then routes the emission to whichever node holds the socket.
+
+**REST↔socket wiring (post-commit side effects)** — `order:new`: order placement (wallet/cod) in orders.service + payment capture (gateway) in payments.service. `order:status_changed` (customer + seller rooms): customer cancel, seller transitions, admin force-status, pickup→out_for_delivery, delivered. `delivery:assigned`: auto + manual assignment (payload carries pickup/drop addresses + masked customer phone). `payout:processed`: mark-paid (seller room; rider room extension). `notification:new`: the central notify() helpers of orders/payments/payouts/delivery/assignment. `admin:event` (`admin:global`): seller.registered, delivery.failed, order.high_value (>₹5000), payment.failed, support.high_priority (helper ready — no customer ticket-creation route exists yet; wired when it lands).
+
+**Chat history REST** — `GET /api/chat/:orderId/messages?before=<messageId>&limit=20` (CUSTOMER/SELLER), same `verifyOrderAccess` rule as the socket (404, never 403, for foreign orders), cursor pagination on the ObjectId (`hasMore` + `nextCursor` for scroll-up). MongoDB `ChatMessage` model: `orderId+createdAt` compound index, ≤1000-char content.
+
+**Rooms & leaks** — Socket.io drops a disconnected socket's room memberships automatically (asserted in tests); riders' online status is governed by the REST availability endpoint + location-key TTL, NOT socket lifetime.
+
+**Docker** — `docker-compose.yml` now exists at the REPO ROOT per spec (`postgres:16`/`mongo:7`/`redis:7-alpine` + volumes) and `package.json` gained `docker:up`/`docker:down`/`docker:logs` (run from `prinzex-backend/`). The richer `prinzex-backend/docker-compose.yml` (healthchecks, restart policies, container names) is kept — either stack maps the same ports; root = spec-minimal, backend = hardened.
+
+Deviation notes: CORS for the socket server reuses `CORS_ORIGIN` (the project's single source of truth for frontend origins) instead of introducing a duplicate `FRONTEND_URL` var. `@types/socket.io` was installed per spec (it's a deprecated stub — socket.io ships its own declarations). `InitSocketOptions` (`withRedisAdapter`/`withTrackingSubscriber`) is the documented test seam used by the offline verification suite; `server.ts` always passes neither flag (full setup).
+
+```js
+// client quick-start (any namespace)
+import { io } from 'socket.io-client';
+const s = io('http://localhost:4000/orders', { auth: { token: accessToken } }); // customer
+s.on('order:status_changed', ({ orderId, status }) => renderStatus(orderId, status));
+const t = io('http://localhost:4000/tracking', { auth: { token: accessToken } });
+t.emit('join:order', orderId);
+t.on('location:update', ({ lat, lng, etaMinutes }) => moveRiderPin(lat, lng, etaMinutes));
+```
+
 ## Scripts
 
 | Command                    | What it does                                         |
@@ -246,6 +285,7 @@ Deviation notes: the spec's file-structure list names 6 admin sub-modules but it
 | `npm run lint`             | ESLint over `src/`                                   |
 | `npm run typecheck`        | `tsc --noEmit` over the whole project (incl. seeds)  |
 | `npm test`                 | Jest (ts-jest) — harness only, tests come in later steps |
+| `npm run docker:up/down/logs` | local Postgres+Mongo+Redis stack (compose)      |
 
 ## Layout
 
@@ -253,12 +293,14 @@ Deviation notes: the spec's file-structure list names 6 admin sub-modules but it
 prisma/            schema.prisma, migrations/, seed.ts
 src/
   config/          env (envalid), database (Prisma), mongo (Mongoose), redis (ioredis), logger (Winston)
-  models/mongo/    OrderTimeline, Tracking, Notification, ActivityLog, Content
+  models/mongo/    OrderTimeline, Tracking, Notification, ActivityLog, Content, ChatMessage
   middlewares/     requestLogger, authenticate, authorizeRoles, rateLimiter, validate, notFound, errorHandler
   modules/         auth, seller-auth, delivery-auth, admin-auth, customer, stores, upload,
                    seller-registration, seller, orders, delivery, tracking, payments, payouts,
-                   admin/{users,sellers,analytics,content,support,admins,reviews,logs}
+                   chat, admin/{users,sellers,analytics,content,support,admins,reviews,logs}
                    (one folder per feature: routes/controller/service/schema)
+  realtime/        socket.server (init+adapter), socket.registry (Io handle), socket.auth,
+                   realtime.emitters (typed events/rooms), namespaces/{tracking,orders,chat,admin}
   utils/           ApiError, ApiResponse, asyncHandler, jwt, hash, otp, email, pagination,
                    cache, fileUpload, rateLimitStore, geo, financial, activityLogger
   types/           shared domain types (status unions, snapshots, envelopes)
@@ -285,4 +327,4 @@ mongo-seed/        MongoDB seed
 - **Redis keys** come only from `REDIS_KEYS` / `REDIS_TTL` in `src/config/redis.ts` — never inline strings.
 - **Errors**: throw `ApiError`; Zod failures, Prisma P2002/P2025 and JWT errors are normalised by the global `errorHandler`.
 - **Env**: everything is validated at boot via envalid in `src/config/env.ts`; the process refuses to start when a required variable is missing.
-- Coupons and Socket.io (real-time tracking/notifications) land in subsequent steps.
+- All planned backend steps (1–9) are complete. Coupons and customer-facing support-ticket creation may land as future extensions.

@@ -7,6 +7,7 @@ import { NotificationModel } from '../../models/mongo/Notification.model';
 import { OrderTimelineModel } from '../../models/mongo/Order.model';
 import type { DeliveryAddressSnapshot, OrderItemSpecifications, OrderStatus } from '../../types';
 import { ApiError } from '../../utils/ApiError';
+import { emitNotificationNew, emitOrderStatusChanged } from '../../realtime/realtime.emitters';
 import {
   getCache,
   setCache,
@@ -1071,15 +1072,18 @@ async function notifyCustomerOrderUpdate(
   status: string,
   note?: string,
 ): Promise<void> {
+  const title = `Order ${orderId.slice(-6).toUpperCase()} — ${humanizeStatus(status)}`;
+  const body = note ?? `Your order status is now "${humanizeStatus(status)}".`;
   await NotificationModel.create({
     recipientId: customerId,
     recipientType: 'customer',
     type: 'order_update',
-    title: `Order ${orderId.slice(-6).toUpperCase()} — ${humanizeStatus(status)}`,
-    body: note ?? `Your order status is now "${humanizeStatus(status)}".`,
+    title,
+    body,
     data: { orderId, status },
     channel: ['push'],
   });
+  emitNotificationNew('customer', customerId, { type: 'order_update', title, body, data: { orderId, status } }); // step 9
 }
 
 export async function updateOrderStatus(
@@ -1097,6 +1101,7 @@ export async function updateOrderStatus(
 
   await appendTimelineEvent(order.id, input.status, sellerId, input.note);
   await notifyCustomerOrderUpdate(order.customerId, order.id, input.status, input.note);
+  emitOrderStatusChanged(order, input.status); // step 9 realtime (post-commit, safe no-op when sockets are down)
   await invalidateSellerAnalytics(sellerId);
 
   // ready_for_pickup kicks off rider assignment (step 6 engine). Failure here

@@ -34,6 +34,7 @@ import { adminSupportRouter } from './modules/admin/support/admin-support.routes
 import { adminAdminsRouter } from './modules/admin/admins/admin-admins.routes';
 import { adminReviewsRouter } from './modules/admin/reviews/admin-reviews.routes';
 import { adminLogsRouter } from './modules/admin/logs/admin-logs.routes';
+import { chatRouter } from './modules/chat/chat.routes';
 import { authenticate } from './middlewares/authenticate';
 import { authorizeRoles } from './middlewares/authorizeRoles';
 import { ApiResponse } from './utils/ApiResponse';
@@ -165,6 +166,9 @@ export function createApp(): Express {
 
   // Public storefront content — NO auth (homepage banners, FAQ page).
   app.use('/api/content', publicContentRouter);
+
+  // Chat history — REST half of the /chat socket namespace (customers + sellers).
+  app.use('/api/chat', chatRouter);
 
   // Design file uploads — authenticated (any role).
   app.use('/api/upload', uploadRouter);

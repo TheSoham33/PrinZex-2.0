@@ -4,6 +4,7 @@ import { redis, REDIS_KEYS } from '../../config/redis';
 import { NotificationModel } from '../../models/mongo/Notification.model';
 import { TrackingModel } from '../../models/mongo/Tracking.model';
 import { ApiError } from '../../utils/ApiError';
+import { emitDeliveryAssigned, emitNotificationNew } from '../../realtime/realtime.emitters';
 import { getCache } from '../../utils/cache';
 import { boundingBox, haversineDistanceKm } from '../../utils/geo';
 
@@ -67,6 +68,7 @@ async function notifyBoy(
     data,
     channel: ['push', 'sms'],
   });
+  emitNotificationNew('delivery_boy', deliveryBoyId, { type: 'delivery_assigned', title, body, data }); // step 9
 }
 
 async function createTrackingDoc(deliveryId: string, orderId: string, deliveryBoyId: string | null): Promise<void> {
@@ -91,6 +93,26 @@ async function publishAssignment(deliveryId: string, orderId: string, deliveryBo
   }
 }
 
+interface AssignSocketOrder {
+  id: string;
+  deliveryAddress: unknown;
+  seller: { storeAddress: string };
+  customer: { phone: string | null } | null;
+}
+
+/** delivery:assigned → the rider's /orders room (safe no-op when sockets down). */
+function emitAssignedSocket(deliveryBoyId: string, deliveryId: string, order: AssignSocketOrder): void {
+  const snapshot = order.deliveryAddress as { fullAddress?: string; phone?: string } | null;
+  emitDeliveryAssigned(deliveryBoyId, {
+    orderId: order.id,
+    deliveryId,
+    pickupAddress: order.seller.storeAddress,
+    deliveryAddress: snapshot?.fullAddress ?? '',
+    customerPhone: order.customer?.phone ?? snapshot?.phone ?? null,
+    timestamp: new Date(),
+  });
+}
+
 /**
  * Automatic assignment. Idempotent per order: an existing non-terminal
  * Delivery row short-circuits the search.
@@ -99,7 +121,8 @@ export async function autoAssignDelivery(orderId: string): Promise<AssignmentRes
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
-      seller: { select: { id: true, storeName: true, city: true, lat: true, lng: true } },
+      seller: { select: { id: true, storeName: true, storeAddress: true, city: true, lat: true, lng: true } },
+      customer: { select: { phone: true } },
     },
   });
   if (!order) {
@@ -220,6 +243,9 @@ export async function autoAssignDelivery(orderId: string): Promise<AssignmentRes
     publishAssignment(delivery.id, order.id, winner.id),
   ]);
 
+  // Real-time (step 9): direct room emission — no polling on the rider app.
+  emitAssignedSocket(winner.id, delivery.id, order);
+
   return {
     deliveryId: delivery.id,
     deliveryBoyId: winner.id,
@@ -237,7 +263,10 @@ export async function autoAssignDelivery(orderId: string): Promise<AssignmentRes
 export async function manualAssignDelivery(orderId: string, deliveryBoyId: string): Promise<AssignmentResult> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: { seller: { select: { storeName: true } } },
+    include: {
+      seller: { select: { storeName: true, storeAddress: true } },
+      customer: { select: { phone: true } },
+    },
   });
   if (!order) {
     throw ApiError.notFound('Order not found');
@@ -285,6 +314,9 @@ export async function manualAssignDelivery(orderId: string, deliveryBoyId: strin
     }),
     publishAssignment(delivery.id, order.id, deliveryBoyId),
   ]);
+
+  // Real-time (step 9): direct room emission for manual ops assignments too.
+  emitAssignedSocket(deliveryBoyId, delivery.id, order);
 
   return { deliveryId: delivery.id, deliveryBoyId, status: 'assigned' };
 }

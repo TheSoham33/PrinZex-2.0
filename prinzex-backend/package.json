@@ -2,7 +2,7 @@
   "name": "prinzex-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "PrinZex — multi-vendor printing marketplace backend (Node.js + Express + Prisma + Mongoose + Redis)",
+  "description": "PrinZex \u2014 multi-vendor printing marketplace backend (Node.js + Express + Prisma + Mongoose + Redis)",
   "main": "dist/server.js",
   "license": "MIT",
   "engines": {
@@ -22,14 +22,16 @@
     "lint": "eslint src --ext .ts",
     "lint:all": "eslint . --ext .ts",
     "test": "jest",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@socket.io/redis-adapter": "^8.3.0",
     "@types/multer": "^2.2.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -44,6 +46,8 @@
     "multer": "^2.2.0",
     "rate-limit-redis": "^4.2.0",
     "razorpay": "^2.9.8",
+    "redis": "^6.2.0",
+    "socket.io": "^4.8.3",
     "winston": "^3.17.0",
     "zod": "^3.24.1"
   },
@@ -54,6 +58,7 @@
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.17.0",
+    "@types/socket.io": "^3.0.1",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
@@ -63,6 +68,7 @@
     "nodemon": "^3.1.7",
     "prettier": "^3.3.3",
     "prisma": "^5.22.0",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",

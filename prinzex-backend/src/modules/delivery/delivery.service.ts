@@ -12,6 +12,7 @@ import { getCache, invalidateCache } from '../../utils/cache';
 import { sendSms } from '../../utils/email';
 import { estimateEtaMinutes, haversineDistanceKm } from '../../utils/geo';
 import { isValidTransition } from '../../utils/stateMachine';
+import { emitAdminGlobalEvent, emitNotificationNew, emitOrderStatusChanged } from '../../realtime/realtime.emitters';
 import {
   buildPaginatedResponse,
   toSkipTake,
@@ -79,6 +80,7 @@ async function notify(
     data,
     channel: ['push'],
   });
+  emitNotificationNew(recipientType, recipientId, { type, title, body, data }); // step 9 realtime
 }
 
 export interface CachedRiderLocation {
@@ -542,6 +544,7 @@ export async function confirmPickup(
         { orderId: delivery.orderId, podOtp: delivery.podOtp },
       ),
     () => invalidateSellerAnalytics(delivery.order.sellerId),
+    async () => emitOrderStatusChanged(delivery.order, 'out_for_delivery'), // step 9 realtime
   ]);
 
   return { deliveryId: delivery.id, status: order.status };
@@ -623,6 +626,11 @@ export async function confirmDelivery(
         { orderId: delivery.orderId },
       ),
     () => invalidateSellerAnalytics(order.sellerId),
+    async () =>
+      emitOrderStatusChanged(
+        { id: delivery.orderId, customerId: order.customerId, sellerId: order.sellerId },
+        'delivered',
+      ), // step 9 realtime
     () =>
       redis.del(REDIS_KEYS.DELIVERY_LOCATION(deliveryBoyId)).catch((error: unknown) => {
         logger.warn('delivery_location_clear_failed', {
@@ -691,6 +699,13 @@ export async function failDelivery(
         `Delivery ${delivery.id} (order ${delivery.orderId.slice(-6).toUpperCase()}) failed: ${input.reason}`,
         { orderId: delivery.orderId, deliveryId: delivery.id },
       ),
+    // Real-time (step 9): admin:global dashboard event.
+    async () =>
+      emitAdminGlobalEvent('delivery.failed', {
+        deliveryId: delivery.id,
+        orderId: delivery.orderId,
+        reason: input.reason,
+      }),
   ]);
 
   return { deliveryId: delivery.id, status: 'failed' };

@@ -18,6 +18,12 @@ import { invalidateSellerAnalytics, invalidateStoreCaches } from '../seller/sell
 import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import {
+  emitAdminGlobalEvent,
+  emitNewOrder,
+  emitNotificationNew,
+  emitOrderStatusChanged,
+} from '../../realtime/realtime.emitters';
+import {
   assertKnownFinishing,
   computeQuote,
   estimatedDeliveryFor,
@@ -91,6 +97,7 @@ async function notifySeller(
     data,
     channel: ['push'],
   });
+  emitNotificationNew('seller', sellerId, { type, title, body, data }); // step 9 realtime
 }
 
 /**
@@ -382,6 +389,28 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     () => invalidateSellerAnalytics(seller.id),
     // KPI cache (orders today/this month) — significant event, step 8.
     () => invalidateAdminStats(),
+    // Real-time (step 9): order:new to the seller's room — same placement-vs-
+    // capture split as the notification above (gateway orders fire at capture).
+    ...(order.paymentStatus !== 'pending'
+      ? [
+          async () => {
+            emitNewOrder(seller.id, {
+              orderId: order.id,
+              total: quote.total,
+              paymentMethod: order.paymentMethod,
+              timestamp: new Date(),
+            });
+          },
+        ]
+      : []),
+    // Admin global: high-value order alert (> ₹5000).
+    ...(quote.total > 5000
+      ? [
+          async () => {
+            emitAdminGlobalEvent('order.high_value', { orderId: order.id, total: quote.total, sellerId: seller.id });
+          },
+        ]
+      : []),
   ]);
 
   return { order, estimatedDelivery };
@@ -543,6 +572,7 @@ export async function cancelOrder(
 
   await runPostCommitSideEffects('order.cancelled', [
     () => appendTimelineEvent(order.id, 'cancelled', customerId, `Cancelled by customer: ${input.reason}`),
+    async () => emitOrderStatusChanged(order, 'cancelled'), // step 9 realtime
     () =>
       notifySeller(
         order.sellerId,
@@ -767,6 +797,7 @@ export async function adminUpdateOrderStatus(
         note: input.note ?? null,
       }),
     () => invalidateSellerAnalytics(order.sellerId),
+    async () => emitOrderStatusChanged(order, input.status), // step 9 realtime
     async () => {
       // An admin forcing ready_for_pickup must kick off assignment too.
       if (input.status === 'ready_for_pickup') {
