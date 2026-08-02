@@ -195,6 +195,43 @@ curl $B/api/admin/financials/commission-report -H "Authorization: Bearer $ADMIN"
 
 Deviation notes: `@types/razorpay` does not exist on npm (the request 404s) — `razorpay@2.9.8` bundles its own complete TypeScript declarations, used instead. Spec's literal `razorpay.orders.create` singleton is kept but constructed only when keys are non-empty (the SDK constructor throws on empty `key_id` — with blank dev credentials we hold `null` and fail loudly at the first guarded gateway call, matching how AWS/SMTP stubs boot clean).
 
+## Admin Control Plane (Step 8)
+
+**`src/utils/activityLogger.ts`** — `logActivity({ adminId, adminName, adminRole, action, entityType, entityId, metadata?, req })` writes the MongoDB ActivityLog (dot-notation actions like `seller.approved`). **Fire-and-forget**: controllers call it with `void logActivity(...)` (never awaited); it catches its own errors so a slow Mongo can never block or fail a response. `adminIdentity(req)` pulls the acting admin from the JWT — which is why admin access tokens now carry a `name` claim (added to login + refresh payloads; older tokens fall back to `''`).
+
+**Mounting** — per spec, one parent `adminRouter` (`authenticate` + `authorizeRoles('ADMIN')`) at `/api/admin` with sub-routers `/users` `/sellers` `/analytics` `/content` `/support` `/admins` `/reviews` `/activity-log`; `/api/content` is a separate **public** router (no auth). The step-6/7 admin mounts (`/orders` `/delivery` `/payouts` `/financials`) predate this parent and keep their own guards — no path overlap.
+
+**Permission mapping** (spec name → platform vocabulary, all enforced per-route via `requirePermission`):
+
+| Spec | Reads | Mutations |
+|---|---|---|
+| canManageUsers (users) | `users.view` | `users.manage` |
+| canManageSellers (sellers) | `sellers.view` | approve/reject/verify-document → `sellers.verify` · suspend/commission → `sellers.manage` |
+| canViewAnalytics | `analytics.view` | — (read-only) |
+| canManageContent | `content.view` | `content.manage` |
+| canManageOrders (support) | `support.view` | `support.manage` |
+| canManageAdmins | `admins.view` **`requireSuperAdmin`** | `admins.manage` **`requireSuperAdmin`** |
+| activity log | `logs.view` | — |
+| canManageSellers (reviews) | `sellers.view` | `sellers.manage` |
+
+**`/api/admin/users`** — list (role/status/search email|phone|name ci/date range → id, contact, role, isActive, order count, wallet balance, paginated); detail (profile + addresses + last 10 orders + wallet + last 5 transactions + ticket count); `PATCH /:userId/suspend` (isActive=false + **all refresh tokens revoked** + notify, `user.suspended`); `unsuspend` (sessions stay revoked — log in again); `POST /:userId/wallet-credit` (wallet upsert + CREDIT/ADJUSTMENT ledger row + increment, one interactive tx; `wallet.credited`).
+
+**`/api/admin/sellers`** — list (status/city/search + rating, totalOrders, **pendingDocuments count**); detail (services, documents incl. verification, **masked bank**, performance, exact pending payout balance via the delivered-unpaid math); `POST /:sellerId/approve` **verifies all 4 KYC doc types are uploaded first** (gst_certificate, business_license, owner_id, address_proof → 400 listing the missing ones) → APPROVED + isVerified, store-list + KPI caches invalidated, approval email stub, notify; `reject` (min-10 reason stored); `suspend` (status + sessions revoked + cache invalidated); `verify-document` (`verifiedAt`/`verifiedBy` set or cleared); `PATCH /:sellerId/commission` (0–50%, drops the commission-report cache).
+
+**`/api/admin/analytics`** — `GET /kpi` (12 platform counters via Prisma aggregates; **Redis-cached at `ADMIN_STATS()` for 60s and invalidated on significant events**: new order → orders.service, new seller → seller-registration, approve/reject → admin-sellers; `startDate/endDate` override the month window under a suffixed cache key); `GET /revenue` **`$queryRaw` + `DATE_TRUNC`** (`{date, revenue, orders, commission}` per bucket, revenue = delivered only via SQL `FILTER`); `GET /orders` (SQL-grouped volume + status distribution, top-5 sellers by `Order.groupBy`, top-5 services by `OrderItem.groupBy`); `GET /geography` (orders + delivered revenue grouped by `deliveryAddress->>'city'`); `GET /sellers?sort=revenue|orders|rating` (revenue/orders sorted + paginated at the DB via groupBy `orderBy`+`skip/take`; rating via Seller orderBy).
+
+**`/api/admin/content`** (MongoDB Content) — banners CRUD sorted by `order` (create defaults to end of list); **`PATCH /banners/reorder` registered before `/banners/:id`** and executed as ONE MongoDB **`bulkWrite`** (index = new order); FAQs CRUD, listed **grouped by category**. Public: `GET /api/content/banners?isActive=true`, `GET /api/content/faqs?category=…` (active only).
+
+**`/api/admin/support`** — tickets list (status/priority/category/assignedTo/search-subject ci); detail (messages asc, linked order, customer profile, assignee name); `POST …/reply` (TicketMessage senderType admin + **OPEN→IN_PROGRESS in the same transaction** via conditional updateMany, notify); `assign` (validates target admin is active, `ticket.assigned`); `priority`; `resolve` (RESOLVED + resolvedAt + optional final message, notify, `ticket.resolved`); `close`; `GET /stats` — openCount, inProgressCount, resolvedThisWeek (Monday window), **avgResponseTimeHours via SQL `LATERAL` per-ticket first-admin-reply average**, resolutionRate = resolved/(resolved+closed+open) per spec.
+
+**`/api/admin/admins`** — SUPER_ADMIN-only: `requireSuperAdmin` asserts the JWT claim AND the `admins.*` permission keys exist only in SUPER_ADMIN's role map (a hand-crafted token with the permission but the wrong role still 403s — smoke-verified). Invite (CSPRNG 12-char temp password → bcrypt → invite email stub, `admin.invited`); role change (revokes all AdminRefreshTokens — re-login picks up new permissions); deactivate (blocks self-deactivation and **removing the last active SUPER_ADMIN**, sessions revoked).
+
+**`/api/admin/reviews`** — list (isFlagged/min-max rating/sellerId, customer + store names); flag (`review.flagged`); DELETE (hard delete + **seller averageRating recalculated inside the same Prisma transaction**, notify seller, `review.deleted`).
+
+**`/api/admin/activity-log`** — MongoDB ActivityLog query (adminId/entityType/date range), newest first, paginated; the schema's `(adminId, createdAt -1)` compound index covers the primary access pattern.
+
+Deviation notes: the spec's file-structure list names 6 admin sub-modules but its endpoint list also includes review management (`/api/admin/reviews`) and the activity-log viewer (`/api/admin/activity-log`) — these live in their own `admin/reviews/` and `admin/logs/` folders (one-folder-per-feature). Admin JWTs gained a `name` claim so fire-and-forget audit logs carry `adminName` without a per-action DB lookup.
+
 ## Scripts
 
 | Command                    | What it does                                         |
@@ -219,10 +256,11 @@ src/
   models/mongo/    OrderTimeline, Tracking, Notification, ActivityLog, Content
   middlewares/     requestLogger, authenticate, authorizeRoles, rateLimiter, validate, notFound, errorHandler
   modules/         auth, seller-auth, delivery-auth, admin-auth, customer, stores, upload,
-                   seller-registration, seller, orders, delivery, tracking, payments, payouts
+                   seller-registration, seller, orders, delivery, tracking, payments, payouts,
+                   admin/{users,sellers,analytics,content,support,admins,reviews,logs}
                    (one folder per feature: routes/controller/service/schema)
   utils/           ApiError, ApiResponse, asyncHandler, jwt, hash, otp, email, pagination,
-                   cache, fileUpload, rateLimitStore, geo, financial
+                   cache, fileUpload, rateLimitStore, geo, financial, activityLogger
   types/           shared domain types (status unions, snapshots, envelopes)
   app.ts           Express app factory (helmet → cors → json → logger → rate limit → routes → 404 → errors)
   server.ts        entrypoint: connect all 3 DBs, then listen (fail-fast on any DB error)
@@ -247,4 +285,4 @@ mongo-seed/        MongoDB seed
 - **Redis keys** come only from `REDIS_KEYS` / `REDIS_TTL` in `src/config/redis.ts` — never inline strings.
 - **Errors**: throw `ApiError`; Zod failures, Prisma P2002/P2025 and JWT errors are normalised by the global `errorHandler`.
 - **Env**: everything is validated at boot via envalid in `src/config/env.ts`; the process refuses to start when a required variable is missing.
-- Admin store/user management, admin analytics, coupons, content, support and Socket.io land in subsequent steps.
+- Coupons and Socket.io (real-time tracking/notifications) land in subsequent steps.

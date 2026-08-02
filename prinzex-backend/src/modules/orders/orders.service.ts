@@ -15,6 +15,7 @@ import {
   type PaginatedResponse,
 } from '../../utils/pagination';
 import { invalidateSellerAnalytics, invalidateStoreCaches } from '../seller/seller.service';
+import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import {
   assertKnownFinishing,
@@ -379,6 +380,8 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
         ]
       : []),
     () => invalidateSellerAnalytics(seller.id),
+    // KPI cache (orders today/this month) — significant event, step 8.
+    () => invalidateAdminStats(),
   ]);
 
   return { order, estimatedDelivery };

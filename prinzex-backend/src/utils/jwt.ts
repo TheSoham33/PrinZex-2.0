@@ -29,6 +29,8 @@ export interface AdminTokenPayload {
   adminId: string;
   role: 'ADMIN';
   adminRole: string;
+  /** Display name — carried so fire-and-forget activity logging needs no DB lookup. */
+  name?: string;
   permissions: Record<string, boolean>;
 }
 

@@ -81,6 +81,24 @@ export async function sendTeamInviteEmail(
   });
 }
 
+/** Sent when an admin approves a seller application. */
+export async function sendSellerApprovalEmail(to: string, ownerName: string, storeName: string): Promise<void> {
+  await deliver({
+    to,
+    subject: `Your store "${storeName}" is now live on PrinZex`,
+    text: `Congratulations ${ownerName}! "${storeName}" has been approved. Customers can now find your store and place orders.`,
+  });
+}
+
+/** Sent when a SUPER_ADMIN invites a new admin account. */
+export async function sendAdminInviteEmail(to: string, name: string, tempPassword: string, role: string): Promise<void> {
+  await deliver({
+    to,
+    subject: 'Your PrinZex admin account',
+    text: `Hi ${name}, an admin account (${role}) has been created for you on PrinZex. Sign in with this temporary password and change it immediately: ${tempPassword}`,
+  });
+}
+
 /** SMS stub — same treatment until an SMS gateway is integrated. */
 export async function sendOtpSms(to: string, otp: string, purpose: string): Promise<void> {
   logger.info('sms_stub: message "sent"', { to, purpose, otp });

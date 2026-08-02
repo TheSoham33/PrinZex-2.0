@@ -122,6 +122,7 @@ export async function login(input: AdminLoginInput): Promise<AdminSession> {
     adminId: admin.id,
     role: 'ADMIN',
     adminRole: admin.role,
+    name: admin.name,
     permissions: buildPermissions(admin.role),
   };
   const tokens = await issueAndPersistAdminTokens(admin.id, payload);
@@ -178,6 +179,7 @@ export async function refresh(presentedToken: string): Promise<{ tokens: TokenPa
     adminId: admin.id,
     role: 'ADMIN',
     adminRole: admin.role,
+    name: admin.name,
     permissions: buildPermissions(admin.role),
   };
   const tokens = await issueAndPersistAdminTokens(admin.id, fresh);

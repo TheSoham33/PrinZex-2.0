@@ -26,6 +26,16 @@ import {
 import { trackingRouter } from './modules/tracking/tracking.routes';
 import { paymentsRouter, paymentsWebhookRouter, walletRouter } from './modules/payments/payments.routes';
 import { adminFinancialsRouter, adminPayoutsRouter } from './modules/payouts/payouts.routes';
+import { adminUsersRouter } from './modules/admin/users/admin-users.routes';
+import { adminSellersRouter } from './modules/admin/sellers/admin-sellers.routes';
+import { adminAnalyticsRouter } from './modules/admin/analytics/admin-analytics.routes';
+import { adminContentRouter, publicContentRouter } from './modules/admin/content/admin-content.routes';
+import { adminSupportRouter } from './modules/admin/support/admin-support.routes';
+import { adminAdminsRouter } from './modules/admin/admins/admin-admins.routes';
+import { adminReviewsRouter } from './modules/admin/reviews/admin-reviews.routes';
+import { adminLogsRouter } from './modules/admin/logs/admin-logs.routes';
+import { authenticate } from './middlewares/authenticate';
+import { authorizeRoles } from './middlewares/authorizeRoles';
 import { ApiResponse } from './utils/ApiResponse';
 
 /**
@@ -136,6 +146,25 @@ export function createApp(): Express {
   // Admin payout management + financial reporting.
   app.use('/api/admin/payouts', adminPayoutsRouter);
   app.use('/api/admin/financials', adminFinancialsRouter);
+
+  // Admin control plane (step 8): one parent router carrying authenticate +
+  // ADMIN role for all /api/admin/* sub-domains; granular requirePermission
+  // checks live per-route. (orders/delivery/payouts/financials above predate
+  // this parent and keep their own guards — no path overlap.)
+  const adminRouter = express.Router();
+  adminRouter.use(authenticate, authorizeRoles('ADMIN'));
+  adminRouter.use('/users', adminUsersRouter);
+  adminRouter.use('/sellers', adminSellersRouter);
+  adminRouter.use('/analytics', adminAnalyticsRouter);
+  adminRouter.use('/content', adminContentRouter);
+  adminRouter.use('/support', adminSupportRouter);
+  adminRouter.use('/admins', adminAdminsRouter);
+  adminRouter.use('/reviews', adminReviewsRouter);
+  adminRouter.use('/activity-log', adminLogsRouter);
+  app.use('/api/admin', adminRouter);
+
+  // Public storefront content — NO auth (homepage banners, FAQ page).
+  app.use('/api/content', publicContentRouter);
 
   // Design file uploads — authenticated (any role).
   app.use('/api/upload', uploadRouter);

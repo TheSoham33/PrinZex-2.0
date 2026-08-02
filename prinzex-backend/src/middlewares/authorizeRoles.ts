@@ -42,3 +42,20 @@ export const requirePermission = (permission: string): RequestHandler => {
     next();
   };
 };
+
+/**
+ * SUPER_ADMIN-only gate (spec: admin-account management). Belt-and-braces
+ * over the permissions map — `admins.*` keys are only ever granted to
+ * SUPER_ADMIN — so any future role-map change still cannot open this door.
+ */
+export const requireSuperAdmin: RequestHandler = (req, _res, next) => {
+  if (!req.user) {
+    next(ApiError.unauthorized());
+    return;
+  }
+  if (req.user.role !== 'ADMIN' || (req.user as AdminTokenPayload).adminRole !== 'SUPER_ADMIN') {
+    next(ApiError.forbidden('SUPER_ADMIN role required'));
+    return;
+  }
+  next();
+};

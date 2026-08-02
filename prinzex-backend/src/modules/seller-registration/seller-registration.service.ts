@@ -5,6 +5,7 @@ import { REDIS_KEYS } from '../../config/redis';
 import { ApiError } from '../../utils/ApiError';
 import { invalidateCachePattern } from '../../utils/cache';
 import { sendSellerWelcomeEmail } from '../../utils/email';
+import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service';
 import {
   DOCUMENT_DIR,
   SELLER_DOCUMENT_TYPES,
@@ -133,6 +134,9 @@ export async function register(userId: string, input: RegisterSellerInput): Prom
 
   // 4. A new store may affect discovery caches once approved.
   await invalidateCachePattern(REDIS_KEYS.STORE_LIST_PATTERN());
+
+  // 4b. KPI cache (pending sellers count) — significant event, step 8.
+  await invalidateAdminStats();
 
   // 5. Welcome email (stub).
   await sendSellerWelcomeEmail(seller.email, seller.ownerName, seller.storeName);
