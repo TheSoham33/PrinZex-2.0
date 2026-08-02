@@ -18,6 +18,12 @@ import { uploadRouter } from './modules/upload/upload.routes';
 import { sellerRegistrationRouter } from './modules/seller-registration/seller-registration.routes';
 import { sellerRouter } from './modules/seller/seller.routes';
 import { adminOrdersRouter, ordersRouter } from './modules/orders/orders.routes';
+import {
+  adminDeliveryRouter,
+  deliveryRegistrationRouter,
+  deliveryRouter,
+} from './modules/delivery/delivery.routes';
+import { trackingRouter } from './modules/tracking/tracking.routes';
 import { ApiResponse } from './utils/ApiResponse';
 
 /**
@@ -100,6 +106,20 @@ export function createApp(): Express {
 
   // Admin order operations (list, detail, force-status, refund, dispute).
   app.use('/api/admin/orders', adminOrdersRouter);
+
+  // Public delivery-boy registration — MUST mount before /api/delivery which
+  // gates every sub-route with authorizeRoles('DELIVERY_BOY').
+  app.use('/api/delivery/register', deliveryRegistrationRouter);
+
+  // Delivery boy self-service (profile, availability, active delivery, GPS
+  // pings, earnings) — DELIVERY_BOY role required.
+  app.use('/api/delivery', deliveryRouter);
+
+  // Admin delivery fleet management.
+  app.use('/api/admin/delivery', adminDeliveryRouter);
+
+  // Customer live tracking (order ownership enforced in the service).
+  app.use('/api/tracking', trackingRouter);
 
   // Design file uploads — authenticated (any role).
   app.use('/api/upload', uploadRouter);

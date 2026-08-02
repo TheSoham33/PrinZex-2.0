@@ -125,6 +125,19 @@ export const uploadSellerDocumentsMiddleware = documentUploader.fields(
   SELLER_DOCUMENT_TYPES.map((name) => ({ name, maxCount: 1 })),
 );
 
+export const DELIVERY_DOCUMENT_TYPES = [
+  'id_proof',
+  'license',
+  'address_proof',
+  'vehicle_insurance',
+] as const;
+export type DeliveryDocumentType = (typeof DELIVERY_DOCUMENT_TYPES)[number];
+
+/** Multer middleware accepting all four delivery-boy document fields at once. */
+export const uploadDeliveryDocumentsMiddleware = documentUploader.fields(
+  DELIVERY_DOCUMENT_TYPES.map((name) => ({ name, maxCount: 1 })),
+);
+
 /**
  * Verify the on-disk file really is what its extension claims by matching
  * its leading bytes against known signatures. Deletes the file and throws

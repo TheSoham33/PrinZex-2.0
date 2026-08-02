@@ -15,6 +15,7 @@ import {
   type PaginatedResponse,
 } from '../../utils/pagination';
 import { invalidateSellerAnalytics, invalidateStoreCaches } from '../seller/seller.service';
+import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import {
   assertKnownFinishing,
   computeQuote,
@@ -50,7 +51,7 @@ function humanize(status: string): string {
   return status.replace(/_/g, ' ');
 }
 
-async function appendTimelineEvent(
+export async function appendTimelineEvent(
   orderId: string,
   status: string,
   updatedBy: string,
@@ -756,6 +757,12 @@ export async function adminUpdateOrderStatus(
         note: input.note ?? null,
       }),
     () => invalidateSellerAnalytics(order.sellerId),
+    async () => {
+      // An admin forcing ready_for_pickup must kick off assignment too.
+      if (input.status === 'ready_for_pickup') {
+        await autoAssignDelivery(orderId);
+      }
+    },
   ]);
 
   return { orderId, status: input.status };

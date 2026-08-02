@@ -85,3 +85,8 @@ export async function sendTeamInviteEmail(
 export async function sendOtpSms(to: string, otp: string, purpose: string): Promise<void> {
   logger.info('sms_stub: message "sent"', { to, purpose, otp });
 }
+
+/** Generic transactional SMS stub (alerts, welcomes) — gateway lands later. */
+export async function sendSms(to: string, message: string): Promise<void> {
+  logger.info('sms_stub: message "sent"', { to, message });
+}

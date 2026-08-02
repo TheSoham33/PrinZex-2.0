@@ -854,8 +854,30 @@ async function seedDeliveries(
         podSignatureUrl: isDelivered ? 'https://cdn.prinzex.com/pod/signature.png' : null,
         podOtp: '4821',
         podOtpVerified: isDelivered,
+        earningsAmount: isDelivered ? Number(order.deliveryFee) + Number(order.rushFee) : 0,
         notes: isDelivered ? 'Delivered to customer in person' : 'Package picked up from store',
       },
+    });
+  }
+
+  // Backfill rider earning aggregates for the delivered seed deliveries so
+  // /api/delivery/earnings and pending balances demo realistically.
+  const deliveredRows = await prisma.delivery.findMany({
+    where: { status: 'delivered' },
+    select: { deliveryBoyId: true, earningsAmount: true },
+  });
+  const perBoy = new Map<string, { earnings: number; count: number }>();
+  for (const row of deliveredRows) {
+    if (!row.deliveryBoyId) continue;
+    const entry = perBoy.get(row.deliveryBoyId) ?? { earnings: 0, count: 0 };
+    entry.earnings += Number(row.earningsAmount);
+    entry.count += 1;
+    perBoy.set(row.deliveryBoyId, entry);
+  }
+  for (const [boyId, entry] of perBoy) {
+    await prisma.deliveryBoy.update({
+      where: { id: boyId },
+      data: { totalEarnings: entry.earnings, pendingEarnings: entry.earnings, totalDeliveries: entry.count },
     });
   }
 }

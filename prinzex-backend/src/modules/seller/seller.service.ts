@@ -1,5 +1,6 @@
 import type { Prisma, Seller, SellerService } from '@prisma/client';
 import { env } from '../../config/env';
+import { logger } from '../../config/logger';
 import { prisma } from '../../config/database';
 import { REDIS_KEYS, REDIS_TTL } from '../../config/redis';
 import { NotificationModel } from '../../models/mongo/Notification.model';
@@ -13,6 +14,7 @@ import {
   invalidateCachePattern,
 } from '../../utils/cache';
 import { sendTeamInviteEmail } from '../../utils/email';
+import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import {
   buildPaginatedResponse,
   toSkipTake,
@@ -1096,6 +1098,19 @@ export async function updateOrderStatus(
   await appendTimelineEvent(order.id, input.status, sellerId, input.note);
   await notifyCustomerOrderUpdate(order.customerId, order.id, input.status, input.note);
   await invalidateSellerAnalytics(sellerId);
+
+  // ready_for_pickup kicks off rider assignment (step 6 engine). Failure here
+  // must not fail the status update — the retry cron (TODO) will re-attempt.
+  if (input.status === 'ready_for_pickup') {
+    try {
+      await autoAssignDelivery(order.id);
+    } catch (error) {
+      logger.error('auto_assignment_trigger_failed', {
+        orderId: order.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   return { orderId: order.id, status: input.status };
 }

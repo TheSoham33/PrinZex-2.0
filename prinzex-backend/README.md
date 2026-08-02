@@ -127,6 +127,32 @@ Quick checks after seeds: seller login → `seller1@prinzex.com / Seller@123` �
 
 Quick curl after seeds: `POST /api/orders/quote` with a seeded `sellerServiceId` → deterministic totals; place a wallet-funded order then `GET /api/customer/wallet` to see the DEBIT entry.
 
+## Delivery & Tracking APIs (Step 6)
+
+**`src/utils/geo.ts`** — haversine distance, radius bounding-box prefilter, straight-line ETA (30 km/h rider speed).
+
+**`/api/delivery/register`** — PUBLIC (mounted before the rider router). Zod-validated (phone/IFSC), one `$transaction`: User(DELIVERY_BOY) + DeliveryBoy(PENDING) + bank details; welcome SMS stub. Login stays OTP-only via `/api/delivery/auth`.
+
+**`/api/delivery`** — all `authenticate` + DELIVERY_BOY role, id always from the JWT:
+- `POST /documents` — 4 multer slots (`id_proof`, `license`, `address_proof`, `vehicle_insurance`), 5MB + magic bytes, replace resets verification
+- `GET/PATCH /profile` (phone NOT updatable — login identifier), `PATCH /profile/bank` (masked read-back)
+- `PATCH /availability` — Redis online-set is kept in sync; going offline removes the rider from `online:delivery:{city}` and clears their location key immediately; only ACTIVE riders may go online
+- `GET /active-delivery` — current job with pickup (seller) + drop (snapshot), customer name, masked phone
+- `PATCH /active-delivery/location` — **GPS hot path**: straight-line ETA computed, Redis `location:{riderId}` (30s TTL) + pub/sub `tracking:{deliveryId}` awaited (~ms), then PostgreSQL column update and MongoDB `$push … $slice: -500` breadcrumb run fire-and-forget — response stays <50ms; history capped at 500 points
+- `PATCH .../pickup-confirm` — Delivery→`picked_up`, Order→`out_for_delivery`, timeline + customer notification (includes the POD OTP)
+- `PATCH .../deliver` — verifies 4-digit POD OTP when set, completes Delivery + Order, **atomically credits `earningsAmount = deliveryFee + rushFee`** to `totalEarnings` + `pendingEarnings` + `totalDeliveries`, notifies customer + seller
+- `PATCH .../fail` — failed + reason, customer/seller notifications + admin broadcast alert
+
+- Earnings: `GET /earnings?period=7d|30d|this_month` (totals, avg/delivery, per-day buckets for charting, pending + lifetime) · `GET /payouts` · `POST /payouts/request` — same transaction pattern as seller payouts, threshold `DELIVERY_MIN_PAYOUT_THRESHOLD` (default ₹200), deliveries locked via `Delivery.payoutId`
+
+**Assignment engine** (`delivery.assignment.ts`) — `autoAssignDelivery(orderId)` fires on `ready_for_pickup` (seller status hook + admin force-status hook): online riders from the Redis city set → Redis/Mongo-fallback positions → bounding-box + haversine ≤10km filter → idle + ACTIVE only → nearest wins (Delivery + MongoDB Tracking doc + rider notify + pub/sub). Nobody available → `pending_assignment` row with null rider + admin alert (`// TODO: cron retry every 5 min`). `manualAssignDelivery` skips all checks (admin), re-points an in-flight delivery instead of erroring, exposed at `POST /api/admin/orders/:orderId/assign-delivery` (+ ActivityLog).
+
+**`/api/tracking/:orderId`** (+ `/history`) — CUSTOMER role + ownership. Location read order: Redis (freshest) → MongoDB `currentLocation` fallback; timeline from Mongo; history downsampled to ≤200 points.
+
+**`/api/admin/delivery`** — spec's `canManageUsers` maps to `delivery.view|delivery.manage|delivery.verify`: boys list (status/city/isOnline filters), full detail (performance + last 10 deliveries), `PATCH /boys/:id/status` (suspend/inactive forces Redis offline too), `POST /boys/:id/verify-document`, `GET /active` (all in-flight deliveries with live Redis positions).
+
+Schema (migration `20260803000000_delivery_step6`): `DeliveryBoy.pendingEarnings`, `Delivery.earningsAmount`, `Delivery.payoutId` FK (mirrors `Order.payoutId` — exact unpaid-earnings math). POD OTP timing note: the spec's "set at order creation" — our Delivery row is born at assignment (the spec's own trigger), so the OTP is minted then and shared with the customer at pickup.
+
 ## Scripts
 
 | Command                    | What it does                                         |
@@ -151,7 +177,8 @@ src/
   models/mongo/    OrderTimeline, Tracking, Notification, ActivityLog, Content
   middlewares/     requestLogger, authenticate, authorizeRoles, rateLimiter, validate, notFound, errorHandler
   modules/         auth, seller-auth, delivery-auth, admin-auth, customer, stores, upload,
-                   seller-registration, seller   (one folder per feature: routes/controller/service/schema)
+                   seller-registration, seller, orders, delivery, tracking
+                   (one folder per feature: routes/controller/service/schema)
   utils/           ApiError, ApiResponse, asyncHandler, jwt, hash, otp, email, pagination,
                    cache, fileUpload, rateLimitStore
   types/           shared domain types (status unions, snapshots, envelopes)
@@ -178,4 +205,4 @@ mongo-seed/        MongoDB seed
 - **Redis keys** come only from `REDIS_KEYS` / `REDIS_TTL` in `src/config/redis.ts` — never inline strings.
 - **Errors**: throw `ApiError`; Zod failures, Prisma P2002/P2025 and JWT errors are normalised by the global `errorHandler`.
 - **Env**: everything is validated at boot via envalid in `src/config/env.ts`; the process refuses to start when a required variable is missing.
-- Ordering/checkout (customer), delivery-boy APIs, admin APIs, Razorpay and Socket.io land in subsequent steps.
+- Admin store/user management, admin analytics, coupons, content, support, Razorpay and Socket.io land in subsequent steps.

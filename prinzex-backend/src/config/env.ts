@@ -56,6 +56,8 @@ export const env = cleanEnv(process.env, {
   PLATFORM_COMMISSION_RATE: num({ default: 0.12 }),
   // Minimum seller pending balance (in ₹) required to request a payout
   MIN_PAYOUT_THRESHOLD: num({ default: 500 }),
+  // Minimum delivery-boy pending earnings (in ₹) required to request a payout
+  DELIVERY_MIN_PAYOUT_THRESHOLD: num({ default: 200 }),
 
   // CORS — comma-separated origin list for the Next.js frontend
   CORS_ORIGIN: str({ default: 'http://localhost:3000' }),

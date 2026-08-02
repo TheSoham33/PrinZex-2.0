@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeRoles, requirePermission } from '../../middlewares/authorizeRoles';
 import { validate } from '../../middlewares/validate';
+import { adminAssignDeliveryBody } from '../delivery/delivery.schema';
+import * as deliveryController from '../delivery/delivery.controller';
 import * as ordersController from './orders.controller';
 import {
   adminDisputeBody,
@@ -80,4 +82,12 @@ adminOrdersRouter.post(
   requirePermission('orders.manage'),
   validate({ params: orderParams, body: adminDisputeBody }),
   ordersController.adminResolveDispute,
+);
+
+// Manual delivery assignment (step 6) — bypasses online/distance checks.
+adminOrdersRouter.post(
+  '/:orderId/assign-delivery',
+  requirePermission('orders.manage'),
+  validate({ params: orderParams, body: adminAssignDeliveryBody }),
+  deliveryController.adminAssignDelivery,
 );
