@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.log
+logs/
+.env
+.env.local
+.env.*.local
+!.env.example
+.DS_Store
+*.tsbuildinfo
+.tmp-prisma-client/
+uploads/
