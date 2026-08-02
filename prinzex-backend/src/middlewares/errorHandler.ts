@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from 'express';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { MulterError } from 'multer';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { ApiError } from '../utils/ApiError';
@@ -69,6 +70,15 @@ export const errorHandler: ErrorRequestHandler = (err: unknown, req, res, _next)
   } else if (err instanceof JsonWebTokenError) {
     statusCode = 401;
     message = 'Invalid token';
+  } else if (err instanceof MulterError) {
+    // Upload errors (size limits etc.)
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      statusCode = 413;
+      message = 'File too large — maximum allowed size is 50MB';
+    } else {
+      statusCode = 400;
+      message = `Upload failed: ${err.message}`;
+    }
   } else if (err instanceof SyntaxError && 'body' in err) {
     // Malformed JSON body from express.json()
     statusCode = 400;

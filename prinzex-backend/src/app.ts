@@ -1,18 +1,20 @@
 import express, { type Express } from 'express';
+import path from 'path';
 import helmet from 'helmet';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
-import { RedisStore, type RedisReply } from 'rate-limit-redis';
 import { env } from './config/env';
-import { redis } from './config/redis';
 import { requestLogger } from './middlewares/requestLogger';
 import { notFound } from './middlewares/notFound';
 import { errorHandler } from './middlewares/errorHandler';
 import { generalLimiter } from './middlewares/rateLimiter';
+import { createGlobalRateLimiter } from './utils/rateLimitStore';
 import { customerAuthRouter } from './modules/auth/auth.routes';
 import { sellerAuthRouter } from './modules/seller-auth/seller-auth.routes';
 import { deliveryAuthRouter } from './modules/delivery-auth/delivery-auth.routes';
 import { adminAuthRouter } from './modules/admin-auth/admin-auth.routes';
+import { customerRouter } from './modules/customer/customer.routes';
+import { storesRouter } from './modules/stores/stores.routes';
+import { uploadRouter } from './modules/upload/upload.routes';
 import { ApiResponse } from './utils/ApiResponse';
 
 /**
@@ -52,27 +54,10 @@ export function createApp(): Express {
 
   // 5. Global rate limiting, counters in Redis (shared across replicas).
   //    Two layers: the ioredis INCR/EXPIRE fixed-window limiter from step 2,
-  //    plus the express-rate-limit + RedisStore guard configured at boot.
+  //    plus the express-rate-limit + RedisStore guard (lazily constructed, see
+  //    utils/rateLimitStore).
   app.use(generalLimiter);
-
-  const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: env.isProduction ? 300 : 5000,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    skip: () => env.isTest,
-    store: new RedisStore({
-      sendCommand: (command: string, ...args: string[]): Promise<RedisReply> =>
-        redis.call(command, ...args) as Promise<RedisReply>,
-    }),
-    message: {
-      success: false,
-      statusCode: 429,
-      message: 'Too many requests, please try again later',
-      errors: [],
-    },
-  });
-  app.use(limiter);
+  app.use(createGlobalRateLimiter());
 
   // 6. Routes
   app.get('/health', (_req, res) => {
@@ -92,6 +77,18 @@ export function createApp(): Express {
   app.use('/api/seller/auth', sellerAuthRouter);
   app.use('/api/delivery/auth', deliveryAuthRouter);
   app.use('/api/admin/auth', adminAuthRouter);
+
+  // Customer APIs (profile, addresses, wallet, notifications) — authenticated.
+  app.use('/api/customer', customerRouter);
+
+  // Public store discovery/search — no auth.
+  app.use('/api/stores', storesRouter);
+
+  // Design file uploads — authenticated (any role).
+  app.use('/api/upload', uploadRouter);
+
+  // Static serving for uploaded files (S3 replaces this in the storage step).
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // 7. 404 for anything unmatched
   app.use(notFound);

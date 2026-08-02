@@ -72,6 +72,20 @@ curl -s localhost:5000/api/delivery/auth/login -H 'content-type: application/jso
   -d '{"phone":"+919700000001"}'
 ```
 
+## Customer APIs (Step 3)
+
+**`/api/customer`** — all require `authenticate` + CUSTOMER role:
+- `GET /profile` (safe user + wallet), `PATCH /profile` (name/avatarUrl), `PATCH /profile/change-password` (revokes all sessions)
+- Addresses: `GET/POST /addresses`, `PATCH/DELETE /addresses/:id`, `PATCH /addresses/:id/set-default` — ownership checked on every mutation (404 for foreign addresses); deleting your only address or the default one is blocked with a clear 400
+- Wallet: `GET /wallet` (balance, points, last 10 txns), `POST /wallet/add-money` (stub top-up — balance+ledger in one `$transaction`, TODO: Razorpay), `GET /wallet/transactions` (paginated, type/reason/date-range filters)
+- Notifications (MongoDB): `GET /notifications` (paginated, `isRead` filter, `X-Unread-Count` header), `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`
+
+**`/api/stores`** — PUBLIC: `GET /` (filters: `city`, `q`, `services` (all-of, comma list), `minRating`, `sort=relevance|rating|distance|price_asc`, page/limit — Redis cached with `X-Cache: HIT|MISS`), `GET /:sellerId` (detail + latest 5 reviews, cached), `GET /:sellerId/services` (grouped by category), `GET /:sellerId/reviews` (paginated, masked names like "Rahul K."), `GET /search/suggestions?q=…` (top 5 stores + top 5 services, 60s cache). Only APPROVED sellers are ever exposed; bank details/documents/GST/commission never selected.
+
+**`/api/upload`** — `authenticate` (any role): `POST /design` (multer disk storage to `uploads/designs/`, `.pdf/.png/.jpg/.jpeg/.ai/.psd`, 50MB max, magic-byte verification, ownership metadata in Redis 24h — TODO: S3), `DELETE /design/:filename` (owner-only). Served statically at `/uploads/…`.
+
+Try the cache behavior: `curl -si localhost:5000/api/stores | grep -i x-cache` twice — second response shows `HIT`.
+
 ## Scripts
 
 | Command                    | What it does                                         |
