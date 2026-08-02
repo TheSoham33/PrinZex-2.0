@@ -1,4 +1,5 @@
 import { redis, REDIS_KEYS } from '../config/redis';
+import { logger } from '../config/logger';
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 import { verifyAccessToken } from '../utils/jwt';
@@ -28,7 +29,17 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   // Throws JsonWebTokenError/TokenExpiredError -> errorHandler maps to 401.
   const payload = verifyAccessToken(token);
 
-  const blacklisted = await redis.get(REDIS_KEYS.REFRESH_TOKEN_BLACKLIST(token));
+  // Blacklist check FAILS OPEN (same policy as cache/rate-limiter): a Redis
+  // outage degrades to "revocation unavailable" instead of 500ing every
+  // authenticated request in the system.
+  let blacklisted: string | null = null;
+  try {
+    blacklisted = await redis.get(REDIS_KEYS.REFRESH_TOKEN_BLACKLIST(token));
+  } catch (error) {
+    logger.warn('token_blacklist_check_unavailable, allowing request', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
   if (blacklisted) {
     throw ApiError.unauthorized('Token has been revoked, please log in again');
   }

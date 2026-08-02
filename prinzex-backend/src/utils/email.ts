@@ -58,6 +58,29 @@ export async function sendOtpEmail(to: string, otp: string, purpose: string): Pr
   });
 }
 
+/** Sent after a customer's seller application is accepted into review. */
+export async function sendSellerWelcomeEmail(to: string, ownerName: string, storeName: string): Promise<void> {
+  await deliver({
+    to,
+    subject: `Your store "${storeName}" is under review`,
+    text: `Hi ${ownerName}, thanks for registering "${storeName}" as a PrinZex print store. Our team is reviewing your application — we'll notify you once it's approved.`,
+  });
+}
+
+/** Sent when a seller adds a team member to their store. */
+export async function sendTeamInviteEmail(
+  to: string,
+  memberName: string,
+  storeName: string,
+  role: string,
+): Promise<void> {
+  await deliver({
+    to,
+    subject: `You've been added to "${storeName}" on PrinZex`,
+    text: `Hi ${memberName}, the team at "${storeName}" has added you as ${role}. Reach out to the store owner for access details.`,
+  });
+}
+
 /** SMS stub — same treatment until an SMS gateway is integrated. */
 export async function sendOtpSms(to: string, otp: string, purpose: string): Promise<void> {
   logger.info('sms_stub: message "sent"', { to, purpose, otp });

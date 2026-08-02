@@ -239,6 +239,9 @@ model Seller {
   totalOrders      Int          @default(0)
   completionRate   Decimal      @default(0) @db.Decimal(5, 2)
   onTimeRate       Decimal      @default(0) @db.Decimal(5, 2)
+  // Seller-defined configuration blob: { bulkDiscountTiers?, hours? }.
+  // Managed via /api/seller/pricing/bulk-discounts and /api/seller/settings/hours.
+  metadata         Json?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -439,11 +442,15 @@ model Order {
   isRush            Boolean       @default(false)
   cancelledAt       DateTime?
   cancelReason      String?
+  // Set once the order's net earnings are locked into a Payout — orders with
+  // payoutId = null and status "delivered" form the seller's pending balance.
+  payoutId          String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
   customer          User          @relation(fields: [customerId], references: [id])
   seller            Seller        @relation(fields: [sellerId], references: [id])
+  payout            Payout?       @relation(fields: [payoutId], references: [id], onDelete: SetNull)
   items             OrderItem[]
   delivery          Delivery?
   review            Review?
@@ -452,6 +459,7 @@ model Order {
   @@index([sellerId])
   @@index([status])
   @@index([createdAt])
+  @@index([payoutId])
 }
 
 model OrderItem {
@@ -516,6 +524,7 @@ model Payout {
 
   seller          Seller?      @relation(fields: [sellerId], references: [id])
   deliveryBoy     DeliveryBoy? @relation(fields: [deliveryBoyId], references: [id])
+  orders          Order[]
 
   @@index([sellerId])
   @@index([deliveryBoyId])

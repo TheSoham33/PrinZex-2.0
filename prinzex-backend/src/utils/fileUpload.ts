@@ -73,6 +73,58 @@ const designUploader = multer({
 /** Multer middleware for one design file under the `file` field name. */
 export const uploadDesignMiddleware = designUploader.single('file');
 
+// ── Seller KYC documents ───────────────────────────────────────────────────
+// Onboarding document uploads: up to 4 files in one request (one per doc
+// type). Stricter than design uploads — 5MB each, pdf/jpg/png only.
+
+export const DOCUMENT_DIR = path.join(UPLOAD_ROOT, 'documents');
+
+export const SELLER_DOCUMENT_TYPES = [
+  'gst_certificate',
+  'business_license',
+  'owner_id',
+  'address_proof',
+] as const;
+export type SellerDocumentType = (typeof SELLER_DOCUMENT_TYPES)[number];
+
+const DOCUMENT_ALLOWED_EXTENSIONS: AllowedExtension[] = ['.pdf', '.png', '.jpg', '.jpeg'];
+export const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
+const documentStorage = multer.diskStorage({
+  destination: (_req, _file, callback) => {
+    ensureDir(DOCUMENT_DIR, callback);
+  },
+  filename: (_req, file, callback) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    callback(null, `${randomUUID()}${ext}`);
+  },
+});
+
+const documentFileFilter: multer.Options['fileFilter'] = (_req, file, callback) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!DOCUMENT_ALLOWED_EXTENSIONS.includes(ext as AllowedExtension)) {
+    callback(
+      new ApiError(
+        415,
+        `Unsupported document type "${ext || '(none)'}" — allowed: ${DOCUMENT_ALLOWED_EXTENSIONS.join(', ')}`,
+      ),
+    );
+    return;
+  }
+  callback(null, true);
+};
+
+const documentUploader = multer({
+  storage: documentStorage,
+  fileFilter: documentFileFilter,
+  limits: { fileSize: MAX_DOCUMENT_SIZE_BYTES, files: SELLER_DOCUMENT_TYPES.length },
+});
+
+/** Multer middleware accepting all four seller document fields at once. */
+export const uploadSellerDocumentsMiddleware = documentUploader.fields(
+  SELLER_DOCUMENT_TYPES.map((name) => ({ name, maxCount: 1 })),
+);
+
 /**
  * Verify the on-disk file really is what its extension claims by matching
  * its leading bytes against known signatures. Deletes the file and throws

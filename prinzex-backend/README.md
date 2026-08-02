@@ -86,6 +86,28 @@ curl -s localhost:5000/api/delivery/auth/login -H 'content-type: application/jso
 
 Try the cache behavior: `curl -si localhost:5000/api/stores | grep -i x-cache` twice — second response shows `HIT`.
 
+## Seller APIs (Step 4)
+
+**`/api/seller/register`** — onboarding wizard (mounted BEFORE `/api/seller`, so it is NOT seller-gated; the applicant presents their CUSTOMER JWT):
+- `POST /` — full application in one call (store info, services, bank details). Zod validates GST/IFSC/PAN/phone formats. Creates Seller (PENDING) + SellerService rows + SellerBankDetails + flips `User.role` to SELLER in ONE Prisma transaction, invalidates store-list caches, sends welcome email stub → `201 { seller }`
+- `POST /documents` — multer `.fields()` for all 4 KYC docs at once (`gst_certificate`, `business_license`, `owner_id`, `address_proof`), `.pdf/.jpg/.png`, 5MB each, magic-byte verified, re-upload replaces + resets verification. Customer JWT from the wizard works here (a PENDING seller can't log in as seller yet — seller JWT also accepted)
+- `GET /status` — application status + per-document uploaded/verified flags
+
+**`/api/seller`** — all require `authenticate` + SELLER role; sellerId always comes from the JWT:
+- Store: `GET /store` (services, documents WITHOUT file URLs, bank details with masked account number), `PATCH /store` (name/description/address/hours/logo/banner — invalidates store detail + list caches)
+- Services: `GET/POST /store/services` (grouped by category / add with duplicate check), `PATCH/DELETE /store/services/:id` — DELETE is a SOFT delete (`isActive=false`) when active orders reference the service, hard delete otherwise
+- Pricing: `GET /pricing` (active services + bulk discount tiers), `PATCH /pricing/bulk` (body is a bare array — batch update in one transaction), `PATCH /pricing/bulk-discounts` (tiers merged into `Seller.metadata`)
+- Inventory: `GET /inventory?lowStockOnly=true`, `POST /inventory`, `PATCH/DELETE /inventory/:itemId` (restock timestamp when stock increases), `GET /inventory/low-stock-alerts` (also writes a MongoDB notification when count > 0)
+- Team: `GET/POST /team`, `PATCH/DELETE /team/:memberId` (roles manager|operator|support, invite email stub)
+- Analytics: `GET /analytics/overview?period=7d|30d|this_month|last_month` (Redis cached, `X-Cache` header), `GET /analytics/revenue-by-day`, `GET /analytics/service-breakdown` (delivered orders grouped per service)
+- Orders: `GET /orders?status&isRush&page&limit` (customer first-name only), `GET /orders/:orderId` (masked phone, items, MongoDB timeline), `PATCH /orders/:orderId/status` — state machine `placed → confirmed → processing → ready_for_pickup`, one step forward only (400 on skip/backwards/no-op), appends MongoDB timeline event + customer notification + analytics cache invalidation; `PATCH /orders/:orderId/reject` (only from `placed`, sets cancelReason, refund TODO)
+- Payouts: `GET /payouts` (paginated), `GET /payouts/pending-balance` (delivered orders not yet in a payout: `total − commission − deliveryFee`), `POST /payouts/request` (min `MIN_PAYOUT_THRESHOLD` ₹, blocked while a PENDING/PROCESSING payout exists — orders are locked to the new payout via `Order.payoutId` inside the same transaction)
+- Settings: `PATCH /settings/delivery` (radius + full pincode replacement in a transaction), `PATCH /settings/hours` (7-day schedule merged into `Seller.metadata.hours`)
+
+Schema changes this step (migration `20260802000000_seller_step4`): `Seller.metadata Json?` (bulk tiers + hours) and `Order.payoutId` (payout linkage — the only sane way to compute "orders not yet paid out"). New env var: `MIN_PAYOUT_THRESHOLD` (default `500`).
+
+Quick checks after seeds: seller login → `seller1@prinzex.com / Seller@123` → `GET /api/seller/analytics/overview?period=30d` twice (second shows `X-Cache: HIT`); try `PATCH /api/seller/orders/:id/status` with `{"status":"processing"}` on a `placed` order → 400 "next allowed: confirmed".
+
 ## Scripts
 
 | Command                    | What it does                                         |
@@ -108,8 +130,11 @@ prisma/            schema.prisma, migrations/, seed.ts
 src/
   config/          env (envalid), database (Prisma), mongo (Mongoose), redis (ioredis), logger (Winston)
   models/mongo/    OrderTimeline, Tracking, Notification, ActivityLog, Content
-  middlewares/     requestLogger, notFound, errorHandler
-  utils/           ApiError, ApiResponse, asyncHandler
+  middlewares/     requestLogger, authenticate, authorizeRoles, rateLimiter, validate, notFound, errorHandler
+  modules/         auth, seller-auth, delivery-auth, admin-auth, customer, stores, upload,
+                   seller-registration, seller   (one folder per feature: routes/controller/service/schema)
+  utils/           ApiError, ApiResponse, asyncHandler, jwt, hash, otp, email, pagination,
+                   cache, fileUpload, rateLimitStore
   types/           shared domain types (status unions, snapshots, envelopes)
   app.ts           Express app factory (helmet → cors → json → logger → rate limit → routes → 404 → errors)
   server.ts        entrypoint: connect all 3 DBs, then listen (fail-fast on any DB error)
@@ -134,4 +159,4 @@ mongo-seed/        MongoDB seed
 - **Redis keys** come only from `REDIS_KEYS` / `REDIS_TTL` in `src/config/redis.ts` — never inline strings.
 - **Errors**: throw `ApiError`; Zod failures, Prisma P2002/P2025 and JWT errors are normalised by the global `errorHandler`.
 - **Env**: everything is validated at boot via envalid in `src/config/env.ts`; the process refuses to start when a required variable is missing.
-- Route handlers/controllers, JWT auth, uploads, Razorpay and Socket.io land in subsequent steps (see `app.ts` step-6 placeholder).
+- Ordering/checkout (customer), delivery-boy APIs, admin APIs, Razorpay and Socket.io land in subsequent steps.

@@ -15,6 +15,8 @@ import { adminAuthRouter } from './modules/admin-auth/admin-auth.routes';
 import { customerRouter } from './modules/customer/customer.routes';
 import { storesRouter } from './modules/stores/stores.routes';
 import { uploadRouter } from './modules/upload/upload.routes';
+import { sellerRegistrationRouter } from './modules/seller-registration/seller-registration.routes';
+import { sellerRouter } from './modules/seller/seller.routes';
 import { ApiResponse } from './utils/ApiResponse';
 
 /**
@@ -83,6 +85,14 @@ export function createApp(): Express {
 
   // Public store discovery/search — no auth.
   app.use('/api/stores', storesRouter);
+
+  // Seller onboarding (customer JWT) — MUST mount before /api/seller because
+  // that router gates every sub-route with authorizeRoles('SELLER').
+  app.use('/api/seller/register', sellerRegistrationRouter);
+
+  // Seller store management (services, pricing, inventory, team, analytics,
+  // orders, payouts, settings) — SELLER role required.
+  app.use('/api/seller', sellerRouter);
 
   // Design file uploads — authenticated (any role).
   app.use('/api/upload', uploadRouter);

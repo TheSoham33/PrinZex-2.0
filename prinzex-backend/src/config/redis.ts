@@ -49,6 +49,9 @@ export const REDIS_KEYS = {
   STORE_DETAIL: (sellerId: string) => `cache:store:${sellerId}`,
   STORE_LIST: (city: string, page: number, fingerprint = '') =>
     `cache:stores:${city}:${page}${fingerprint === '' ? '' : `:${fingerprint}`}`,
+  // Wildcard pattern matching every page/city/fingerprint of the store list
+  // cache — used with invalidateCachePattern() when store data changes.
+  STORE_LIST_PATTERN: () => 'cache:stores:*',
   SELLER_ANALYTICS: (sellerId: string, period: string) => `cache:analytics:${sellerId}:${period}`,
   ADMIN_STATS: () => 'cache:admin:stats',
   SEARCH_SUGGESTIONS: (query: string, city?: string) =>
