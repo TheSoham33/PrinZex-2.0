@@ -33,6 +33,45 @@ so a fresh clone boots without editing anything.
 | Sellers (×4)   | `sellerN@prinzex.com`| `Seller@123`  |
 | Delivery (×3)  | `*.@example.com`     | `Delivery@123`|
 
+## Auth (Step 2)
+
+Four actor routers, one shared JWT layer (access 15m + refresh 7d, rotation on
+every refresh call, Redis blacklist on logout):
+
+| Router               | Flow                                                        |
+| -------------------- | ----------------------------------------------------------- |
+| `/api/auth`          | Customer — register/login (+wallet in one transaction), logout, refresh, verify-email, resend-otp, forgot/reset-password, `me` |
+| `/api/seller/auth`   | Seller — email+password login with status gates (PENDING/SUSPENDED/REJECTED → 403), logout, refresh, `me` |
+| `/api/delivery/auth` | Delivery boy — **OTP-only** (`login` sends OTP, `verify-otp` issues tokens), logout, refresh, `me` |
+| `/api/admin/auth`    | Admin — email+password login, JWT carries `permissions` map built from `ADMIN_PERMISSIONS` per role, logout, refresh, `me` |
+
+Guards: `authenticate` (Bearer verify + Redis blacklist check) →
+`authorizeRoles(...)` / `requirePermission('payouts.manage')`.
+Rate limits: login 5/15min per IP (locks the account attempts counter too),
+OTP send 3/10min per identifier, general 100/min per IP. OTPs are delivered via
+the email/SMS stubs (visible in dev logs; delivery login also returns `devOtp`
+outside production so the flow is end-to-end testable).
+
+### Quick smoke (after `npm run dev` + seeds)
+
+```bash
+# customer login (seeded: aarav.sharma@example.com / Customer@123)
+curl -s localhost:5000/api/auth/login -H 'content-type: application/json' \
+  -d '{"identifier":"aarav.sharma@example.com","password":"Customer@123"}'
+
+# pending seller is rejected with a message
+curl -s localhost:5000/api/seller/auth/login -H 'content-type: application/json' \
+  -d '{"email":"seller4@prinzex.com","password":"Seller@123"}'
+
+# admin (permissions in payload), rate limit trips on the 6th attempt within 15 min
+for i in 1 2 3 4 5 6; do curl -s -o /dev/null -w "%{http_code} " localhost:5000/api/admin/auth/login \
+  -H 'content-type: application/json' -d '{"email":"admin@prinzex.com","password":"wrong"}'; done
+
+# delivery OTP login (OTP appears in server logs / devOtp field)
+curl -s localhost:5000/api/delivery/auth/login -H 'content-type: application/json' \
+  -d '{"phone":"+919700000001"}'
+```
+
 ## Scripts
 
 | Command                    | What it does                                         |

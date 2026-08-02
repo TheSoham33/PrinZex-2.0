@@ -8,6 +8,11 @@ import { redis } from './config/redis';
 import { requestLogger } from './middlewares/requestLogger';
 import { notFound } from './middlewares/notFound';
 import { errorHandler } from './middlewares/errorHandler';
+import { generalLimiter } from './middlewares/rateLimiter';
+import { customerAuthRouter } from './modules/auth/auth.routes';
+import { sellerAuthRouter } from './modules/seller-auth/seller-auth.routes';
+import { deliveryAuthRouter } from './modules/delivery-auth/delivery-auth.routes';
+import { adminAuthRouter } from './modules/admin-auth/admin-auth.routes';
 import { ApiResponse } from './utils/ApiResponse';
 
 /**
@@ -45,7 +50,11 @@ export function createApp(): Express {
   // 4. Access logging
   app.use(requestLogger);
 
-  // 5. Global rate limiting, counters in Redis (shared across replicas)
+  // 5. Global rate limiting, counters in Redis (shared across replicas).
+  //    Two layers: the ioredis INCR/EXPIRE fixed-window limiter from step 2,
+  //    plus the express-rate-limit + RedisStore guard configured at boot.
+  app.use(generalLimiter);
+
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: env.isProduction ? 300 : 5000,
@@ -65,7 +74,7 @@ export function createApp(): Express {
   });
   app.use(limiter);
 
-  // 6. Routes (API routers are mounted in subsequent steps)
+  // 6. Routes
   app.get('/health', (_req, res) => {
     res
       .status(200)
@@ -77,6 +86,12 @@ export function createApp(): Express {
         ),
       );
   });
+
+  // Auth — one router per actor; shared JWT infra, separate payloads/guards.
+  app.use('/api/auth', customerAuthRouter);
+  app.use('/api/seller/auth', sellerAuthRouter);
+  app.use('/api/delivery/auth', deliveryAuthRouter);
+  app.use('/api/admin/auth', adminAuthRouter);
 
   // 7. 404 for anything unmatched
   app.use(notFound);

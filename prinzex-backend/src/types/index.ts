@@ -7,6 +7,21 @@
  * snapshots), so every layer agrees on the allowed values.
  */
 
+import type { TokenPayload } from '../utils/jwt';
+
+// ── Express augmentation ───────────────────────────────────────────────────
+// `authenticate` attaches the verified JWT payload as `req.user` and the raw
+// bearer token as `req.token`.
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      user?: TokenPayload;
+      token?: string;
+    }
+  }
+}
+
 // ── Order lifecycle ────────────────────────────────────────────────────────
 export const ORDER_STATUSES = [
   'placed',
