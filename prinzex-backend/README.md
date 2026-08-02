@@ -153,6 +153,48 @@ Quick curl after seeds: `POST /api/orders/quote` with a seeded `sellerServiceId`
 
 Schema (migration `20260803000000_delivery_step6`): `DeliveryBoy.pendingEarnings`, `Delivery.earningsAmount`, `Delivery.payoutId` FK (mirrors `Order.payoutId` — exact unpaid-earnings math). POD OTP timing note: the spec's "set at order creation" — our Delivery row is born at assignment (the spec's own trigger), so the OTP is minted then and shared with the customer at pickup.
 
+## Payment & Payout APIs (Step 7)
+
+**`src/utils/financial.ts`** — the only money arithmetic outside quote computation: `roundMoney` (2dp), `rupeesToPaise`/`paiseToRupees` (integer paise at the gateway boundary), `calculateGST` (18% default), `sellerNetAmount`, `commissionOf`. DB storage stays Prisma `Decimal`; floats never persist.
+
+**Webhook mounting (important)** — `paymentsWebhookRouter` is mounted at `/api/payments` **before `express.json()`** in `app.ts`, with `express.raw({ type: 'application/json' })` on `POST /webhook`: the HMAC-SHA256 check (`x-razorpay-signature` header, `RAZORPAY_WEBHOOK_SECRET`, `crypto.timingSafeEqual`) runs over the **raw bytes** Razorpay sent. No auth middleware — the signature is the trust. Events: `payment.captured` (wallet-topup discriminator via `notes.topupCustomerId`, else idempotent mark-order-paid), `payment.failed` (→ `failed` + customer notify), `refund.created`/`refund.processed` (customer notify). Bad/missing signature → 400; processing errors are logged and still ACKed — **always `200 { status: 'ok' }`** per spec, every handler idempotent so replays are safe.
+
+**`/api/payments`** (`authenticate`; JSON-mounted sibling of the webhook router):
+- `POST /create-order` (CUSTOMER, `{ orderId }`) — ownership/state guards (only `pending`/`failed`, not cod/wallet, not already paid) → `razorpay.orders.create({ amount: rupeesToPaise(total), currency: 'INR', receipt: order.id, notes: { orderId, customerId } })`; rzp-order-id cached at `cache:razorpay_order:{orderId}` for 30 min.
+- `POST /verify` (CUSTOMER) — signature proof FIRST (HMAC-SHA256 of `<razorpayOrderId>|<razorpayPaymentId>` under `RAZORPAY_KEY_SECRET`; mismatch → 400 before any DB work), then ownership, cached-session cross-check, idempotent `markOrderPaid`; the seller is notified "Payment received — new order" only now (step-5 placement notifies at order placement for wallet/cod instead).
+- `GET /history?page&limit` (CUSTOMER) — own orders' payment view, paginated (spec said "all orders" — we cap at 100/page like every other list).
+- `POST /refund` (ADMIN + `payouts.manage` — spec's `canManagePayouts`) — amount ≤ order total (Zod: positive, ≤2dp, reason 3–500). `wallet` orders: direct in-transaction credit + `REFUND` ledger entry, never touches the gateway. `card`/`upi`: **real** `razorpay.payments.refund(paymentId, { amount: rupeesToPaise(amount), notes: { reason, adminId }, speed: 'normal' })`. Status → `refunded` (full) or `partially_refunded` (added to `PAYMENT_STATUSES`).
+
+**`/api/wallet`** (CUSTOMER) — `POST /topup/initiate` (`amount` ₹10–₹50,000 → rzp order with `receipt: topup:<customerId>:<ts>`, `notes.topupCustomerId`; pending session cached 30 min), `POST /topup/verify` (same signature proof as payments/verify + `topupAmount` cross-check against the cached session), `GET /balance`. Crediting funnels through one atomic idempotent path: `Transaction.referenceId = paymentId` re-checked **inside** the transaction — verify + webhook can never double-credit.
+
+**`/api/admin/payouts`** (spec's `canManagePayouts` → reads `payouts.view`, mutations `payouts.manage`):
+- `GET /` (`recipientType= seller|delivery_boy`, `status`, page/limit) — with recipient details (store name/owner or rider name) and `transactionRef`.
+- `GET /summary` — pending + processing amounts per recipient type (`groupBy` + `_sum`), pending count, **next scheduled payout date** (weekly Monday 10:00 runs — `nextPayoutDate()` pure helper).
+- `POST /:payoutId/approve` — PENDING→PROCESSING + `initiatedAt`, recipient notify, ActivityLog.
+- `POST /bulk-approve` — **one single `updateMany`** (no per-row loop), returns affected count.
+- `POST /:payoutId/mark-paid` `{ transactionRef }` — PROCESSING→PAID + `processedAt`; for sellers a virtual-ledger DEBIT (`PAYOUT`) Transaction row is recorded when the seller's user has a wallet (informational only); migration `20260804000000_payments_step7` adds `Payout.transactionRef`.
+- `POST /:payoutId/fail` `{ reason }` — →FAILED, and the locked earnings are released: `Order.payoutId`/`Delivery.payoutId` set to null and rider `pendingEarnings` re-credited (extension beyond spec, keeps rows re-payable).
+
+**`/api/admin/financials`** (ADMIN + `payouts.manage`): `GET /overview?startDate&endDate` (defaults to current month) — totalGMV / totalCommission / totalDeliveryRevenue / totalPayouts / netRevenue (= commission + deliveryRevenue) / pendingPayouts / refundsIssued (⚠ approximated from refunded orders' totals until a refund-ledger table lands — TODO). `GET /commission-report` — per-seller `{ sellerId, storeName, grossRevenue, commissionRate, commissionEarned, ordersCount, payoutsPaid, pendingBalance }` computed via `groupBy` + `_sum` (never in-memory sums), **Redis-cached 5 min** (`cache:admin:commission-report:<start>:<end>`).
+
+Env: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` (all default to empty — app boots fine: the SDK singleton stays `null` and the first guarded gateway call fails loudly with 500 "Payment gateway is not configured").
+
+```bash
+# checkout flow (customer JWT)
+curl -X POST $B/api/payments/create-order -H "Authorization: Bearer $CUST" -H 'Content-Type: application/json' -d '{"orderId":"ord_123"}'
+curl -X POST $B/api/payments/verify     -H "Authorization: Bearer $CUST" -H 'Content-Type: application/json' \
+  -d '{"orderId":"ord_123","razorpayOrderId":"order_…","razorpayPaymentId":"pay_…","razorpaySignature":"…"}'
+# wallet top-up + balance
+curl -X POST $B/api/wallet/topup/initiate -H "Authorization: Bearer $CUST" -H 'Content-Type: application/json' -d '{"amount":500}'
+curl $B/api/wallet/balance -H "Authorization: Bearer $CUST"
+# admin finance ops
+curl "$B/api/admin/payouts?status=PENDING&recipientType=seller" -H "Authorization: Bearer $ADMIN"
+curl -X POST $B/api/admin/payouts/bulk-approve -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' -d '{"payoutIds":["po_1","po_2"]}'
+curl $B/api/admin/financials/commission-report -H "Authorization: Bearer $ADMIN"
+```
+
+Deviation notes: `@types/razorpay` does not exist on npm (the request 404s) — `razorpay@2.9.8` bundles its own complete TypeScript declarations, used instead. Spec's literal `razorpay.orders.create` singleton is kept but constructed only when keys are non-empty (the SDK constructor throws on empty `key_id` — with blank dev credentials we hold `null` and fail loudly at the first guarded gateway call, matching how AWS/SMTP stubs boot clean).
+
 ## Scripts
 
 | Command                    | What it does                                         |
@@ -177,10 +219,10 @@ src/
   models/mongo/    OrderTimeline, Tracking, Notification, ActivityLog, Content
   middlewares/     requestLogger, authenticate, authorizeRoles, rateLimiter, validate, notFound, errorHandler
   modules/         auth, seller-auth, delivery-auth, admin-auth, customer, stores, upload,
-                   seller-registration, seller, orders, delivery, tracking
+                   seller-registration, seller, orders, delivery, tracking, payments, payouts
                    (one folder per feature: routes/controller/service/schema)
   utils/           ApiError, ApiResponse, asyncHandler, jwt, hash, otp, email, pagination,
-                   cache, fileUpload, rateLimitStore
+                   cache, fileUpload, rateLimitStore, geo, financial
   types/           shared domain types (status unions, snapshots, envelopes)
   app.ts           Express app factory (helmet → cors → json → logger → rate limit → routes → 404 → errors)
   server.ts        entrypoint: connect all 3 DBs, then listen (fail-fast on any DB error)
@@ -205,4 +247,4 @@ mongo-seed/        MongoDB seed
 - **Redis keys** come only from `REDIS_KEYS` / `REDIS_TTL` in `src/config/redis.ts` — never inline strings.
 - **Errors**: throw `ApiError`; Zod failures, Prisma P2002/P2025 and JWT errors are normalised by the global `errorHandler`.
 - **Env**: everything is validated at boot via envalid in `src/config/env.ts`; the process refuses to start when a required variable is missing.
-- Admin store/user management, admin analytics, coupons, content, support, Razorpay and Socket.io land in subsequent steps.
+- Admin store/user management, admin analytics, coupons, content, support and Socket.io land in subsequent steps.

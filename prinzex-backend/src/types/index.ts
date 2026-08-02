@@ -48,7 +48,7 @@ export const DELIVERY_STATUSES = [
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 
 // ── Payments ───────────────────────────────────────────────────────────────
-export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'] as const;
+export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export const PAYMENT_METHODS = ['razorpay', 'cod', 'wallet'] as const;

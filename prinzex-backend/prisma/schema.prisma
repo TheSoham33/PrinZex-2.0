@@ -530,6 +530,8 @@ model Payout {
   bankAccount     String // masked account number
   initiatedAt     DateTime?
   processedAt     DateTime?
+  // Manual bank-transfer reference recorded when ops marks the payout paid.
+  transactionRef  String?
   failReason      String?
   createdAt       DateTime     @default(now())
 

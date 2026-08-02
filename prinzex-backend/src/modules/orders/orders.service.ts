@@ -363,14 +363,21 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
         adminNotes: [],
         disputeDetails: { isDisputed: false },
       }),
-    () =>
-      notifySeller(
-        seller.id,
-        'new_order',
-        'New order received',
-        `New order #${order.id.slice(-6).toUpperCase()} — ${service.serviceName} ×${input.quantity} (₹${quote.total}).`,
-        { orderId: order.id, total: quote.total, isRush: order.isRush },
-      ),
+    // Wallet/COD orders are already settled → seller hears about the new
+    // order NOW. Gateway (card/upi) orders notify at payment capture instead
+    // (payments module: "Payment received — new order").
+    ...(order.paymentStatus !== 'pending'
+      ? [
+          () =>
+            notifySeller(
+              seller.id,
+              'new_order',
+              'New order received',
+              `New order #${order.id.slice(-6).toUpperCase()} — ${service.serviceName} ×${input.quantity} (₹${quote.total}).`,
+              { orderId: order.id, total: quote.total, isRush: order.isRush },
+            ),
+        ]
+      : []),
     () => invalidateSellerAnalytics(seller.id),
   ]);
 

@@ -60,6 +60,12 @@ export const REDIS_KEYS = {
   // instant (the frontend can fetch/reuse the exact quote it displayed).
   QUOTE: (customerId: string, sellerServiceId: string, timestamp: number) =>
     `cache:quote:${customerId}:${sellerServiceId}:${timestamp}`,
+  // Razorpay order id ↔ PrinZex order id mapping while checkout is open.
+  RAZORPAY_ORDER: (orderId: string) => `cache:razorpay_order:${orderId}`,
+  // Pending wallet top-up metadata keyed by Razorpay order id (verify + webhook).
+  RAZORPAY_TOPUP: (razorpayOrderId: string) => `cache:razorpay_topup:${razorpayOrderId}`,
+  // Admin commission report (heavy aggregate — 5 min cache).
+  ADMIN_COMMISSION_REPORT: () => 'cache:admin:commission-report',
 
   // Real-time
   DELIVERY_LOCATION: (deliveryBoyId: string) => `location:${deliveryBoyId}`,
@@ -85,6 +91,8 @@ export const REDIS_TTL = {
   CACHE_SUGGEST: 60, // 1 minute (search autocomplete)
   UPLOAD_METADATA: 86400, // 24 hours (design upload ownership)
   CACHE_QUOTE: 900, // 15 minutes (order quote cache)
+  CACHE_RAZORPAY_ORDER: 1800, // 30 minutes (checkout session life)
+  CACHE_COMMISSION_REPORT: 300, // 5 minutes (heavy admin aggregate)
 } as const;
 
 const redisOptions: RedisOptions = {

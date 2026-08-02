@@ -48,9 +48,11 @@ export const env = cleanEnv(process.env, {
   SMTP_USER: str({ default: '' }),
   SMTP_PASS: str({ default: '' }),
 
-  // Razorpay (stub)
+  // Razorpay (live wiring — payments step; empty keys keep dev booting,
+  // gateway calls then fail loudly at the SDK boundary)
   RAZORPAY_KEY_ID: str({ default: '' }),
   RAZORPAY_KEY_SECRET: str({ default: '' }),
+  RAZORPAY_WEBHOOK_SECRET: str({ default: '' }),
 
   // Platform settings
   PLATFORM_COMMISSION_RATE: num({ default: 0.12 }),

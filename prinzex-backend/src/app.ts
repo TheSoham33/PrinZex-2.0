@@ -24,6 +24,8 @@ import {
   deliveryRouter,
 } from './modules/delivery/delivery.routes';
 import { trackingRouter } from './modules/tracking/tracking.routes';
+import { paymentsRouter, paymentsWebhookRouter, walletRouter } from './modules/payments/payments.routes';
+import { adminFinancialsRouter, adminPayoutsRouter } from './modules/payouts/payouts.routes';
 import { ApiResponse } from './utils/ApiResponse';
 
 /**
@@ -53,6 +55,10 @@ export function createApp(): Express {
     .map((origin) => origin.trim())
     .filter(Boolean);
   app.use(cors({ origin: allowedOrigins, credentials: true }));
+
+  // 2.5 Razorpay webhook — MUST be mounted BEFORE express.json(): the
+  //     HMAC signature is computed over the exact raw bytes Razorpay sent.
+  app.use('/api/payments', paymentsWebhookRouter);
 
   // 3. Body parsing
   app.use(express.json({ limit: '10mb' }));
@@ -120,6 +126,16 @@ export function createApp(): Express {
 
   // Customer live tracking (order ownership enforced in the service).
   app.use('/api/tracking', trackingRouter);
+
+  // Payments — Razorpay checkout lifecycle (JSON routes; webhook mounted above).
+  app.use('/api/payments', paymentsRouter);
+
+  // Wallet — Razorpay top-up + balance (customer).
+  app.use('/api/wallet', walletRouter);
+
+  // Admin payout management + financial reporting.
+  app.use('/api/admin/payouts', adminPayoutsRouter);
+  app.use('/api/admin/financials', adminFinancialsRouter);
 
   // Design file uploads — authenticated (any role).
   app.use('/api/upload', uploadRouter);
