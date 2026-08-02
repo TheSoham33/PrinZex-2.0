@@ -56,6 +56,10 @@ export const REDIS_KEYS = {
   ADMIN_STATS: () => 'cache:admin:stats',
   SEARCH_SUGGESTIONS: (query: string, city?: string) =>
     `cache:suggest:${city ? city.toLowerCase() : 'all'}:${query.toLowerCase()}`,
+  // Server-calculated order quotes, keyed per customer + service + request
+  // instant (the frontend can fetch/reuse the exact quote it displayed).
+  QUOTE: (customerId: string, sellerServiceId: string, timestamp: number) =>
+    `cache:quote:${customerId}:${sellerServiceId}:${timestamp}`,
 
   // Real-time
   DELIVERY_LOCATION: (deliveryBoyId: string) => `location:${deliveryBoyId}`,
@@ -80,6 +84,7 @@ export const REDIS_TTL = {
   DELIVERY_LOCATION: 30, // 30 seconds (refreshed on each GPS ping)
   CACHE_SUGGEST: 60, // 1 minute (search autocomplete)
   UPLOAD_METADATA: 86400, // 24 hours (design upload ownership)
+  CACHE_QUOTE: 900, // 15 minutes (order quote cache)
 } as const;
 
 const redisOptions: RedisOptions = {

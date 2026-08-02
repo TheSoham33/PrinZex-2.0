@@ -108,6 +108,25 @@ Schema changes this step (migration `20260802000000_seller_step4`): `Seller.meta
 
 Quick checks after seeds: seller login → `seller1@prinzex.com / Seller@123` → `GET /api/seller/analytics/overview?period=30d` twice (second shows `X-Cache: HIT`); try `PATCH /api/seller/orders/:id/status` with `{"status":"processing"}` on a `placed` order → 400 "next allowed: confirmed".
 
+## Order APIs (Step 5)
+
+**Shared state machine** (`src/utils/stateMachine.ts`) — the spec'd `ORDER_TRANSITIONS` map is now the single source of truth for every lifecycle mutation; unknown statuses and any transition outside the map → 400 with the allowed list. Admin force-status is the only path that bypasses it.
+
+**`/api/orders`** — all `authenticate` + CUSTOMER role; ownership always checked against the JWT userId:
+- `POST /quote` — deterministic server-side pricing: `subtotal = basePrice×qty + finishing upcharges` (flat constants: lamination ₹20, spiral_binding ₹60, hard_binding ₹120, stapling ₹5, folding ₹10, cutting ₹15; unknown finishing → 400), rushFee ₹0/50/120/0, deliveryFee ₹30/60/100/0, **18% GST** on subtotal, commission = `subtotal × Seller.commissionRate`, total minus coupon discount. Coupon validated but NOT consumed. Quote cached in Redis 15 min (`quoteKey` returned).
+- `POST /` — place order. Address ownership + same-day pincode rule (SAME_DAY only into a served, non-excluded pincode), quote fully **recalculated server-side (client prices ignored)**, then ONE Prisma `$transaction`: Order + OrderItem + coupon `usageCount++` (the order row doubles as the per-user usage record) + wallet debit & DEBIT ledger entry (insufficient balance → 400, atomic). `paymentMethod: card|upi|wallet|cod`; wallet → `paymentStatus: paid`, others `pending` (Razorpay TODO). MongoDB OrderTimeline created (`placed` event) + seller "New order received" notification; `isRush` auto-set for EXPRESS/SAME_DAY.
+- `GET /` (paginated, status filter: store + services + totals) · `GET /:orderId` (all fields except internal payoutId + Mongo timeline)
+- `POST /:orderId/cancel` — only from `placed|confirmed` (state machine); wallet → instant atomic CREDIT refund + `paymentStatus: refunded`; card/upi → `refunded` + Razorpay TODO; cod → nothing to refund. Timeline event + seller notification.
+- `POST /:orderId/reviews` — delivered-only, one per order (unique `orderId`), creates STORE review + recalculates `Seller.averageRating` via aggregate **in the same transaction**; seller notification + store-cache invalidation.
+
+**`/api/admin/orders`** — `authenticate` + ADMIN + permission gates (spec's `canManageOrders` maps to the platform vocabulary: reads → `orders.view`, mutations → `orders.manage`):
+- `GET /` — filters: status, sellerId, customerId, startDate/endDate, isRush + pagination; includes customer/seller/delivery-boy names · `GET /:orderId` — full internals (commissionAmount, payoutId, delivery assignment) + timeline
+- `PATCH /:orderId/status` — force ANY status (bypasses state machine) yet still appends the MongoDB timeline event (`updatedBy: adminId`) + ActivityLog
+- `POST /:orderId/refund` — `amount ≤ order.total`, blocks double-refund (409); wallet credit + ledger, gateway orders stubbed (`// TODO: Razorpay refund`), sets `paymentStatus: refunded`, ActivityLog
+- `POST /:orderId/dispute` — writes MongoDB `disputeDetails` (resolution customer|seller + note) + ActivityLog
+
+Quick curl after seeds: `POST /api/orders/quote` with a seeded `sellerServiceId` → deterministic totals; place a wallet-funded order then `GET /api/customer/wallet` to see the DEBIT entry.
+
 ## Scripts
 
 | Command                    | What it does                                         |

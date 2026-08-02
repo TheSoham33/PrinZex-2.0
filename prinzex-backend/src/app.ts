@@ -17,6 +17,7 @@ import { storesRouter } from './modules/stores/stores.routes';
 import { uploadRouter } from './modules/upload/upload.routes';
 import { sellerRegistrationRouter } from './modules/seller-registration/seller-registration.routes';
 import { sellerRouter } from './modules/seller/seller.routes';
+import { adminOrdersRouter, ordersRouter } from './modules/orders/orders.routes';
 import { ApiResponse } from './utils/ApiResponse';
 
 /**
@@ -93,6 +94,12 @@ export function createApp(): Express {
   // Seller store management (services, pricing, inventory, team, analytics,
   // orders, payouts, settings) — SELLER role required.
   app.use('/api/seller', sellerRouter);
+
+  // Customer order flow (quote, place, track, cancel, review) — CUSTOMER role.
+  app.use('/api/orders', ordersRouter);
+
+  // Admin order operations (list, detail, force-status, refund, dispute).
+  app.use('/api/admin/orders', adminOrdersRouter);
 
   // Design file uploads — authenticated (any role).
   app.use('/api/upload', uploadRouter);
