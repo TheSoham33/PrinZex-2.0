@@ -2,7 +2,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate';
 import { validate } from '../../middlewares/validate';
-import { uploadDesignMiddleware } from '../../utils/fileUpload';
+import {
+  uploadAvatarMiddleware,
+  uploadDesignMiddleware,
+} from '../../utils/fileUpload';
 import * as uploadController from './upload.controller';
 
 /** Design file uploads — mounted at /api/upload. Signed-in users of any role. */
@@ -18,6 +21,8 @@ const filenameParams = z.object({
 uploadRouter.use(authenticate);
 
 uploadRouter.post('/design', uploadDesignMiddleware, uploadController.uploadDesign);
+
+uploadRouter.post('/avatar', uploadAvatarMiddleware, uploadController.uploadAvatar);
 
 uploadRouter.delete(
   '/design/:filename',

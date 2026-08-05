@@ -12,7 +12,13 @@ export const updateProfileBody = z
     name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80).optional(),
     email: emailField.optional(),
     phone: phoneField.optional(),
-    avatarUrl: z.string().trim().url('avatarUrl must be a valid URL').optional(),
+    avatarUrl: z
+      .string()
+      .trim()
+      .refine((val) => val.startsWith('/') || z.string().url().safeParse(val).success, {
+        message: 'avatarUrl must be a valid URL or a relative path starting with /',
+      })
+      .optional(),
   })
   .refine((value) => Object.values(value).some((v) => v !== undefined), {
     message: 'Provide at least one field to update',

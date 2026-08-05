@@ -1,6 +1,11 @@
 import { apiRequest } from './client';
 
-export const updateProfile = async (data: { name?: string; email?: string; phone?: string }): Promise<any> => {
+export const updateProfile = async (data: { 
+  name?: string; 
+  email?: string; 
+  phone?: string;
+  avatarUrl?: string;
+}): Promise<any> => {
   return apiRequest<any>('/customer/profile', {
     method: 'PATCH',
     body: JSON.stringify(data),

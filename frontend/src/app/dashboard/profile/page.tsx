@@ -1,18 +1,24 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useAppSelector } from '@/store/hooks';
-import { IconUser } from '@/components/icons';
+import { useState, useEffect, useRef } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { updateUser } from '@/store/slices/authSlice';
+import { updateProfile } from '@/lib/api/customer';
+import { apiRequest } from '@/lib/api/client';
+import { IconAlertCircle, IconCheckCircle, IconUser, IconRefreshCw } from '@/components/icons';
 
 export default function ProfilePage() {
   const user = useAppSelector((state) => state.auth.user);
+  const dispatch = useAppDispatch();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: '',
     email: '',
     phone: '',
+    avatarUrl: '',
   });
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [uploading, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && !hasInitialized) {
@@ -20,6 +26,7 @@ export default function ProfilePage() {
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
+        avatarUrl: user.avatarUrl || '',
       });
       setHasInitialized(true);
     }
@@ -32,6 +39,37 @@ export default function ProfilePage() {
     .join('')
     .toUpperCase();
 
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setSaving(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      // 1. Upload photo
+      const uploadRes = await apiRequest<{ fileUrl: string }>('/upload/avatar', {
+        method: 'POST',
+        body: formData,
+      });
+
+      // 2. Update profile with new URL
+      const updatedUser = await updateProfile({
+        avatarUrl: uploadRes.fileUrl,
+      });
+
+      dispatch(updateUser(updatedUser));
+      setForm((prev) => ({ ...prev, avatarUrl: uploadRes.fileUrl }));
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile photo');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-2xl">
       <header>
@@ -41,17 +79,51 @@ export default function ProfilePage() {
 
       <div className="card mt-6 p-6">
         <div className="flex items-center gap-4 border-b border-slate-200 pb-6">
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white">
-            {initials || <IconUser className="h-7 w-7" />}
-          </span>
+          <div className="relative">
+            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-xl font-bold text-white shadow-inner">
+              {form.avatarUrl ? (
+                <img 
+                  src={form.avatarUrl.startsWith('http') ? form.avatarUrl : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${form.avatarUrl}`} 
+                  alt={form.name} 
+                  className="h-full w-full object-cover" 
+                />
+              ) : (
+                initials || <IconUser className="h-7 w-7" />
+              )}
+            </div>
+            {uploading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-900/40 text-white">
+                <IconRefreshCw className="h-5 w-5 animate-spin" />
+              </div>
+            )}
+          </div>
           <div className="min-w-0">
             <p className="truncate text-lg font-bold text-slate-900">{form.name || 'Your name'}</p>
             <p className="truncate text-sm text-slate-500">{form.email}</p>
-            <button type="button" className="mt-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700">
-              Change photo
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+            <button 
+              type="button" 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="mt-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50"
+            >
+              {uploading ? 'Updating…' : 'Change photo'}
             </button>
           </div>
         </div>
+
+        {error && (
+          <div className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
+            <IconAlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
 
         <div className="mt-6 space-y-5">
           <div>
@@ -99,7 +171,7 @@ export default function ProfilePage() {
               Account information is locked
             </p>
             <p className="mt-1">
-              For security and verification reasons, your name, email, and phone number cannot be changed directly. Please contact PrinZex support if you need to update these details.
+              For security and verification reasons, your name, email, and phone number cannot be changed directly. However, you can still update your profile photo above. Please contact PrinZex support if you need to update other details.
             </p>
           </div>
         </div>
