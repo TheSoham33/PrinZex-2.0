@@ -23,7 +23,7 @@ export default function StoreDetailView({ store }: { store: StoreDetail }) {
             selectedServiceId={selectedServiceId}
             onSelectService={setSelectedServiceId}
           />
-          <StickyOrderBar storeId={store.id} selectedService={selectedService} />
+          <StickyOrderBar storeId={store.id} selectedService={selectedService} isOpen={store.isOpen} />
         </div>
       </div>
     </>

@@ -29,6 +29,14 @@ const TOTAL_STEPS = 4;
 
 export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const router = useRouter();
+
+  // Redirect or show error if store is closed
+  useEffect(() => {
+    if (!store.isOpen) {
+      router.replace(`/stores/${store.id}`);
+    }
+  }, [store.isOpen, store.id, router]);
+
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get('service') ?? '';
   const token = useAppSelector((state) => state.auth.accessToken);
