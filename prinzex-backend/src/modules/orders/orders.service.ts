@@ -121,7 +121,10 @@ async function runPostCommitSideEffects(label: string, effects: Array<() => Prom
 
 async function loadOrderableService(sellerId: string, sellerServiceId: string) {
   const service = await prisma.sellerService.findFirst({
-    where: { id: sellerServiceId, sellerId },
+    where: {
+      sellerId,
+      OR: [{ id: sellerServiceId }, { serviceId: sellerServiceId }],
+    },
   });
   if (!service) {
     throw ApiError.notFound('Service not found for this store');
