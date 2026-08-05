@@ -656,6 +656,7 @@ export interface AdminOrderListItem {
   status: string;
   customerName: string;
   sellerName: string;
+  serviceName: string; // Added this
   deliveryBoyName: string | null;
   total: number;
   isRush: boolean;
@@ -691,6 +692,7 @@ export async function adminListOrders(
       include: {
         customer: { select: { name: true } },
         seller: { select: { storeName: true } },
+        items: { select: { serviceName: true }, take: 1 }, // Added this
         delivery: { include: { deliveryBoy: { select: { name: true } } } },
       },
     }),
@@ -702,6 +704,7 @@ export async function adminListOrders(
       status: order.status,
       customerName: order.customer.name,
       sellerName: order.seller.storeName,
+      serviceName: order.items[0]?.serviceName ?? '—', // Added this
       deliveryBoyName: order.delivery?.deliveryBoy?.name ?? null,
       total: Number(order.total),
       isRush: order.isRush,

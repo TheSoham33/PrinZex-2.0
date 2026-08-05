@@ -119,6 +119,93 @@ export const deleteFaq = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, result, 'FAQ deleted'));
 });
 
+// ── CATEGORIES ─────────────────────────────────────────────────────────────
+
+export const listCategories = asyncHandler(async (_req, res) => {
+  const categories = await adminContentService.listCategories();
+  res.status(200).json(new ApiResponse(200, categories, 'Categories fetched'));
+});
+
+export const updateCategory = asyncHandler(async (req, res) => {
+  const identity = adminIdentity(req);
+  const category = await adminContentService.updateCategory(identity.adminId, req.params.id, req.body);
+  void logActivity({
+    ...identity,
+    action: 'content.category.updated',
+    entityType: 'content',
+    entityId: category.id,
+    metadata: { isActive: category.isActive },
+    req,
+  });
+  res.status(200).json(new ApiResponse(200, category, 'Category updated'));
+});
+
+// ── TEMPLATES ──────────────────────────────────────────────────────────────
+
+export const listTemplates = asyncHandler(async (_req, res) => {
+  const templates = await adminContentService.listTemplates();
+  res.status(200).json(new ApiResponse(200, templates, 'Templates fetched'));
+});
+
+export const createTemplate = asyncHandler(async (req, res) => {
+  const identity = adminIdentity(req);
+  const template = await adminContentService.createTemplate(identity.adminId, req.body);
+  void logActivity({
+    ...identity,
+    action: 'content.template.created',
+    entityType: 'content',
+    entityId: template.id,
+    metadata: { name: template.name },
+    req,
+  });
+  res.status(201).json(new ApiResponse(201, template, 'Template created'));
+});
+
+export const updateTemplate = asyncHandler(async (req, res) => {
+  const identity = adminIdentity(req);
+  const template = await adminContentService.updateTemplate(identity.adminId, req.params.id, req.body);
+  void logActivity({
+    ...identity,
+    action: 'content.template.updated',
+    entityType: 'content',
+    entityId: template.id,
+    req,
+  });
+  res.status(200).json(new ApiResponse(200, template, 'Template updated'));
+});
+
+export const deleteTemplate = asyncHandler(async (req, res) => {
+  const result = await adminContentService.deleteTemplate(req.params.id);
+  void logActivity({
+    ...adminIdentity(req),
+    action: 'content.template.deleted',
+    entityType: 'content',
+    entityId: req.params.id,
+    req,
+  });
+  res.status(200).json(new ApiResponse(200, result, 'Template deleted'));
+});
+
+// ── SETTINGS ───────────────────────────────────────────────────────────────
+
+export const getSettings = asyncHandler(async (_req, res) => {
+  const settings = await adminContentService.getSettings();
+  res.status(200).json(new ApiResponse(200, settings, 'Settings fetched'));
+});
+
+export const updateSettings = asyncHandler(async (req, res) => {
+  const identity = adminIdentity(req);
+  const settings = await adminContentService.updateSettings(identity.adminId, req.body as adminContentService.PlatformSettingsDto);
+  void logActivity({
+    ...identity,
+    action: 'content.settings.updated',
+    entityType: 'content',
+    entityId: 'settings',
+    req,
+  });
+  res.status(200).json(new ApiResponse(200, settings, 'Settings updated'));
+});
+
 // ══ PUBLIC (no auth) — /api/content ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═ ═
 
 export const listPublicBanners = asyncHandler(async (req, res) => {

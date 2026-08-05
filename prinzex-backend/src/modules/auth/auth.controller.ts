@@ -21,12 +21,22 @@ import type {
 
 export const register: RequestHandler = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body as RegisterInput);
-  res.status(201).json(new ApiResponse(201, result, 'Registration successful — please verify your account'));
+  res.status(201).json(new ApiResponse(201, result, 'Registration successful'));
+});
+
+export const sendSignupOtp: RequestHandler = asyncHandler(async (req, res) => {
+  const result = await authService.sendSignupOtp(req.body as authService.SendSignupOtpInput);
+  res.status(200).json(new ApiResponse(200, result, 'OTP sent'));
 });
 
 export const login: RequestHandler = asyncHandler(async (req, res) => {
   const result = await authService.login(req.body as LoginInput);
   res.status(200).json(new ApiResponse(200, result, 'Login successful'));
+});
+
+export const sendLoginOtp: RequestHandler = asyncHandler(async (req, res) => {
+  const result = await authService.sendLoginOtp(req.body.identifier as string);
+  res.status(200).json(new ApiResponse(200, result, 'OTP sent'));
 });
 
 export const logout: RequestHandler = asyncHandler(async (req, res) => {

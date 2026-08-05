@@ -44,19 +44,35 @@ export interface AuthResult {
 
 // ─── REGISTER ──────────────────────────────────────────────────────────────
 
+export async function sendSignupOtp(input: SendSignupOtpInput): Promise<{ message: string }> {
+  const { phone } = input;
+  
+  const existing = await prisma.user.findUnique({ where: { phone } });
+  if (existing) {
+    throw ApiError.conflict('An account with this phone number already exists');
+  }
+
+  await issueAndSendOtp(phone, 'phone_verify');
+  return { message: 'OTP sent to your phone number' };
+}
+
 export async function register(input: RegisterInput): Promise<AuthResult> {
-  const { name, email, phone, password } = input;
-  const identifier = email ?? phone;
-  if (!identifier) {
-    throw ApiError.unprocessable('Either email or phone is required');
+  const { name, email, phone, password, otp } = input;
+
+  // 1. Verify Phone OTP (if provided)
+  if (otp) {
+    const ok = await verifyOtp(phone, 'phone_verify', otp);
+    if (!ok) {
+      throw ApiError.badRequest('Invalid or expired OTP');
+    }
   }
 
   const existing = await prisma.user.findFirst({
-    where: { OR: [...(email ? [{ email }] : []), ...(phone ? [{ phone }] : [])] },
+    where: { OR: [{ email }, { phone }] },
   });
   if (existing) {
     throw ApiError.conflict(
-      email && existing.email === email
+      existing.email === email
         ? 'An account with this email already exists'
         : 'An account with this phone number already exists',
     );
@@ -68,16 +84,24 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
   // User + Wallet must be created atomically.
   const user = await prisma.$transaction(async (tx) => {
     const created = await tx.user.create({
-      data: { name, email: email ?? null, phone: phone ?? null, passwordHash, role: 'CUSTOMER', referralCode },
+      data: { 
+        name, 
+        email, 
+        phone, 
+        passwordHash, 
+        role: 'CUSTOMER', 
+        referralCode,
+        isPhoneVerified: true // Set to true because OTP was verified
+      },
     });
     await tx.wallet.create({ data: { userId: created.id, balance: 0, loyaltyPoints: 0 } });
     return created;
   });
 
-  // Verification OTP for the primary identifier.
-  await issueAndSendOtp(identifier, purposeForIdentifier(identifier), name);
   if (email) {
     await sendWelcomeEmail(email, name);
+    // Send verification email for the email as well
+    await issueAndSendOtp(email, 'email_verify', name);
   }
 
   const payload: CustomerTokenPayload = { userId: user.id, role: 'CUSTOMER' };
@@ -88,8 +112,24 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
 
 // ─── LOGIN ─────────────────────────────────────────────────────────────────
 
+export async function sendLoginOtp(identifier: string): Promise<{ message: string }> {
+  const normalized = identifier.includes('@') ? identifier.toLowerCase() : identifier;
+  const user = await prisma.user.findFirst({
+    where: { role: 'CUSTOMER', OR: [{ email: normalized }, { phone: normalized }] },
+  });
+
+  if (!user) {
+    throw ApiError.notFound('Account not found');
+  }
+
+  const purpose = identifier.includes('@') ? 'email_login' : 'phone_login';
+  await issueAndSendOtp(normalized, purpose, user.name);
+
+  return { message: `OTP sent to your ${identifier.includes('@') ? 'email' : 'phone'}` };
+}
+
 export async function login(input: LoginInput): Promise<AuthResult> {
-  const { identifier, password } = input;
+  const { identifier, password, otp } = input;
   const normalized = identifier.includes('@') ? identifier.toLowerCase() : identifier;
   const attemptsKey = REDIS_KEYS.LOGIN_ATTEMPTS(normalized);
 
@@ -99,8 +139,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     where: { role: 'CUSTOMER', OR: [{ email: normalized }, { phone: normalized }] },
   });
 
-  const passwordOk = user?.passwordHash ? await comparePassword(password, user.passwordHash) : false;
-  if (!user || !passwordOk) {
+  if (!user) {
     await bumpLoginAttempts(attemptsKey);
     throw ApiError.unauthorized('Invalid credentials');
   }
@@ -109,14 +148,18 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     throw ApiError.forbidden('Your account has been deactivated, please contact support');
   }
 
-  const isEmailLogin = identifier.includes('@');
-  const verified = isEmailLogin ? user.isEmailVerified : user.isPhoneVerified;
-  if (!verified) {
-    throw ApiError.forbidden(
-      isEmailLogin
-        ? 'Please verify your email before logging in'
-        : 'Please verify your phone number before logging in',
-    );
+  if (otp) {
+    const purpose = identifier.includes('@') ? 'email_login' : 'phone_login';
+    const ok = await verifyOtp(normalized, purpose, otp);
+    if (!ok) {
+      throw ApiError.badRequest('Invalid or expired OTP');
+    }
+  } else if (password) {
+    const passwordOk = user.passwordHash ? await comparePassword(password, user.passwordHash) : false;
+    if (!passwordOk) {
+      await bumpLoginAttempts(attemptsKey);
+      throw ApiError.unauthorized('Invalid credentials');
+    }
   }
 
   await clearLoginAttempts(attemptsKey);
