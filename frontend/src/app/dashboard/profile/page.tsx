@@ -12,10 +12,23 @@ export default function ProfilePage() {
   const dispatch = useAppDispatch();
 
   const [form, setForm] = useState({
-    name: user?.name ?? '',
-    email: user?.email ?? '',
-    phone: user?.phone ?? '',
+    name: '',
+    email: '',
+    phone: '',
   });
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  useEffect(() => {
+    if (user && !hasInitialized) {
+      setForm({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      });
+      setHasInitialized(true);
+    }
+  }, [user, hasInitialized]);
+
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>> & { general?: string }>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -37,10 +50,10 @@ export default function ProfilePage() {
     if (form.phone && !PHONE_REGEX.test(form.phone.replace(/\D/g, '').slice(-10)))
       next.phone = 'Enter a valid 10-digit mobile number';
 
-    setErrors(next);
     if (Object.keys(next).length > 0) return;
 
     setSaving(true);
+    setErrors({});
     try {
       const updatedUser = await updateProfile({
         name: form.name.trim(),
@@ -50,9 +63,19 @@ export default function ProfilePage() {
       
       dispatch(updateUser(updatedUser));
       setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setTimeout(() => setSaved(false), 3000);
     } catch (err: any) {
-      setErrors({ general: err.message || 'Failed to update profile' });
+      if (err.message === 'Validation failed' && err.errors) {
+        const nextErr: typeof errors = {};
+        err.errors.forEach((e: any) => {
+          if (e.field === 'name') nextErr.name = e.message;
+          if (e.field === 'email') nextErr.email = e.message;
+          if (e.field === 'phone') nextErr.phone = e.message;
+        });
+        setErrors(nextErr);
+      } else {
+        setErrors({ general: err.message || 'Failed to update profile' });
+      }
     } finally {
       setSaving(false);
     }
@@ -99,6 +122,7 @@ export default function ProfilePage() {
               id="name"
               type="text"
               value={form.name}
+              disabled={saving}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
               className={`input ${errors.name ? 'input-error' : ''}`}
             />
@@ -113,6 +137,7 @@ export default function ProfilePage() {
               id="email"
               type="email"
               value={form.email}
+              disabled={saving}
               onChange={(event) => setForm({ ...form, email: event.target.value })}
               className={`input ${errors.email ? 'input-error' : ''}`}
             />
@@ -132,6 +157,7 @@ export default function ProfilePage() {
                   id="phone"
                   type="tel"
                   value={form.phone}
+                  disabled={saving}
                   onChange={(event) => setForm({ ...form, phone: event.target.value })}
                   className={`input ${errors.phone ? 'input-error' : ''}`}
                 />
