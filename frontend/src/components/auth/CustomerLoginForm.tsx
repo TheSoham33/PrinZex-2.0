@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { loginStart, loginSuccess, logout } from '@/store/slices/authSlice';
 import PasswordInput from '@/components/auth/PasswordInput';
@@ -18,7 +18,83 @@ export default function CustomerLoginForm() {
   const dispatch = useAppDispatch();
   const status = useAppSelector((state) => state.auth.status);
 
-  // ... (rest of state)
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string; otp?: string; general?: string }>({});
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [timer, setTimer] = useState(0);
+
+  const loading = status === 'loading';
+
+  const isEmail = EMAIL_REGEX.test(identifier.trim());
+  const isPhone = PHONE_REGEX.test(identifier.trim().replace(/\D/g, '').slice(-10));
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
+
+  useEffect(() => {
+    setOtpSent(false);
+    setOtp('');
+    setTimer(0);
+  }, [identifier, loginMethod]);
+
+  const validate = () => {
+    const next: typeof errors = {};
+    const value = identifier.trim();
+
+    if (!value) {
+      next.identifier = loginMethod === 'password' ? 'Email is required' : 'Phone number is required';
+    } else if (loginMethod === 'password' && !isEmail) {
+      next.identifier = 'Enter a valid email address';
+    } else if (loginMethod === 'otp' && !isPhone) {
+      next.identifier = 'Enter a valid 10-digit mobile number';
+    }
+
+    if (loginMethod === 'password') {
+      if (!password) {
+        next.password = 'Password is required';
+      }
+    } else {
+      if (!otp) {
+        next.otp = 'OTP is required';
+      }
+    }
+
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleSendOtp = async () => {
+    if (!isPhone) {
+      setErrors({ identifier: 'Enter a valid phone number first' });
+      return;
+    }
+
+    setSendingOtp(true);
+    setErrors({});
+    try {
+      await apiRequest('/auth/send-login-otp', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: identifier.trim() }),
+      });
+      setOtpSent(true);
+      setTimer(60);
+    } catch (err: any) {
+      setErrors({ general: err.message || 'Failed to send OTP' });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
