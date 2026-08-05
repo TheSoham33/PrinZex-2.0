@@ -21,6 +21,9 @@ export default function StoreCard({ store }: { store: Store }) {
             <IconBadgeCheck className="h-3.5 w-3.5" /> Verified
           </span>
         )}
+        <span className={`absolute bottom-3 left-3 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${store.isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+          {store.isOpen ? 'Open Now' : 'Closed'}
+        </span>
       </div>
 
       <div className="flex flex-1 flex-col p-4">

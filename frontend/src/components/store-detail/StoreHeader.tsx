@@ -54,6 +54,9 @@ export default function StoreHeader({ store }: { store: StoreDetail }) {
             </div>
 
             <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
+              <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${store.isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {store.isOpen ? 'Open Now' : 'Closed'}
+              </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 font-bold text-green-700">
                   <IconStar className="h-3.5 w-3.5 fill-current" />

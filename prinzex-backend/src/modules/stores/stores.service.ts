@@ -121,7 +121,9 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
 
   const where: Prisma.SellerWhereInput = {
     status: 'APPROVED',
-    ...(query.city ? { city: { equals: query.city, mode: 'insensitive' } } : {}),
+    ...(query.city && query.city.trim().length >= 1 && query.city.trim().toLowerCase() !== 'location'
+      ? { city: { contains: query.city.trim(), mode: 'insensitive' } }
+      : {}),
     ...(and.length > 0 ? { AND: and } : {}),
   };
 

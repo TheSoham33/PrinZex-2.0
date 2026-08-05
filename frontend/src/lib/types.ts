@@ -11,6 +11,7 @@ export interface Store {
   priceRange: PriceRange;
   tags: string[];
   verified: boolean;
+  isOpen: boolean;
 }
 
 export interface StoreHours {

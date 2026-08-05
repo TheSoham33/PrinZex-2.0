@@ -25,6 +25,18 @@ export default function StoreListing() {
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>({ lat: 22.5726, lng: 88.3639 }); // Default to Kolkata for demo
+
+  // Get user's current location for distance calculation
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        }
+      );
+    }
+  }, []);
 
   const page = Number(searchParams.get('page')) || 1;
 
@@ -185,7 +197,10 @@ export default function StoreListing() {
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {results.map((store: any) => (
-                <StoreCard key={store.id} store={mapBackendStoreToFrontend(store)} />
+                <StoreCard 
+                  key={store.id} 
+                  store={mapBackendStoreToFrontend(store, userCoords?.lat, userCoords?.lng)} 
+                />
               ))}
             </div>
           )}

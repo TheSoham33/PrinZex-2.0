@@ -32,11 +32,9 @@ import {
   IconArrowDown,
   IconArrowUp,
   IconChevronDown,
-  IconHelpCircle,
   IconPlus,
   IconTrash,
   IconRefreshCw,
-  IconFileText
 } from '@/components/icons';
 
 const TABS = ['Banners', 'Service categories', 'Templates', 'FAQs'] as const;
@@ -74,7 +72,7 @@ export default function AdminContentPage() {
   useEffect(() => { if (tplQ.data) setTemplates(tplQ.data); }, [tplQ.data]);
   useEffect(() => { if (faqQ.data) setFaqs(faqQ.data); }, [faqQ.data]);
 
-  // ── Banner Mutations ──────────────────────────────────────────────────────
+  // ── Mutations ─────────────────────────────────────────────────────────────
   
   const addBannerM = useMutation({
     mutationFn: createBanner,
@@ -118,8 +116,6 @@ export default function AdminContentPage() {
     },
   });
 
-  // ── FAQ Mutations ────────────────────────────────────────────────────────
-
   const addFaqM = useMutation({
     mutationFn: createFaq,
     onSuccess: () => {
@@ -144,7 +140,7 @@ export default function AdminContentPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) => updateCategory(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
-      showToast('Category updated');
+      showToast('Category status updated');
     },
     onError: (err: any) => showToast(err.message, 'error'),
   });
@@ -311,8 +307,8 @@ export default function AdminContentPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Content</h1>
           <p className="mt-1 text-sm text-slate-600">Homepage banners, categories, templates and FAQs.</p>
         </div>
-        <button onClick={() => { bannersQ.refetch(); faqQ.refetch(); }} className="btn-secondary text-sm">
-          <IconRefreshCw className={`h-4 w-4 ${(bannersQ.isFetching || faqQ.isFetching) ? 'animate-spin' : ''}`} /> Refresh
+        <button onClick={() => { bannersQ.refetch(); faqQ.refetch(); catsQ.refetch(); tplQ.refetch(); }} className="btn-secondary text-sm">
+          <IconRefreshCw className={`h-4 w-4 ${(bannersQ.isFetching || faqQ.isFetching || catsQ.isFetching || tplQ.isFetching) ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </header>
 
