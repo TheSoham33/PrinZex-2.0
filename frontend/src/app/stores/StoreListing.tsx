@@ -21,6 +21,11 @@ export default function StoreListing() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [location, setLocation] = useState(searchParams.get('location') ?? '');
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
@@ -113,7 +118,7 @@ export default function StoreListing() {
           Print shops {location ? `in ${location}` : 'near you'}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          {isLoading ? 'Finding shops…' : `${totalCount} shops available`}
+          {!mounted || isLoading ? 'Finding shops…' : `${totalCount} shops available`}
         </p>
       </header>
 
@@ -182,7 +187,7 @@ export default function StoreListing() {
         />
 
         <div>
-          {isLoading ? (
+          {!mounted || isLoading ? (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, index) => (
                 <StoreCardSkeleton key={index} />
