@@ -3,14 +3,12 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
-  DELIVERY_SPEEDS,
-  MOCK_ADDRESSES,
-  type DeliveryAddress,
-  type Order,
-  type OrderSpecifications,
   type StoreDetail,
-} from '@/lib/mock-data/stores';
+} from '@/lib/types';
+import { fetchAddresses } from '@/lib/api/customer';
+import { getOrderQuote, placeOrder as placeOrderApi } from '@/lib/api/orders';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -18,7 +16,6 @@ import UploadStep from '@/components/order/UploadStep';
 import DeliveryStep from '@/components/order/DeliveryStep';
 import PaymentStep from '@/components/order/PaymentStep';
 import {
-  computeCost,
   createInitialState,
   orderReducer,
   EMPTY_COST,
@@ -29,8 +26,6 @@ const TOTAL_STEPS = 4;
 
 export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const router = useRouter();
-  // Read the pre-selected service from the URL — never from window.location,
-  // which would crash during server rendering.
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get('service') ?? '';
 
@@ -38,26 +33,43 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     orderReducer,
     createInitialState(store.id, store.name, serviceParam),
   );
-  const [addresses, setAddresses] = useState<DeliveryAddress[]>(MOCK_ADDRESSES);
+  
+  const { data: addresses = [] } = useQuery({
+    queryKey: ['addresses'],
+    queryFn: fetchAddresses
+  });
+
   const [agreed, setAgreed] = useState(false);
   const [maxReached, setMaxReached] = useState(1);
   const [placing, setPlacing] = useState(false);
 
-  const specs = state.order.specifications as OrderSpecifications;
+  const specs = state.order.specifications as any;
   const service = store.services.find((entry) => entry.id === specs.serviceId);
-  const deliveryOption = DELIVERY_SPEEDS.find((option) => option.key === state.order.deliverySpeed);
   const cost = state.order.costBreakdown ?? EMPTY_COST;
 
-  // Recalculate pricing whenever specs, delivery speed or discount change.
-  const discount = cost.discount;
-  const computed = useMemo(
-    () => computeCost(specs, service, deliveryOption?.cost ?? 0, discount),
-    [specs, service, deliveryOption, discount],
-  );
+  // Real Quote Fetching
+  const { data: quoteData } = useQuery({
+    queryKey: ['order-quote', store.id, specs, state.order.deliverySpeed],
+    queryFn: () => getOrderQuote({
+      sellerId: store.id,
+      sellerServiceId: specs.serviceId,
+      quantity: Number(specs.quantity),
+      specifications: {
+        paperType: specs.paperType,
+        size: specs.size,
+        colorOption: specs.colorOption,
+        finishing: specs.finishing
+      },
+      deliverySpeed: state.order.deliverySpeed.toUpperCase()
+    }),
+    enabled: !!specs.serviceId && !!specs.paperType && !!specs.size
+  });
 
   useEffect(() => {
-    dispatch({ type: 'SET_COST_BREAKDOWN', payload: computed });
-  }, [computed]);
+    if (quoteData) {
+      dispatch({ type: 'SET_COST_BREAKDOWN', payload: quoteData });
+    }
+  }, [quoteData]);
 
   useEffect(() => {
     setMaxReached((previous) => Math.max(previous, state.step));
@@ -72,6 +84,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       return null;
     }
     if (step === 2) {
+      // In a real app, we would wait for the upload to complete and get a URL
       if (!state.order.file) return 'Please upload the file you want printed';
       return null;
     }
@@ -98,7 +111,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       dispatch({ type: 'SET_STEP', payload: state.step + 1 });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      placeOrder();
+      handlePlaceOrder();
     }
   };
 
@@ -109,35 +122,33 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     }
   };
 
-  const placeOrder = () => {
+  const handlePlaceOrder = async () => {
     setPlacing(true);
-    const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
-    const etaDays = state.order.deliverySpeed === 'standard' ? 3 : 1;
-    const estimated = new Date();
-    estimated.setDate(estimated.getDate() + etaDays);
-
-    const finalOrder: Order = {
-      id: orderId,
-      storeId: store.id,
-      storeName: store.name,
-      specifications: specs,
-      file: state.order.file ?? null,
-      specialInstructions: state.order.specialInstructions ?? '',
-      address: state.order.address ?? null,
-      deliverySpeed: state.order.deliverySpeed ?? 'standard',
-      estimatedDeliveryDate: estimated.toISOString(),
-      paymentMethod: state.order.paymentMethod ?? 'upi',
-      costBreakdown: cost,
-      placedAt: new Date().toISOString(),
-    };
-
     try {
-      sessionStorage.setItem(orderId, JSON.stringify(finalOrder));
-    } catch {
-      /* storage unavailable — the confirmation page falls back gracefully */
-    }
+      const result = await placeOrderApi({
+        sellerId: store.id,
+        sellerServiceId: specs.serviceId,
+        quantity: Number(specs.quantity),
+        specifications: {
+          paperType: specs.paperType,
+          size: specs.size,
+          colorOption: specs.colorOption,
+          finishing: specs.finishing
+        },
+        deliveryAddressId: (state.order.address as any)?.id,
+        deliverySpeed: state.order.deliverySpeed.toUpperCase(),
+        paymentMethod: state.order.paymentMethod,
+        specialInstructions: state.order.specialInstructions,
+        // fileUrl would be real here after upload
+        fileUrl: "/uploads/designs/demo.pdf" 
+      });
 
-    setTimeout(() => router.push(`/orders/confirmation/${orderId}`), 900);
+      const orderId = result.order.id;
+      router.push(`/orders/confirmation/${orderId}`);
+    } catch (err: any) {
+      dispatch({ type: 'SET_ERROR', payload: err.message });
+      setPlacing(false);
+    }
   };
 
   return (
@@ -192,10 +203,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               selectedAddress={state.order.address ?? null}
               speed={state.order.deliverySpeed ?? 'standard'}
               dispatch={dispatch}
-              onAddAddress={(address) => {
-                setAddresses((previous) => [...previous, address]);
-                dispatch({ type: 'SET_ADDRESS', payload: address });
-              }}
+              onAddAddress={() => router.push('/dashboard/addresses')}
               error={state.error}
             />
           )}
