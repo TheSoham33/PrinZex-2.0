@@ -20,13 +20,13 @@ import {
 
 export const SELLER_NAV = [
   { href: '/seller/dashboard/orders', label: 'Orders', icon: IconPackage, badge: true },
-  { href: '/seller/dashboard/analytics', label: 'Analytics', icon: IconBarChart2, disabled: true },
+  { href: '/seller/dashboard/analytics', label: 'Analytics', icon: IconBarChart2 },
   { href: '/seller/dashboard/inventory', label: 'Inventory', icon: IconArchive, disabled: true },
-  { href: '/seller/dashboard/pricing', label: 'Pricing', icon: IconTag, disabled: true },
-  { href: '/seller/dashboard/payouts', label: 'Payouts', icon: IconWallet, disabled: true },
-  { href: '/seller/dashboard/reviews', label: 'Reviews', icon: IconStar, disabled: true },
+  { href: '/seller/dashboard/pricing', label: 'Pricing', icon: IconTag },
+  { href: '/seller/dashboard/payouts', label: 'Payouts', icon: IconWallet },
+  { href: '/seller/dashboard/reviews', label: 'Reviews', icon: IconStar },
   { href: '/seller/dashboard/team', label: 'Team', icon: IconUsers, disabled: true },
-  { href: '/seller/dashboard/settings', label: 'Settings', icon: IconSettings, disabled: true },
+  { href: '/seller/dashboard/settings', label: 'Settings', icon: IconSettings },
 ];
 
 /**
