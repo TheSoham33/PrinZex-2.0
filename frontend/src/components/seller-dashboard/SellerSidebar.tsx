@@ -16,10 +16,12 @@ import {
   IconTag,
   IconUsers,
   IconWallet,
+  IconPlus,
 } from '@/components/icons';
 
 export const SELLER_NAV = [
   { href: '/seller/dashboard/orders', label: 'Orders', icon: IconPackage, badge: true },
+  { href: '/seller/dashboard/services', label: 'Services', icon: IconPlus },
   { href: '/seller/dashboard/analytics', label: 'Analytics', icon: IconBarChart2 },
   { href: '/seller/dashboard/inventory', label: 'Inventory', icon: IconArchive, disabled: true },
   { href: '/seller/dashboard/pricing', label: 'Pricing', icon: IconTag },
