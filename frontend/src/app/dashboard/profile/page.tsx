@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
 import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
