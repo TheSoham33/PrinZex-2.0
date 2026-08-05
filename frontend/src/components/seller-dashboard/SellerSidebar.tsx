@@ -31,11 +31,12 @@ export const SELLER_NAV = [
 
 /**
  * Reads the same `['seller-orders']` cache the orders page mutates, so the
- * "new" badge updates the instant an order is accepted or rejected.
+ * "placed" badge updates the instant an order is accepted or rejected.
  */
 export function useNewOrderCount(): number {
-  const { data } = useQuery({ queryKey: ['seller-orders'], queryFn: fetchSellerOrders });
-  return (data ?? []).filter((order) => order.status === 'new').length;
+  const { data } = useQuery({ queryKey: ['seller-orders'], queryFn: () => fetchSellerOrders({}) });
+  const items = data?.data || (Array.isArray(data) ? data : []);
+  return items.filter((order: any) => order.status === 'placed' || order.status === 'new').length;
 }
 
 export default function SellerSidebar() {

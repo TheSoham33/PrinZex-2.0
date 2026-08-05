@@ -15,10 +15,10 @@ const TABS = ['New', 'Active', 'Dispatched', 'History'] as const;
 type Tab = (typeof TABS)[number];
 
 function matchesTab(order: SellerOrder, tab: Tab): boolean {
-  if (tab === 'New') return order.status === 'new';
-  if (tab === 'Active') return ACTIVE_STATUSES.includes(order.status);
-  if (tab === 'Dispatched') return order.status === 'dispatched';
-  return HISTORY_STATUSES.includes(order.status);
+  if (tab === 'New') return order.status === 'placed' || order.status === 'new';
+  if (tab === 'Active') return ACTIVE_STATUSES.includes(order.status) || ['confirmed', 'processing', 'ready_for_pickup'].includes(order.status);
+  if (tab === 'Dispatched') return order.status === 'dispatched' || order.status === 'out_for_delivery';
+  return HISTORY_STATUSES.includes(order.status) || ['delivered', 'cancelled', 'returned'].includes(order.status);
 }
 
 export default function SellerOrdersPage() {
@@ -28,11 +28,11 @@ export default function SellerOrdersPage() {
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['seller-orders'],
-    queryFn: fetchSellerOrders,
+    queryFn: () => fetchSellerOrders({}),
   });
 
-  const orders = data ?? [];
-  const visible = orders.filter((order) => matchesTab(order, tab));
+  const orders = data?.data || (Array.isArray(data) ? data : []);
+  const visible = orders.filter((order: any) => matchesTab(order, tab));
 
   return (
     <div className="mx-auto max-w-4xl">
