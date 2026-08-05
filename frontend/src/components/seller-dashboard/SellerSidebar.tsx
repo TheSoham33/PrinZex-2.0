@@ -20,13 +20,13 @@ import {
 
 export const SELLER_NAV = [
   { href: '/seller/dashboard/orders', label: 'Orders', icon: IconPackage, badge: true },
-  { href: '/seller/dashboard/analytics', label: 'Analytics', icon: IconBarChart2 },
-  { href: '/seller/dashboard/inventory', label: 'Inventory', icon: IconArchive },
-  { href: '/seller/dashboard/pricing', label: 'Pricing', icon: IconTag },
-  { href: '/seller/dashboard/payouts', label: 'Payouts', icon: IconWallet },
-  { href: '/seller/dashboard/reviews', label: 'Reviews', icon: IconStar },
-  { href: '/seller/dashboard/team', label: 'Team', icon: IconUsers },
-  { href: '/seller/dashboard/settings', label: 'Settings', icon: IconSettings },
+  { href: '/seller/dashboard/analytics', label: 'Analytics', icon: IconBarChart2, disabled: true },
+  { href: '/seller/dashboard/inventory', label: 'Inventory', icon: IconArchive, disabled: true },
+  { href: '/seller/dashboard/pricing', label: 'Pricing', icon: IconTag, disabled: true },
+  { href: '/seller/dashboard/payouts', label: 'Payouts', icon: IconWallet, disabled: true },
+  { href: '/seller/dashboard/reviews', label: 'Reviews', icon: IconStar, disabled: true },
+  { href: '/seller/dashboard/team', label: 'Team', icon: IconUsers, disabled: true },
+  { href: '/seller/dashboard/settings', label: 'Settings', icon: IconSettings, disabled: true },
 ];
 
 /**
@@ -56,6 +56,22 @@ export default function SellerSidebar() {
         {SELLER_NAV.map((item) => {
           const active = pathname.startsWith(item.href);
           const showBadge = item.badge && newCount > 0;
+
+          if (item.disabled) {
+            return (
+              <div
+                key={item.href}
+                title="Coming Soon"
+                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 opacity-60 transition-colors"
+              >
+                <item.icon className="h-5 w-5 text-slate-300" />
+                <span className="flex-1">{item.label}</span>
+                <span className="rounded bg-slate-100 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Soon
+                </span>
+              </div>
+            );
+          }
 
           return (
             <Link
