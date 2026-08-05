@@ -1,15 +1,11 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { updateUser } from '@/store/slices/authSlice';
-import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
-import { updateProfile } from '@/lib/api/customer';
-import { IconAlertCircle, IconCheckCircle, IconUser } from '@/components/icons';
+import { useState, useEffect } from 'react';
+import { useAppSelector } from '@/store/hooks';
+import { IconUser } from '@/components/icons';
 
 export default function ProfilePage() {
   const user = useAppSelector((state) => state.auth.user);
-  const dispatch = useAppDispatch();
 
   const [form, setForm] = useState({
     name: '',
@@ -29,57 +25,12 @@ export default function ProfilePage() {
     }
   }, [user, hasInitialized]);
 
-  const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>> & { general?: string }>({});
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
   const initials = form.name
     .split(' ')
     .map((part) => part[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    const next: typeof errors = {};
-
-    if (!form.name.trim()) next.name = 'Name is required';
-    if (!form.email.trim()) next.email = 'Email is required';
-    else if (!EMAIL_REGEX.test(form.email.trim())) next.email = 'Enter a valid email';
-    if (form.phone && !PHONE_REGEX.test(form.phone.replace(/\D/g, '').slice(-10)))
-      next.phone = 'Enter a valid 10-digit mobile number';
-
-    if (Object.keys(next).length > 0) return;
-
-    setSaving(true);
-    setErrors({});
-    try {
-      const updatedUser = await updateProfile({
-        name: form.name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim() || undefined
-      });
-      
-      dispatch(updateUser(updatedUser));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (err: any) {
-      if (err.message === 'Validation failed' && err.errors) {
-        const nextErr: typeof errors = {};
-        err.errors.forEach((e: any) => {
-          if (e.field === 'name') nextErr.name = e.message;
-          if (e.field === 'email') nextErr.email = e.message;
-          if (e.field === 'phone') nextErr.phone = e.message;
-        });
-        setErrors(nextErr);
-      } else {
-        setErrors({ general: err.message || 'Failed to update profile' });
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -102,54 +53,33 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-5">
-          {errors.general && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
-              <IconAlertCircle className="h-4 w-4" />
-              {errors.general}
-            </div>
-          )}
-
-          {saved && (
-            <p className="flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-              <IconCheckCircle className="h-4 w-4 shrink-0" /> Profile updated successfully
-            </p>
-          )}
-
+        <div className="mt-6 space-y-5">
           <div>
-            <label htmlFor="name" className="label">Full name</label>
+            <label htmlFor="name" className="label text-slate-500">Full name</label>
             <input
               id="name"
               type="text"
               value={form.name}
-              disabled={saving}
-              onChange={(event) => setForm({ ...form, name: event.target.value })}
-              className={`input ${errors.name ? 'input-error' : ''}`}
+              readOnly
+              className="input bg-slate-50 text-slate-500 cursor-not-allowed border-slate-200"
             />
-            {errors.name && (
-              <p className="field-error"><IconAlertCircle className="h-3.5 w-3.5" /> {errors.name}</p>
-            )}
           </div>
 
           <div>
-            <label htmlFor="email" className="label">Email</label>
+            <label htmlFor="email" className="label text-slate-500">Email</label>
             <input
               id="email"
               type="email"
               value={form.email}
-              disabled={saving}
-              onChange={(event) => setForm({ ...form, email: event.target.value })}
-              className={`input ${errors.email ? 'input-error' : ''}`}
+              readOnly
+              className="input bg-slate-50 text-slate-500 cursor-not-allowed border-slate-200"
             />
-            {errors.email && (
-              <p className="field-error"><IconAlertCircle className="h-3.5 w-3.5" /> {errors.email}</p>
-            )}
           </div>
 
           <div>
-            <label htmlFor="phone" className="label">Phone number</label>
+            <label htmlFor="phone" className="label text-slate-500">Phone number</label>
             <div className="flex gap-2">
-              <span className="flex shrink-0 items-center rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-600">
+              <span className="flex shrink-0 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400">
                 +91
               </span>
               <div className="flex-1">
@@ -157,21 +87,22 @@ export default function ProfilePage() {
                   id="phone"
                   type="tel"
                   value={form.phone}
-                  disabled={saving}
-                  onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                  className={`input ${errors.phone ? 'input-error' : ''}`}
+                  readOnly
+                  className="input bg-slate-50 text-slate-500 cursor-not-allowed border-slate-200"
                 />
               </div>
             </div>
-            {errors.phone && (
-              <p className="field-error"><IconAlertCircle className="h-3.5 w-3.5" /> {errors.phone}</p>
-            )}
           </div>
 
-          <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto">
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-        </form>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-semibold flex items-center gap-2">
+              Account information is locked
+            </p>
+            <p className="mt-1">
+              For security and verification reasons, your name, email, and phone number cannot be changed directly. Please contact PrinZex support if you need to update these details.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
