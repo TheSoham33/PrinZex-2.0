@@ -136,10 +136,10 @@ export default function SellerRegisterPage() {
 
   // Redirect if not logged in
   useEffect(() => {
-    if (!user) {
+    if (hydrated && !user) {
       router.replace(`/login?returnUrl=${encodeURIComponent('/seller/register')}`);
     }
-  }, [user, router]);
+  }, [user, router, hydrated]);
 
   const [storeErrors, setStoreErrors] = useState<Partial<Record<keyof StoreInfo, string>>>({});
   const [bankErrors, setBankErrors] = useState<Partial<Record<keyof BankDetails, string>>>({});

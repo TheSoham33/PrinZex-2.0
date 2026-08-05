@@ -1,21 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import LoginTabs from '@/components/auth/LoginTabs';
 import { IconPrinter } from '@/components/icons';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAppSelector((state) => state.auth.user);
+  
+  const returnUrl = searchParams.get('returnUrl') || '';
+  // If we're redirecting back to seller registration, we MUST login as a customer first.
+  const initialTab = returnUrl.includes('/seller/register') ? 'Customer' : 'Customer';
 
   useEffect(() => {
     if (user) {
-      router.replace('/stores');
+      router.replace(returnUrl || '/stores');
     }
-  }, [user, router]);
+  }, [user, router, returnUrl]);
 
   if (user) return null;
 
@@ -30,7 +35,15 @@ export default function LoginPage() {
         </span>
       </Link>
 
-      <LoginTabs initialTab="Customer" />
+      <LoginTabs initialTab={initialTab} />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-2xl" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

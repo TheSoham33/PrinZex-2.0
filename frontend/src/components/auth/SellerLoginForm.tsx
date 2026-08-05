@@ -117,7 +117,10 @@ export default function SellerLoginForm() {
 
       <p className="mt-8 text-center text-sm text-slate-600">
         Don&apos;t have a store yet?{' '}
-        <Link href="/seller/register" className="font-semibold text-blue-600 hover:text-blue-700">
+        <Link 
+          href="/signup?role=seller" 
+          className="font-semibold text-blue-600 hover:text-blue-700"
+        >
           Register your store
         </Link>
       </p>

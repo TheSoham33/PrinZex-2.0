@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, type FormEvent, useEffect } from 'react';
+import { useState, type FormEvent, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { loginStart, loginSuccess, logout } from '@/store/slices/authSlice';
 import PasswordInput from '@/components/auth/PasswordInput';
@@ -29,8 +29,10 @@ const INITIAL: FormState = {
   agreed: false,
 };
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get('role');
   const dispatch = useAppDispatch();
   const status = useAppSelector((state) => state.auth.status);
 
@@ -114,7 +116,11 @@ export default function SignupPage() {
       });
       
       dispatch(loginSuccess(result));
-      router.push('/');
+      if (roleParam === 'seller') {
+        router.push('/seller/register');
+      } else {
+        router.push('/stores');
+      }
     } catch (err: any) {
       dispatch(logout());
       setErrors({ general: err.message || 'Signup failed' });
@@ -304,5 +310,13 @@ export default function SignupPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-2xl" />}>
+      <SignupContent />
+    </Suspense>
   );
 }
