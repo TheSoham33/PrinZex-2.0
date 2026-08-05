@@ -82,7 +82,7 @@ export default function AdminDeliveryDetailPage({
           <h2 className="text-sm font-bold text-slate-900">Performance</h2>
           <dl className="mt-3 space-y-2.5 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-slate-500">Total deliveries</dt><dd className="font-bold text-slate-900">{rider.totalDeliveries}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-slate-500">Rating</dt><dd className="inline-flex items-center gap-1 font-bold text-slate-900"><IconStar className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{rider.rating.toFixed(1)}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-slate-500">Rating</dt><dd className="inline-flex items-center gap-1 font-bold text-slate-900"><IconStar className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{Number(rider.rating).toFixed(1)}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-slate-500">Total earnings</dt><dd className="font-bold text-slate-900">{formatCurrency(rider.totalEarnings)}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-slate-500">Zones</dt><dd className="text-right text-slate-900">{rider.zones.join(', ') || '—'}</dd></div>
           </dl>

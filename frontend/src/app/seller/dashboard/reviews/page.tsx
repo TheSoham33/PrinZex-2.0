@@ -86,7 +86,7 @@ export default function SellerReviewsPage() {
       ) : (
         <div className="card mt-6 flex flex-col gap-6 p-5 sm:flex-row sm:items-center">
           <div className="text-center sm:w-40 sm:shrink-0">
-            <p className="text-4xl font-extrabold text-slate-900">{stats.average.toFixed(1)}</p>
+            <p className="text-4xl font-extrabold text-slate-900">{Number(stats.average).toFixed(1)}</p>
             <div className="mt-1.5 flex items-center justify-center gap-0.5">
               {Array.from({ length: 5 }).map((_, index) => (
                 <IconStar

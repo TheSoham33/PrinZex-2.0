@@ -10,7 +10,7 @@ export default function ReviewsSummary({ rating, reviewCount, breakdown }: Revie
   return (
     <div className="flex flex-col gap-6 rounded-xl bg-slate-50 p-5 sm:flex-row sm:items-center">
       <div className="text-center sm:w-40 sm:shrink-0">
-        <p className="text-4xl font-extrabold text-slate-900">{rating.toFixed(1)}</p>
+        <p className="text-4xl font-extrabold text-slate-900">{Number(rating).toFixed(1)}</p>
         <div className="mt-1.5 flex items-center justify-center gap-0.5">
           {Array.from({ length: 5 }).map((_, index) => (
             <IconStar
