@@ -24,35 +24,6 @@ export function mapBackendStoreToFrontend(b: any, userLat?: number, userLng?: nu
   };
 }
 
-/** Check if current time is within opening and closing hours. */
-function isStoreOpen(open?: string, close?: string): boolean {
-  if (!open || !close) return true; // Default to open if no hours set
-  
-  const now = new Date();
-  const [nowH, nowM] = [now.getHours(), now.getMinutes()];
-  const currentMinutes = nowH * 60 + nowM;
-
-  const [openH, openM] = open.split(':').map(Number);
-  const [closeH, closeM] = close.split(':').map(Number);
-  const openMinutes = openH * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM;
-
-  return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-}
-
-/** Basic haversine distance formula for frontend usage. */
-function calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export function mapBackendServiceToFrontend(s: any): ServiceOffering {
   return {
     id: s.serviceId || s.id,
@@ -75,17 +46,56 @@ export function mapBackendReviewToFrontend(r: any): Review {
   };
 }
 
+const DEFAULT_HOURS = [
+  { day: 'Monday', open: '09:00', close: '21:00' },
+  { day: 'Tuesday', open: '09:00', close: '21:00' },
+  { day: 'Wednesday', open: '09:00', close: '21:00' },
+  { day: 'Thursday', open: '09:00', close: '21:00' },
+  { day: 'Friday', open: '09:00', close: '21:00' },
+  { day: 'Saturday', open: '10:00', close: '18:00' },
+  { day: 'Sunday', closed: true },
+];
+
 export function mapBackendStoreDetailToFrontend(b: any, reviews: any[] = []): StoreDetail {
   return {
     ...mapBackendStoreToFrontend(b),
     description: b.description || '',
-    address: `${b.storeAddress}, ${b.city}, ${b.state} ${b.pincode}`,
+    address: b.storeAddress ? `${b.storeAddress}, ${b.city}, ${b.state} ${b.pincode}` : b.address || '',
     phone: b.phone || '',
     email: b.email || '',
     responseTime: 'Replies in ~15 min',
-    hours: [], // Backend metadata.hours
+    hours: b.metadata?.hours || DEFAULT_HOURS,
     services: b.services?.map(mapBackendServiceToFrontend) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),
     ratingBreakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }, // Calculate if needed
   };
+}
+
+/** Basic haversine distance formula for frontend usage. */
+function calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/** Check if current time is within opening and closing hours. */
+function isStoreOpen(open?: string, close?: string): boolean {
+  if (!open || !close) return true; // Default to open if no hours set
+  
+  const now = new Date();
+  const [nowH, nowM] = [now.getHours(), now.getMinutes()];
+  const currentMinutes = nowH * 60 + nowM;
+
+  const [openH, openM] = open.split(':').map(Number);
+  const [closeH, closeM] = close.split(':').map(Number);
+  const openMinutes = openH * 60 + openM;
+  const closeMinutes = closeH * 60 + closeM;
+
+  return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
 }

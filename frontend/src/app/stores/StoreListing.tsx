@@ -53,7 +53,7 @@ export default function StoreListing() {
     }),
   });
 
-  const results = data?.data || []; 
+  const results = Array.isArray(data?.data) ? data.data : []; 
   const totalCount = data?.pagination?.total ?? results.length;
 
   const handleSearch = () => {
@@ -68,13 +68,13 @@ export default function StoreListing() {
   const clearFilters = () => setFilters(INITIAL_FILTERS);
 
   const activeChips: { key: string; label: string; onRemove: () => void }[] = [
-    ...filters.services.map((service) => ({
-      key: `service-${service}`,
-      label: service,
+    ...filters.services.map((serviceId) => ({
+      key: `service-${serviceId}`,
+      label: serviceId.split('_')[1] || serviceId,
       onRemove: () =>
         setFilters((prev) => ({
           ...prev,
-          services: prev.services.filter((item) => item !== service),
+          services: prev.services.filter((item) => item !== serviceId),
         })),
     })),
     ...(filters.minRating > 0

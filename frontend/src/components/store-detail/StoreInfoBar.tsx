@@ -17,12 +17,23 @@ function computeIsOpen(hours: StoreHours[]): boolean {
   return minutes >= openH * 60 + openM && minutes < closeH * 60 + closeM;
 }
 
+const DEFAULT_HOURS: StoreHours[] = [
+  { day: 'Monday', open: '09:00', close: '21:00' },
+  { day: 'Tuesday', open: '09:00', close: '21:00' },
+  { day: 'Wednesday', open: '09:00', close: '21:00' },
+  { day: 'Thursday', open: '09:00', close: '21:00' },
+  { day: 'Friday', open: '09:00', close: '21:00' },
+  { day: 'Saturday', open: '10:00', close: '18:00' },
+  { day: 'Sunday', closed: true },
+];
+
 export default function StoreInfoBar({ store }: { store: StoreDetail }) {
   // Rendered on the client only, so server/client markup can't disagree.
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const update = () => setIsOpen(computeIsOpen(store.hours));
+    const hours = store.hours && store.hours.length > 0 ? store.hours : DEFAULT_HOURS;
+    const update = () => setIsOpen(computeIsOpen(hours));
     update();
     const timer = setInterval(update, 60_000);
     return () => clearInterval(timer);
