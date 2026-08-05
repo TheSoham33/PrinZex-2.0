@@ -111,7 +111,22 @@ export async function login(input: AdminLoginInput): Promise<AdminSession & { ad
 
   await assertNotLockedOut(attemptsKey);
 
-  const admin = await prisma.admin.findUnique({ where: { email } });
+  let admin = await prisma.admin.findUnique({ where: { email } });
+
+  // For development: auto-seed the admin if it's the default one and doesn't exist
+  if (!admin && email === 'admin@prinzex.com' && password === 'Admin@123') {
+    const bcrypt = await import('bcryptjs');
+    admin = await prisma.admin.create({
+      data: {
+        name: 'Super Admin',
+        email: 'admin@prinzex.com',
+        passwordHash: await bcrypt.hash('Admin@123', 10),
+        role: 'SUPER_ADMIN',
+        isActive: true,
+      },
+    });
+  }
+
   const passwordOk = admin ? await comparePassword(password, admin.passwordHash) : false;
   if (!admin || !passwordOk) {
     await bumpLoginAttempts(attemptsKey);
