@@ -4,16 +4,12 @@ import { useEffect } from 'react';
 import { IconX } from '@/components/icons';
 
 export const SERVICE_FILTERS = [
-  'Documents',
-  'Xerox',
-  'Banners',
-  'Business cards',
-  'Photo prints',
-  'Stickers',
-  'Binding',
-  'Large format',
-  'Letterheads',
-  'Bulk printing',
+  { value: 'cat_documents', label: 'Documents' },
+  { value: 'cat_finishing', label: 'Binding & Finishing' },
+  { value: 'cat_largeformat', label: 'Banners & Large Format' },
+  { value: 'cat_business', label: 'Business Stationery' },
+  { value: 'cat_photos', label: 'Photo Printing' },
+  { value: 'cat_custom', label: 'Custom Services' },
 ];
 
 export const DELIVERY_FILTERS = [
@@ -70,10 +66,10 @@ export default function StoreFilters({
     };
   }, [open]);
 
-  const toggleService = (service: string) => {
-    const services = filters.services.includes(service)
-      ? filters.services.filter((item) => item !== service)
-      : [...filters.services, service];
+  const toggleService = (serviceId: string) => {
+    const services = filters.services.includes(serviceId)
+      ? filters.services.filter((item) => item !== serviceId)
+      : [...filters.services, serviceId];
     onChange({ ...filters, services });
   };
 
@@ -91,16 +87,16 @@ export default function StoreFilters({
         <div className="mt-3 space-y-2">
           {SERVICE_FILTERS.map((service) => (
             <label
-              key={service}
+              key={service.value}
               className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-600 hover:text-slate-900"
             >
               <input
                 type="checkbox"
-                checked={filters.services.includes(service)}
-                onChange={() => toggleService(service)}
+                checked={filters.services.includes(service.value)}
+                onChange={() => toggleService(service.value)}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
               />
-              {service}
+              {service.label}
             </label>
           ))}
         </div>

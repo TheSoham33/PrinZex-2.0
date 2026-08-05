@@ -41,8 +41,8 @@ export default function StoreListing() {
     }),
   });
 
-  const results = data?.items || [];
-  const totalCount = data?.pagination?.totalItems || 0;
+  const results = data?.data || []; 
+  const totalCount = data?.pagination?.total ?? results.length;
 
   const handleSearch = () => {
     const params = new URLSearchParams();
