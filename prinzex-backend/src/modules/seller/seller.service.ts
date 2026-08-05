@@ -228,7 +228,7 @@ export interface StoreInfo {
 async function findSellerOrThrow(sellerId: string) {
   const seller = await prisma.seller.findUnique({
     where: { id: sellerId },
-    include: { services: true, documents: true, bankDetails: true },
+    include: { services: true, documents: true, bankDetails: true, pincodes: true },
   });
   if (!seller) {
     throw ApiError.notFound('Store not found');
@@ -239,6 +239,7 @@ async function findSellerOrThrow(sellerId: string) {
 function toStoreInfo(
   seller: Seller & {
     services: SellerService[];
+    pincodes: Array<{ pincode: string; isExcluded: boolean }>;
     documents: Array<{
       id: string;
       docType: string;
@@ -288,6 +289,7 @@ function toStoreInfo(
     createdAt: seller.createdAt,
     updatedAt: seller.updatedAt,
     services: seller.services,
+    pincodes: seller.pincodes,
     documents: seller.documents.map((doc) => ({
       id: doc.id,
       docType: doc.docType,

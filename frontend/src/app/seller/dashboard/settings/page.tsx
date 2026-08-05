@@ -85,21 +85,32 @@ export default function SellerSettingsPage() {
         pincode: data.pincode || '',
       });
 
-      if (data.metadata?.hours) {
+      const rootOpen = data.openingTime || '09:00';
+      const rootClose = data.closingTime || '21:00';
+
+      if (data.metadata?.hours && Array.isArray(data.metadata.hours) && data.metadata.hours.length > 0) {
         const backendHours = data.metadata.hours as any[];
         setHours(DAYS.map(day => {
           const found = backendHours.find(h => h.day.toLowerCase() === day.toLowerCase());
           return {
             day,
             closed: found ? found.closed : day === 'Sunday',
-            open: found ? found.open : '09:00',
-            close: found ? found.close : '21:00'
+            open: found ? found.open : rootOpen,
+            close: found ? found.close : rootClose
           };
         }));
+      } else {
+        // Fallback to root times for all days except Sunday
+        setHours(DAYS.map(day => ({
+          day,
+          closed: day === 'Sunday',
+          open: rootOpen,
+          close: rootClose
+        })));
       }
 
       setRadius(data.deliveryRadius || 10);
-      if (data.pincodes) {
+      if (data.pincodes && Array.isArray(data.pincodes)) {
         setPincodes(data.pincodes.map((p: any) => p.pincode));
       }
     }
