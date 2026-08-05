@@ -4,9 +4,8 @@ import {
   FINISHING_OPTIONS,
   PAPER_SIZES,
   PAPER_TYPES,
-  type OrderSpecifications,
-  type ServiceOffering,
 } from '@/lib/mock-data/stores';
+import type { OrderSpecifications, ServiceOffering } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle } from '@/components/icons';
