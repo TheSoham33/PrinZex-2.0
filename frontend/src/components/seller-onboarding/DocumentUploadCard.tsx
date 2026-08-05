@@ -6,7 +6,7 @@ import { IconCheckCircle, IconFileText, IconTrash, IconUpload } from '@/componen
 
 interface DocumentUploadCardProps {
   doc: UploadedDoc;
-  onUpload: (fileName: string | null) => void;
+  onUpload: (file: File | null) => void;
 }
 
 export default function DocumentUploadCard({ doc, onUpload }: DocumentUploadCardProps) {
@@ -32,7 +32,7 @@ export default function DocumentUploadCard({ doc, onUpload }: DocumentUploadCard
             {doc.label} <span className="text-red-500">*</span>
           </p>
           {doc.file ? (
-            <p className="mt-0.5 truncate text-xs text-green-700">{doc.file}</p>
+            <p className="mt-0.5 truncate text-xs text-green-700">{doc.fileName}</p>
           ) : (
             <p className="mt-0.5 text-xs text-slate-500">PDF, JPG or PNG · up to 5 MB</p>
           )}
@@ -67,7 +67,7 @@ export default function DocumentUploadCard({ doc, onUpload }: DocumentUploadCard
         accept=".pdf,.jpg,.jpeg,.png"
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) onUpload(file.name);
+          if (file) onUpload(file);
         }}
         className="hidden"
       />

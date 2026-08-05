@@ -6,7 +6,7 @@ import { IconAlertCircle, IconShieldCheck } from '@/components/icons';
 
 interface DocumentUploadStepProps {
   documents: UploadedDoc[];
-  onUpload: (type: DocumentType, fileName: string | null) => void;
+  onUpload: (type: DocumentType, file: File | null) => void;
   error: string | null;
 }
 
@@ -49,7 +49,7 @@ export default function DocumentUploadStep({
           <DocumentUploadCard
             key={doc.type}
             doc={doc}
-            onUpload={(fileName) => onUpload(doc.type, fileName)}
+            onUpload={(file) => onUpload(doc.type, file)}
           />
         ))}
       </div>

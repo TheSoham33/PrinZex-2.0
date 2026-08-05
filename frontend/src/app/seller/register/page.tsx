@@ -29,6 +29,7 @@ import BankDetailsStep from '@/components/seller-onboarding/BankDetailsStep';
 import DocumentUploadStep from '@/components/seller-onboarding/DocumentUploadStep';
 import ReviewSubmitStep from '@/components/seller-onboarding/ReviewSubmitStep';
 import { IconArrowLeft, IconArrowRight, IconCheckCircle, IconX } from '@/components/icons';
+import { registerSeller, uploadSellerDocuments } from '@/lib/api/seller-registration';
 
 const TOTAL_STEPS = 5;
 
@@ -38,7 +39,7 @@ type Action =
   | { type: 'UPDATE_PRICING'; payload: { serviceId: string; patch: Partial<PricingEntry> } }
   | { type: 'SET_ALL_UNITS'; payload: PricingUnit }
   | { type: 'UPDATE_BANK_DETAILS'; payload: Partial<BankDetails> }
-  | { type: 'UPDATE_DOC'; payload: { type: DocumentType; file: string | null } }
+  | { type: 'UPDATE_DOC'; payload: { type: DocumentType; file: File | null } }
   | { type: 'SET_STEP'; payload: number }
   | { type: 'HYDRATE_DRAFT'; payload: SellerRegistrationState };
 
@@ -110,7 +111,9 @@ function reducer(state: SellerRegistrationState, action: Action): SellerRegistra
       return {
         ...state,
         documents: state.documents.map((doc) =>
-          doc.type === action.payload.type ? { ...doc, file: action.payload.file } : doc,
+          doc.type === action.payload.type 
+            ? { ...doc, file: action.payload.file, fileName: action.payload.file?.name ?? null } 
+            : doc,
         ),
       };
 
@@ -296,13 +299,57 @@ export default function SellerRegisterPage() {
       return;
     }
     setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    setStepError(null);
+
     try {
+      // 1. Create the seller application
+      const storeInfo = state.storeInfo;
+      await registerSeller({
+        storeName: storeInfo.storeName,
+        ownerName: storeInfo.ownerName,
+        email: storeInfo.email,
+        phone: storeInfo.phone.replace(/\D/g, '').slice(-10),
+        gstNumber: storeInfo.gstNumber || undefined,
+        businessType: storeInfo.businessType,
+        storeAddress: storeInfo.storeAddress,
+        city: storeInfo.city,
+        state: storeInfo.state,
+        pincode: storeInfo.pincode,
+        openingTime: storeInfo.openingTime,
+        closingTime: storeInfo.closingTime,
+        services: state.pricing.map((p) => ({
+          categoryId: state.selectedServices.find(s => s.serviceId === p.serviceId)?.categoryId || 'other',
+          categoryName: state.selectedServices.find(s => s.serviceId === p.serviceId)?.serviceName || 'Other',
+          serviceId: p.serviceId,
+          serviceName: p.serviceName,
+          basePrice: Number(p.basePrice),
+          unit: p.unit
+        })),
+        bankDetails: {
+          accountHolderName: state.bankDetails.accountHolderName,
+          accountNumber: state.bankDetails.accountNumber,
+          ifscCode: state.bankDetails.ifscCode,
+          panNumber: state.bankDetails.panNumber,
+        }
+      });
+
+      // 2. Upload documents
+      const formData = new FormData();
+      state.documents.forEach((doc) => {
+        if (doc.file) {
+          formData.append(doc.type, doc.file);
+        }
+      });
+
+      await uploadSellerDocuments(formData);
+
+      // Success!
       sessionStorage.removeItem(SELLER_DRAFT_KEY);
-    } catch {
-      /* ignore */
+      router.push('/seller/pending');
+    } catch (err: any) {
+      setStepError(err.message || 'Failed to submit application. Please try again.');
+      setSubmitting(false);
     }
-    router.push('/seller/pending');
   };
 
   const discardDraft = () => {

@@ -64,8 +64,10 @@ export type DocumentType =
 export interface UploadedDoc {
   type: DocumentType;
   label: string;
-  /** File name once selected; null while empty. */
-  file: string | null;
+  /** Actual File object once selected; null while empty. */
+  file: File | null;
+  /** Display name of the file */
+  fileName: string | null;
 }
 
 export interface SellerRegistrationState {
@@ -92,10 +94,10 @@ export const BUSINESS_TYPES: { value: Exclude<BusinessType, ''>; label: string }
 ];
 
 export const REQUIRED_DOCUMENTS: UploadedDoc[] = [
-  { type: 'gst_certificate', label: 'GST Certificate', file: null },
-  { type: 'business_license', label: 'Business License', file: null },
-  { type: 'owner_id', label: 'Owner ID Proof', file: null },
-  { type: 'address_proof', label: 'Address Proof', file: null },
+  { type: 'gst_certificate', label: 'GST Certificate', file: null, fileName: null },
+  { type: 'business_license', label: 'Business License', file: null, fileName: null },
+  { type: 'owner_id', label: 'Owner ID Proof', file: null, fileName: null },
+  { type: 'address_proof', label: 'Address Proof', file: null, fileName: null },
 ];
 
 /** 8 categories / 34 services offered during seller onboarding. */
