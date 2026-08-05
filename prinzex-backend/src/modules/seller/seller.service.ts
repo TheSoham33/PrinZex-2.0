@@ -317,8 +317,16 @@ export async function updateStore(sellerId: string, input: UpdateStoreInput): Pr
 
   const data: Prisma.SellerUpdateInput = {};
   if (input.storeName !== undefined) data.storeName = input.storeName;
+  if (input.ownerName !== undefined) data.ownerName = input.ownerName;
+  if (input.email !== undefined) data.email = input.email;
+  if (input.phone !== undefined) data.phone = input.phone;
+  if (input.businessType !== undefined) data.businessType = input.businessType;
+  if (input.gstNumber !== undefined) data.gstNumber = input.gstNumber;
   if (input.description !== undefined) data.description = input.description;
   if (input.storeAddress !== undefined) data.storeAddress = input.storeAddress;
+  if (input.city !== undefined) data.city = input.city;
+  if (input.state !== undefined) data.state = input.state;
+  if (input.pincode !== undefined) data.pincode = input.pincode;
   if (input.openingTime !== undefined) data.openingTime = input.openingTime;
   if (input.closingTime !== undefined) data.closingTime = input.closingTime;
   if (input.logoUrl !== undefined) data.logoUrl = input.logoUrl;

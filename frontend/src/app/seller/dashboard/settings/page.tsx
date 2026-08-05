@@ -142,10 +142,17 @@ export default function SellerSettingsPage() {
     if (label === 'Store info') {
       updateStoreMutation.mutate({
         storeName: storeInfo.storeName,
-        description: storeInfo.storeAddress, // Using address as description for now or just storeName?
+        ownerName: storeInfo.ownerName,
+        email: storeInfo.email,
+        phone: storeInfo.phone.replace(/\D/g, '').slice(-10),
+        businessType: storeInfo.businessType,
+        gstNumber: storeInfo.gstNumber,
         storeAddress: storeInfo.storeAddress,
-        openingTime: storeInfo.openingTime || '09:00',
-        closingTime: storeInfo.closingTime || '21:00',
+        city: storeInfo.city,
+        state: storeInfo.state,
+        pincode: storeInfo.pincode,
+        openingTime: data?.openingTime || '09:00',
+        closingTime: data?.closingTime || '21:00',
       });
     } else if (label === 'Service hours') {
       const payload = hours.map(h => ({
