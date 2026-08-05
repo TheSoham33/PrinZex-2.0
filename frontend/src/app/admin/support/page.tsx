@@ -54,6 +54,7 @@ function SupportInner() {
     onError: (err: any) => showToast(err.message, 'error'),
   });
 
+  // Safety: Move sendReply AFTER currentTicket query to avoid ReferenceError
   const sendReply = useCallback(() => {
     if (!currentTicket || !reply.trim()) return;
     replyMutation.mutate(reply.trim());
