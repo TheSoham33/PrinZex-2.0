@@ -43,7 +43,7 @@ export default function ProfilePage() {
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     setSaving(true);
     setError(null);
@@ -86,6 +86,7 @@ export default function ProfilePage() {
               {form.avatarUrl ? (
                 <img 
                   src={form.avatarUrl.startsWith('http') ? form.avatarUrl : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${form.avatarUrl}`} 
+                  key={form.avatarUrl}
                   alt={form.name} 
                   className="h-full w-full object-cover" 
                 />

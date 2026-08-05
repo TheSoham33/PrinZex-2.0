@@ -1,10 +1,24 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAppSelector } from '@/store/hooks';
 import LoginTabs from '@/components/auth/LoginTabs';
 import { IconPrinter } from '@/components/icons';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const user = useAppSelector((state) => state.auth.user);
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
+
+  if (user) return null;
+
   return (
     <div>
       <Link href="/" className="mb-8 flex items-center gap-2 lg:hidden">
