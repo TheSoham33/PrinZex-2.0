@@ -1,38 +1,43 @@
-import { fakeDelay } from '@/lib/utils';
-import {
-  MOCK_INVENTORY,
-  MOCK_PAYOUTS,
-  MOCK_SELLER_PRICING,
-  MOCK_SELLER_REVIEWS,
-  MOCK_TEAM,
-  type InventoryItem,
-  type Payout,
-  type SellerPricingEntry,
-  type SellerReview,
-  type TeamMember,
-} from '@/lib/mock-data/seller-inventory';
+import { apiRequest } from './client';
 
-export const fetchInventory = async (): Promise<InventoryItem[]> => {
-  await fakeDelay();
-  return MOCK_INVENTORY;
+export const fetchInventory = async (params: any = {}): Promise<any[]> => {
+  return apiRequest<any>('/seller/inventory', { params });
 };
 
-export const fetchPayouts = async (): Promise<Payout[]> => {
-  await fakeDelay();
-  return MOCK_PAYOUTS;
+export const fetchPayouts = async (params: any = {}): Promise<any[]> => {
+  const res = await apiRequest<any>('/seller/payouts', { params });
+  return res.data || res;
 };
 
-export const fetchSellerPricing = async (): Promise<SellerPricingEntry[]> => {
-  await fakeDelay();
-  return MOCK_SELLER_PRICING;
+export interface PricingInfo {
+  services: any[];
+  bulkDiscountTiers: any[];
+}
+
+export const fetchSellerPricing = async (): Promise<PricingInfo> => {
+  return apiRequest<PricingInfo>('/seller/pricing');
 };
 
-export const fetchSellerReviews = async (): Promise<SellerReview[]> => {
-  await fakeDelay();
-  return MOCK_SELLER_REVIEWS;
+export const updateBulkPrices = async (prices: Array<{ serviceId: string; basePrice: number; unit: string }>): Promise<any> => {
+  return apiRequest<any>('/seller/pricing/bulk', {
+    method: 'PATCH',
+    body: JSON.stringify(prices),
+  });
 };
 
-export const fetchTeam = async (): Promise<TeamMember[]> => {
-  await fakeDelay();
-  return MOCK_TEAM;
+export const updateBulkDiscounts = async (tiers: Array<{ minQty: number; discountPct: number }>): Promise<any> => {
+  return apiRequest<any>('/seller/pricing/bulk-discounts', {
+    method: 'PATCH',
+    body: JSON.stringify({ tiers }),
+  });
+};
+
+export const fetchSellerReviews = async (): Promise<any[]> => {
+  // Reviews are currently under admin or public, but let's check if there's a seller specific one.
+  // Actually, we don't have a seller-specific review list endpoint yet.
+  return [];
+};
+
+export const fetchTeam = async (): Promise<any[]> => {
+  return apiRequest<any[]>('/seller/team');
 };

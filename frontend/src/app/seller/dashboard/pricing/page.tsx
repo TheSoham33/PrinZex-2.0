@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { fetchSellerPricing } from '@/lib/api/seller-inventory';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchSellerPricing, updateBulkPrices, updateBulkDiscounts } from '@/lib/api/seller-inventory';
 import {
-  MOCK_BULK_TIERS,
   type BulkTier,
   type SellerPricingEntry,
 } from '@/lib/mock-data/seller-inventory';
@@ -15,38 +14,55 @@ import { IconAlertCircle, IconPencil, IconRefreshCw, IconZap } from '@/component
 
 export default function SellerPricingPage() {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['seller-pricing'],
     queryFn: fetchSellerPricing,
   });
 
-  const [pricing, setPricing] = useState<SellerPricingEntry[]>([]);
-  const [tiers, setTiers] = useState<BulkTier[]>(MOCK_BULK_TIERS);
-  const [editingTier, setEditingTier] = useState<string | null>(null);
+  const [pricing, setPricing] = useState<any[]>([]);
+  const [tiers, setTiers] = useState<any[]>([]);
+  const [editingTier, setEditingTier] = useState<number | null>(null); // Use index as ID if needed or minQty
   const [tierDraft, setTierDraft] = useState('');
   const [rushEnabled, setRushEnabled] = useState(true);
   const [rushPct, setRushPct] = useState('25');
 
   useEffect(() => {
-    if (data) setPricing(data);
+    if (data) {
+      setPricing(data.services || []);
+      setTiers(data.bulkDiscountTiers || []);
+    }
   }, [data]);
 
+  const updatePriceMutation = useMutation({
+    mutationFn: updateBulkPrices,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
+      showToast('Price updated');
+    },
+    onError: (err: any) => showToast(err.message, 'error')
+  });
+
+  const updateTiersMutation = useMutation({
+    mutationFn: updateBulkDiscounts,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
+      showToast('Bulk discount updated');
+    },
+    onError: (err: any) => showToast(err.message, 'error')
+  });
+
   const savePrice = (serviceId: string, basePrice: number, unit: string) => {
-    setPricing((previous) =>
-      previous.map((entry) =>
-        entry.serviceId === serviceId ? { ...entry, basePrice, unit } : entry,
-      ),
-    );
-    showToast('Price updated');
+    updatePriceMutation.mutate([{ serviceId, basePrice, unit }]);
   };
 
-  const saveTier = (id: string) => {
+  const saveTier = (index: number) => {
     const parsed = Number(tierDraft);
     if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100) {
-      setTiers((previous) =>
-        previous.map((tier) => (tier.id === id ? { ...tier, discountPct: parsed } : tier)),
+      const nextTiers = tiers.map((tier, i) => 
+        i === index ? { ...tier, discountPct: parsed } : { minQty: tier.minQty, discountPct: tier.discountPct }
       );
-      showToast('Bulk discount updated');
+      updateTiersMutation.mutate(nextTiers);
     }
     setEditingTier(null);
   };
@@ -85,7 +101,16 @@ export default function SellerPricingPage() {
           <div className="h-72 animate-pulse bg-slate-100" />
         ) : (
           pricing.map((entry) => (
-            <PricingEditor key={entry.serviceId} entry={entry} onSave={savePrice} />
+            <PricingEditor 
+              key={entry.id} 
+              entry={{
+                serviceId: entry.id,
+                serviceName: entry.serviceName,
+                basePrice: Number(entry.basePrice),
+                unit: entry.unit
+              }} 
+              onSave={savePrice} 
+            />
           ))
         )}
       </section>
@@ -114,72 +139,79 @@ export default function SellerPricingPage() {
             </tr>
           </thead>
           <tbody>
-            {tiers.map((tier) => (
-              <tr key={tier.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 text-sm text-slate-700">
-                  {tier.maxQty === null
-                    ? `${tier.minQty}+ units`
-                    : `${tier.minQty}–${tier.maxQty} units`}
-                </td>
-                <td className="px-4 py-3">
-                  {editingTier === tier.id ? (
-                    <div className="flex items-center gap-1.5">
-                      <label htmlFor={`tier-${tier.id}`} className="sr-only">
-                        Discount percentage for {tier.minQty} units and up
-                      </label>
-                      <input
-                        id={`tier-${tier.id}`}
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={tierDraft}
-                        onChange={(event) => setTierDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') saveTier(tier.id);
-                          if (event.key === 'Escape') setEditingTier(null);
+            {tiers.map((tier, index) => {
+              const isEditing = editingTier === index;
+              // Determine maxQty for display if not present in real data
+              const nextTier = tiers[index + 1];
+              const displayMax = tier.maxQty || (nextTier ? nextTier.minQty - 1 : null);
+
+              return (
+                <tr key={tier.minQty} className="border-b border-slate-100 last:border-0">
+                  <td className="px-4 py-3 text-sm text-slate-700">
+                    {displayMax === null
+                      ? `${tier.minQty}+ units`
+                      : `${tier.minQty}–${displayMax} units`}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <div className="flex items-center gap-1.5">
+                        <label htmlFor={`tier-${index}`} className="sr-only">
+                          Discount percentage for {tier.minQty} units and up
+                        </label>
+                        <input
+                          id={`tier-${index}`}
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={tierDraft}
+                          onChange={(event) => setTierDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') saveTier(index);
+                            if (event.key === 'Escape') setEditingTier(null);
+                          }}
+                          className="input w-20 py-1.5 text-sm"
+                        />
+                        <span className="text-sm text-slate-500">%</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm font-bold text-slate-900">{tier.discountPct}% off</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {isEditing ? (
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => saveTier(index)}
+                          className="btn-primary text-xs"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingTier(null)}
+                          className="btn-secondary text-xs"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTierDraft(String(tier.discountPct));
+                          setEditingTier(index);
                         }}
-                        className="input w-20 py-1.5 text-sm"
-                      />
-                      <span className="text-sm text-slate-500">%</span>
-                    </div>
-                  ) : (
-                    <span className="text-sm font-bold text-slate-900">{tier.discountPct}% off</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {editingTier === tier.id ? (
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => saveTier(tier.id)}
-                        className="btn-primary text-xs"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingTier(null)}
                         className="btn-secondary text-xs"
+                        aria-label={`Edit discount for ${tier.minQty} units and up`}
                       >
-                        Cancel
+                        <IconPencil className="h-3.5 w-3.5" /> Edit
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTierDraft(String(tier.discountPct));
-                        setEditingTier(tier.id);
-                      }}
-                      className="btn-secondary text-xs"
-                      aria-label={`Edit discount for ${tier.minQty} units and up`}
-                    >
-                      <IconPencil className="h-3.5 w-3.5" /> Edit
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>
