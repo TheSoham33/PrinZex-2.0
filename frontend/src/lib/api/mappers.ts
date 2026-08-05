@@ -5,7 +5,7 @@ export function mapBackendStoreToFrontend(b: any): Store {
     id: b.id,
     name: b.storeName,
     imageUrl: b.logoUrl || '',
-    rating: b.averageRating || 0,
+    rating: Number(b.averageRating || 0),
     reviewCount: b.reviewCount || 0,
     distanceKm: 0, // Should be calculated or returned by backend
     etaLabel: '30–45 min',

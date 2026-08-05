@@ -30,7 +30,7 @@ export default function StoreCard({ store }: { store: Store }) {
           </h3>
           <span className="flex shrink-0 items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 text-xs font-bold text-green-700">
             <IconStar className="h-3 w-3 fill-current" />
-            {store.rating.toFixed(1)}
+            {Number(store.rating).toFixed(1)}
           </span>
         </div>
 

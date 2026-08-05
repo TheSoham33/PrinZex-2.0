@@ -57,7 +57,7 @@ export default function StoreHeader({ store }: { store: StoreDetail }) {
               <span className="inline-flex items-center gap-1.5">
                 <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 font-bold text-green-700">
                   <IconStar className="h-3.5 w-3.5 fill-current" />
-                  {store.rating.toFixed(1)}
+                  {Number(store.rating).toFixed(1)}
                 </span>
                 <span className="text-slate-500">({store.reviewCount} reviews)</span>
               </span>
