@@ -134,13 +134,6 @@ export default function SellerRegisterPage() {
   const user = useAppSelector((state) => state.auth.user);
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (hydrated && !user) {
-      router.replace(`/login?returnUrl=${encodeURIComponent('/seller/register')}`);
-    }
-  }, [user, router, hydrated]);
-
   const [storeErrors, setStoreErrors] = useState<Partial<Record<keyof StoreInfo, string>>>({});
   const [bankErrors, setBankErrors] = useState<Partial<Record<keyof BankDetails, string>>>({});
   const [stepError, setStepError] = useState<string | null>(null);
@@ -150,6 +143,13 @@ export default function SellerRegisterPage() {
   const [draftRestored, setDraftRestored] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [showReview, setShowReview] = useState(false);
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (hydrated && !user) {
+      router.replace(`/login?returnUrl=${encodeURIComponent('/seller/register')}`);
+    }
+  }, [user, router, hydrated]);
 
   // Restore any saved draft on mount.
   useEffect(() => {
