@@ -132,6 +132,8 @@ function SignupContent() {
     console.log(msg);
   };
 
+  const isSeller = roleParam === 'seller';
+
   return (
     <div>
       <Link href="/" className="mb-8 flex items-center gap-2 lg:hidden">
@@ -144,10 +146,12 @@ function SignupContent() {
       </Link>
 
       <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-        Create your account
+        {isSeller ? 'Register as a Seller' : 'Create your account'}
       </h1>
       <p className="mt-2 text-sm text-slate-600">
-        Free forever. No subscription, pay only for what you print.
+        {isSeller 
+          ? 'Set up your seller account first to start listing your print shop.' 
+          : 'Free forever. No subscription, pay only for what you print.'}
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
@@ -160,14 +164,14 @@ function SignupContent() {
 
         <div>
           <label htmlFor="fullName" className="label">
-            Full name
+            {isSeller ? 'Business owner name' : 'Full name'}
           </label>
           <input
             id="fullName"
             type="text"
             value={form.fullName}
             onChange={(event) => update('fullName', event.target.value)}
-            placeholder="Ananya Sen"
+            placeholder={isSeller ? 'Ramesh Gupta' : 'Ananya Sen'}
             autoComplete="name"
             className={`input ${errors.fullName ? 'input-error' : ''}`}
           />
@@ -305,7 +309,10 @@ function SignupContent() {
 
       <p className="mt-8 text-center text-sm text-slate-600">
         Already have an account?{' '}
-        <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-700">
+        <Link 
+          href={isSeller ? "/login?returnUrl=%2Fseller%2Fregister" : "/login"} 
+          className="font-semibold text-blue-600 hover:text-blue-700"
+        >
           Log in
         </Link>
       </p>
