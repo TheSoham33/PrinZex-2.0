@@ -46,7 +46,12 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
     if (endpoint.startsWith('/admin')) {
       token = state.adminAuth.accessToken || state.auth.accessToken;
     } else if (endpoint.startsWith('/seller')) {
-      token = state.sellerAuth.accessToken || state.auth.accessToken;
+      // Special case: Onboarding routes use the customer token
+      if (endpoint.startsWith('/seller/register')) {
+        token = state.auth.accessToken;
+      } else {
+        token = state.sellerAuth.accessToken || state.auth.accessToken;
+      }
     } else {
       token = state.auth.accessToken || state.sellerAuth.accessToken || state.adminAuth.accessToken;
     }
@@ -68,8 +73,13 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
         const { adminLogout } = await import('@/store/slices/adminAuthSlice');
         store.dispatch(adminLogout());
       } else if (endpoint.startsWith('/seller')) {
-        const { sellerLogout } = await import('@/store/slices/sellerAuthSlice');
-        store.dispatch(sellerLogout());
+        // Special case: onboarding uses customer token
+        if (endpoint.startsWith('/seller/register')) {
+          store.dispatch(logout());
+        } else {
+          const { sellerLogout } = await import('@/store/slices/sellerAuthSlice');
+          store.dispatch(sellerLogout());
+        }
       } else {
         store.dispatch(logout());
       }
