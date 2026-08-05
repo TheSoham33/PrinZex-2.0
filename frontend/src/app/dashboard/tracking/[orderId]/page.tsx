@@ -111,7 +111,7 @@ export default function TrackingPage({ params }: { params: Promise<{ orderId: st
               <p className="font-semibold text-slate-900">{courier.name}</p>
               <p className="mt-0.5 text-sm text-slate-500">{courier.vehicle}</p>
               <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-600">
-                <IconStar className="h-3.5 w-3.5 fill-current" /> {courier.rating.toFixed(1)} rating
+                <IconStar className="h-3.5 w-3.5 fill-current" /> {Number(courier.rating).toFixed(1)} rating
               </p>
             </div>
             <div className="flex gap-2">
