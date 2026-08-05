@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  fetchStoreInfo, 
+  updateStoreInfo, 
+  updateDeliverySettings, 
+  updateStoreHours 
+} from '@/lib/api/seller-settings';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { BUSINESS_TYPES, type BusinessType } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
-import { IconAlertCircle, IconPlus, IconX } from '@/components/icons';
+import { IconAlertCircle, IconPlus, IconX, IconRefreshCw } from '@/components/icons';
 
 const TABS = ['Store info', 'Service hours', 'Delivery radius', 'Notifications'] as const;
 type Tab = (typeof TABS)[number];
@@ -28,75 +34,136 @@ interface NotificationSetting {
 
 export default function SellerSettingsPage() {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>('Store info');
   const [saving, setSaving] = useState(false);
 
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['seller-store-info'],
+    queryFn: fetchStoreInfo,
+  });
+
   const [storeInfo, setStoreInfo] = useState({
-    storeName: 'Demo Print Shop',
-    ownerName: 'Rajesh Kumar',
-    email: 'rajesh@demoprintshop.in',
-    phone: '9830012345',
-    gstNumber: '19AAAAA0000A1Z5',
+    storeName: '',
+    ownerName: '',
+    email: '',
+    phone: '',
+    gstNumber: '',
     businessType: 'sole_proprietor' as BusinessType,
-    storeAddress: '23A, BD Block, Sector 1, Salt Lake City',
-    city: 'Kolkata',
-    state: 'West Bengal',
-    pincode: '700064',
+    storeAddress: '',
+    city: '',
+    state: '',
+    pincode: '',
   });
 
   const [hours, setHours] = useState<DayHours[]>(
     DAYS.map((day) => ({
       day,
       closed: day === 'Sunday',
-      open: day === 'Saturday' ? '10:00' : '09:00',
-      close: day === 'Saturday' ? '18:00' : '21:00',
+      open: '09:00',
+      close: '21:00',
     })),
   );
 
-  const [radius, setRadius] = useState(12);
-  const [pincodes, setPincodes] = useState(['700064', '700091', '700102']);
+  const [radius, setRadius] = useState(10);
+  const [pincodes, setPincodes] = useState<string[]>([]);
   const [pincodeDraft, setPincodeDraft] = useState('');
   const [pincodeError, setPincodeError] = useState<string | null>(null);
 
-  const [notifications, setNotifications] = useState<NotificationSetting[]>([
-    {
-      key: 'new-orders',
-      label: 'New order alerts',
-      description: 'Get notified the moment a customer places an order.',
-      enabled: true,
+  useEffect(() => {
+    if (data) {
+      setStoreInfo({
+        storeName: data.storeName || '',
+        ownerName: data.ownerName || '',
+        email: data.email || '',
+        phone: (data.phone || '').replace('+91', '').trim(),
+        gstNumber: data.gstNumber || '',
+        businessType: (data.businessType?.toLowerCase().replace(' ', '_') || 'sole_proprietor') as BusinessType,
+        storeAddress: data.storeAddress || '',
+        city: data.city || '',
+        state: data.state || '',
+        pincode: data.pincode || '',
+      });
+
+      if (data.metadata?.hours) {
+        const backendHours = data.metadata.hours as any[];
+        setHours(DAYS.map(day => {
+          const found = backendHours.find(h => h.day.toLowerCase() === day.toLowerCase());
+          return {
+            day,
+            closed: found ? found.closed : day === 'Sunday',
+            open: found ? found.open : '09:00',
+            close: found ? found.close : '21:00'
+          };
+        }));
+      }
+
+      setRadius(data.deliveryRadius || 10);
+      if (data.pincodes) {
+        setPincodes(data.pincodes.map((p: any) => p.pincode));
+      }
+    }
+  }, [data]);
+
+  const updateStoreMutation = useMutation({
+    mutationFn: updateStoreInfo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-store-info'] });
+      showToast('Store info saved');
     },
-    {
-      key: 'low-inventory',
-      label: 'Low inventory alerts',
-      description: 'Warn me when stock drops below the threshold.',
-      enabled: true,
+    onError: (err: any) => showToast(err.message, 'error'),
+    onSettled: () => setSaving(false)
+  });
+
+  const updateHoursMutation = useMutation({
+    mutationFn: updateStoreHours,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-store-info'] });
+      showToast('Service hours saved');
     },
-    {
-      key: 'payouts',
-      label: 'Payout notifications',
-      description: 'Confirmations when money is sent to your bank.',
-      enabled: true,
+    onError: (err: any) => showToast(err.message, 'error'),
+    onSettled: () => setSaving(false)
+  });
+
+  const updateDeliveryMutation = useMutation({
+    mutationFn: updateDeliverySettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-store-info'] });
+      showToast('Delivery settings saved');
     },
-    {
-      key: 'messages',
-      label: 'Customer messages',
-      description: 'Alerts when a customer replies about an order.',
-      enabled: false,
-    },
-    {
-      key: 'announcements',
-      label: 'Platform announcements',
-      description: 'Product updates and policy changes from PrinZex.',
-      enabled: false,
-    },
-  ]);
+    onError: (err: any) => showToast(err.message, 'error'),
+    onSettled: () => setSaving(false)
+  });
 
   const save = async (event: FormEvent, label: string) => {
     event.preventDefault();
     setSaving(true);
-    await fakeDelay(800);
-    setSaving(false);
-    showToast(`${label} saved`);
+    
+    if (label === 'Store info') {
+      updateStoreMutation.mutate({
+        storeName: storeInfo.storeName,
+        description: storeInfo.storeAddress, // Using address as description for now or just storeName?
+        storeAddress: storeInfo.storeAddress,
+        openingTime: storeInfo.openingTime || '09:00',
+        closingTime: storeInfo.closingTime || '21:00',
+      });
+    } else if (label === 'Service hours') {
+      const payload = hours.map(h => ({
+        day: h.day.toLowerCase(),
+        open: h.open,
+        close: h.close,
+        closed: h.closed
+      }));
+      updateHoursMutation.mutate(payload);
+    } else if (label === 'Delivery settings') {
+      updateDeliveryMutation.mutate({ 
+        deliveryRadius: radius,
+        pincodes: pincodes.map(p => ({ pincode: p, isExcluded: false }))
+      });
+    } else {
+      setSaving(false);
+      showToast(`${label} saved`);
+    }
   };
 
   const applyMondayToWeekdays = () => {
@@ -125,6 +192,26 @@ export default function SellerSettingsPage() {
     setPincodeDraft('');
     setPincodeError(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="h-96 animate-pulse bg-slate-100 rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="mx-auto max-w-3xl text-center py-12">
+        <IconAlertCircle className="mx-auto h-12 w-12 text-red-500" />
+        <h2 className="mt-4 text-lg font-bold text-slate-900">Failed to load settings</h2>
+        <button onClick={() => refetch()} className="btn-primary mt-6">
+          <IconRefreshCw className="h-4 w-4" /> Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
