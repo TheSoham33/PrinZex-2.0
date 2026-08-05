@@ -6,7 +6,8 @@ import {
   fetchStoreInfo, 
   updateStoreInfo, 
   updateDeliverySettings, 
-  updateStoreHours 
+  updateStoreHours,
+  updateNotificationSettings
 } from '@/lib/api/seller-settings';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
@@ -30,6 +31,7 @@ interface NotificationSetting {
   label: string;
   description: string;
   enabled: boolean;
+  disabled?: boolean;
 }
 
 export default function SellerSettingsPage() {
@@ -81,7 +83,8 @@ export default function SellerSettingsPage() {
       key: 'low-inventory',
       label: 'Low inventory alerts',
       description: 'Warn me when stock drops below the threshold.',
-      enabled: true,
+      enabled: false,
+      disabled: true, // Coming soon
     },
     {
       key: 'payouts',
@@ -93,13 +96,13 @@ export default function SellerSettingsPage() {
       key: 'messages',
       label: 'Customer messages',
       description: 'Alerts when a customer replies about an order.',
-      enabled: false,
+      enabled: true, // Default ON
     },
     {
       key: 'announcements',
       label: 'Platform announcements',
       description: 'Product updates and policy changes from PrinZex.',
-      enabled: false,
+      enabled: true, // Default ON
     },
   ]);
 
@@ -146,6 +149,14 @@ export default function SellerSettingsPage() {
       if (data.pincodes && Array.isArray(data.pincodes)) {
         setPincodes(data.pincodes.map((p: any) => p.pincode));
       }
+
+      if (data.metadata?.notifications) {
+        const prefs = data.metadata.notifications as Record<string, boolean>;
+        setNotifications(prev => prev.map(n => ({
+          ...n,
+          enabled: prefs[n.key] !== undefined ? prefs[n.key] : n.enabled
+        })));
+      }
     }
   }, [data]);
 
@@ -174,6 +185,16 @@ export default function SellerSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seller-store-info'] });
       showToast('Delivery settings saved');
+    },
+    onError: (err: any) => showToast(err.message, 'error'),
+    onSettled: () => setSaving(false)
+  });
+
+  const updateNotificationsMutation = useMutation({
+    mutationFn: updateNotificationSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-store-info'] });
+      showToast('Notification preferences saved');
     },
     onError: (err: any) => showToast(err.message, 'error'),
     onSettled: () => setSaving(false)
@@ -211,6 +232,9 @@ export default function SellerSettingsPage() {
         deliveryRadius: radius,
         pincodes: pincodes.map(p => ({ pincode: p, isExcluded: false }))
       });
+    } else if (label === 'Notification preferences') {
+      const prefs = Object.fromEntries(notifications.map(n => [n.key, n.enabled]));
+      updateNotificationsMutation.mutate(prefs);
     } else {
       setSaving(false);
       showToast(`${label} saved`);
@@ -611,11 +635,19 @@ export default function SellerSettingsPage() {
             {notifications.map((setting, index) => (
               <div key={setting.key} className="flex items-start justify-between gap-4 py-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900">{setting.label}</p>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-medium ${setting.disabled ? 'text-slate-400' : 'text-slate-900'}`}>{setting.label}</p>
+                    {setting.disabled && (
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Soon
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-0.5 text-sm text-slate-600">{setting.description}</p>
                 </div>
                 <ToggleSwitch
                   checked={setting.enabled}
+                  disabled={setting.disabled}
                   onChange={(value) =>
                     setNotifications((previous) =>
                       previous.map((row, rowIndex) =>
@@ -630,8 +662,8 @@ export default function SellerSettingsPage() {
             ))}
           </div>
 
-          <button type="submit" disabled={saving} className="btn-primary mt-5">
-            {saving ? 'Saving…' : 'Save changes'}
+          <button type="submit" disabled={saving || updateNotificationsMutation.isPending} className="btn-primary mt-5">
+            {saving || updateNotificationsMutation.isPending ? 'Saving…' : 'Save changes'}
           </button>
         </form>
       )}

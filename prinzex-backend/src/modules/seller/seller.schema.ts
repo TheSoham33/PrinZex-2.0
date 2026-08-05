@@ -221,6 +221,10 @@ export const hoursSettingsBody = z.object({
     .max(7),
 });
 
+export const notificationSettingsBody = z.object({
+  preferences: z.record(z.boolean()),
+});
+
 // ── Inferred DTO types ─────────────────────────────────────────────────────
 
 export type UpdateStoreInput = z.infer<typeof updateStoreBody>;
@@ -241,4 +245,5 @@ export type RejectOrderInput = z.infer<typeof rejectOrderBody>;
 export type PayoutsQuery = z.infer<typeof payoutsQuery>;
 export type DeliverySettingsInput = z.infer<typeof deliverySettingsBody>;
 export type HoursSettingsInput = z.infer<typeof hoursSettingsBody>;
+export type NotificationSettingsInput = z.infer<typeof notificationSettingsBody>;
 export type WeekDay = (typeof WEEK_DAYS)[number];

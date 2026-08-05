@@ -25,6 +25,7 @@ import {
   updateServiceBody,
   updateStoreBody,
   updateTeamMemberBody,
+  notificationSettingsBody,
 } from './seller.schema';
 
 /**
@@ -146,4 +147,9 @@ sellerRouter.patch(
   '/settings/hours',
   validate({ body: hoursSettingsBody }),
   sellerController.updateStoreHours,
+);
+sellerRouter.patch(
+  '/settings/notifications',
+  validate({ body: notificationSettingsBody }),
+  sellerController.updateNotificationSettings,
 );

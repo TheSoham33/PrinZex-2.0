@@ -241,3 +241,9 @@ export const updateStoreHours = asyncHandler(async (req, res) => {
   const result = await sellerService.updateStoreHours(sellerId(req), req.body as HoursSettingsInput);
   res.status(200).json(new ApiResponse(200, result, 'Store hours updated'));
 });
+
+export const updateNotificationSettings = asyncHandler(async (req, res) => {
+  const { preferences } = req.body as NotificationSettingsInput;
+  const result = await sellerService.updateNotificationSettings(sellerId(req), preferences);
+  res.status(200).json(new ApiResponse(200, result, 'Notification preferences updated'));
+});

@@ -24,3 +24,10 @@ export const updateStoreHours = async (hours: any[]): Promise<any> => {
     body: JSON.stringify({ hours }),
   });
 };
+
+export const updateNotificationSettings = async (preferences: Record<string, boolean>): Promise<any> => {
+  return apiRequest<any>('/seller/settings/notifications', {
+    method: 'PATCH',
+    body: JSON.stringify({ preferences }),
+  });
+};

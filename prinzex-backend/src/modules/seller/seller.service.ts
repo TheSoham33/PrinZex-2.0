@@ -66,6 +66,7 @@ export interface StoreHoursEntry {
 export interface SellerMetadata {
   bulkDiscountTiers?: BulkDiscountTier[];
   hours?: StoreHoursEntry[];
+  notifications?: Record<string, boolean>;
 }
 
 export function readSellerMetadata(json: Prisma.JsonValue | null): SellerMetadata {
@@ -1364,4 +1365,28 @@ export async function updateStoreHours(
   await invalidateStoreCaches(sellerId);
 
   return { hours: input.hours };
+}
+
+export async function updateNotificationSettings(
+  sellerId: string,
+  preferences: Record<string, boolean>,
+): Promise<Record<string, boolean>> {
+  const seller = await prisma.seller.findUnique({
+    where: { id: sellerId },
+    select: { metadata: true },
+  });
+  if (!seller) {
+    throw ApiError.notFound('Store not found');
+  }
+
+  const metadata: SellerMetadata = {
+    ...readSellerMetadata(seller.metadata),
+    notifications: preferences,
+  };
+  await prisma.seller.update({
+    where: { id: sellerId },
+    data: { metadata: metadata as Prisma.InputJsonValue },
+  });
+
+  return preferences;
 }
