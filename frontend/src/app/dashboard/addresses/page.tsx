@@ -13,7 +13,14 @@ export default function AddressesPage() {
   });
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ label: '', fullAddress: '', phone: '', city: 'Bengaluru', state: 'Karnataka', pincode: '' });
+  const [form, setForm] = useState({ 
+    label: '', 
+    fullAddress: '', 
+    phone: '', 
+    city: 'Kolkata', 
+    state: 'West Bengal', 
+    pincode: '' 
+  });
   const [error, setError] = useState<string | null>(null);
 
   const createMutation = useMutation({
@@ -21,9 +28,25 @@ export default function AddressesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       setModalOpen(false);
-      setForm({ label: '', fullAddress: '', phone: '', city: 'Bengaluru', state: 'Karnataka', pincode: '' });
+      setForm({ 
+        label: '', 
+        fullAddress: '', 
+        phone: '', 
+        city: 'Kolkata', 
+        state: 'West Bengal', 
+        pincode: '' 
+      });
+      setError(null);
     },
-    onError: (err: any) => setError(err.message),
+    onError: (err: any) => {
+      // Backend returns validation errors in data.errors array if it's a 422
+      if (err.message === 'Validation failed' && err.errors) {
+        const first = err.errors[0];
+        setError(`${first.field}: ${first.message}`);
+      } else {
+        setError(err.message);
+      }
+    },
   });
 
   const deleteMutation = useMutation({
@@ -45,8 +68,12 @@ export default function AddressesPage() {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!form.label.trim() || !form.fullAddress.trim() || !form.phone.trim() || !form.pincode.trim()) {
+    if (!form.label.trim() || !form.fullAddress.trim() || !form.phone.trim() || !form.pincode.trim() || !form.city.trim() || !form.state.trim()) {
       setError('All fields are required');
+      return;
+    }
+    if (form.fullAddress.trim().length < 5) {
+      setError('Full address must be at least 5 characters');
       return;
     }
     createMutation.mutate(form);
@@ -196,15 +223,27 @@ export default function AddressesPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="pincode" className="label">Pincode</label>
+                  <label htmlFor="state" className="label">State</label>
                   <input
-                    id="pincode"
+                    id="state"
                     type="text"
-                    value={form.pincode}
-                    onChange={(event) => setForm({ ...form, pincode: event.target.value })}
+                    value={form.state}
+                    onChange={(event) => setForm({ ...form, state: event.target.value })}
                     className="input"
                   />
                 </div>
+              </div>
+              <div>
+                <label htmlFor="pincode" className="label">Pincode</label>
+                <input
+                  id="pincode"
+                  type="text"
+                  value={form.pincode}
+                  onChange={(event) => setForm({ ...form, pincode: event.target.value })}
+                  placeholder="700001"
+                  maxLength={6}
+                  className="input"
+                />
               </div>
               <div>
                 <label htmlFor="phone" className="label">Phone number</label>

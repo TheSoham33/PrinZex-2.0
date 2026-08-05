@@ -80,7 +80,10 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || 'Something went wrong');
+    const error = new Error(data.message || 'Something went wrong') as any;
+    error.errors = data.errors;
+    error.statusCode = response.status;
+    throw error;
   }
 
   return data.data !== undefined ? data.data : data;

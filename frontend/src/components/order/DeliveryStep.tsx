@@ -28,7 +28,14 @@ export default function DeliveryStep({
   error,
 }: DeliveryStepProps) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ label: '', fullAddress: '', phone: '' });
+  const [form, setForm] = useState({ 
+    label: '', 
+    fullAddress: '', 
+    phone: '', 
+    city: 'Kolkata', 
+    state: 'West Bengal', 
+    pincode: '' 
+  });
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,8 +47,12 @@ export default function DeliveryStep({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!form.label.trim() || !form.fullAddress.trim() || !form.phone.trim()) {
+    if (!form.label.trim() || !form.fullAddress.trim() || !form.phone.trim() || !form.pincode.trim() || !form.city.trim() || !form.state.trim()) {
       setFormError('All fields are required');
+      return;
+    }
+    if (form.fullAddress.trim().length < 5) {
+      setFormError('Full address must be at least 5 characters');
       return;
     }
     if (!/^(\+91\s?)?[6-9]\d{9}$/.test(form.phone.replace(/\s/g, ''))) {
@@ -54,8 +65,18 @@ export default function DeliveryStep({
       label: form.label.trim(),
       fullAddress: form.fullAddress.trim(),
       phone: form.phone.trim(),
+      city: form.city.trim(),
+      state: form.state.trim(),
+      pincode: form.pincode.trim(),
+    } as any);
+    setForm({ 
+      label: '', 
+      fullAddress: '', 
+      phone: '', 
+      city: 'Kolkata', 
+      state: 'West Bengal', 
+      pincode: '' 
     });
-    setForm({ label: '', fullAddress: '', phone: '' });
     setFormError(null);
     setModalOpen(false);
   };
@@ -229,23 +250,60 @@ export default function DeliveryStep({
                   rows={3}
                   value={form.fullAddress}
                   onChange={(event) => setForm({ ...form, fullAddress: event.target.value })}
-                  placeholder="Flat, building, street, area, city, pincode"
+                  placeholder="Flat, building, street, area"
                   className="input resize-none"
                 />
               </div>
 
-              <div>
-                <label htmlFor="addr-phone" className="label">
-                  Phone number
-                </label>
-                <input
-                  id="addr-phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                  placeholder="9830012345"
-                  className="input"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="addr-city" className="label">City</label>
+                  <input
+                    id="addr-city"
+                    type="text"
+                    value={form.city}
+                    onChange={(event) => setForm({ ...form, city: event.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="addr-state" className="label">State</label>
+                  <input
+                    id="addr-state"
+                    type="text"
+                    value={form.state}
+                    onChange={(event) => setForm({ ...form, state: event.target.value })}
+                    className="input"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="addr-pincode" className="label">Pincode</label>
+                  <input
+                    id="addr-pincode"
+                    type="text"
+                    value={form.pincode}
+                    onChange={(event) => setForm({ ...form, pincode: event.target.value })}
+                    placeholder="700001"
+                    maxLength={6}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="addr-phone" className="label">
+                    Phone number
+                  </label>
+                  <input
+                    id="addr-phone"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(event) => setForm({ ...form, phone: event.target.value })}
+                    placeholder="9830012345"
+                    className="input"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-3 pt-2">
