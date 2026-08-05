@@ -16,6 +16,7 @@ import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatDateTime } from '@/lib/utils';
 import { IconHeadphones, IconSend, IconRefreshCw } from '@/components/icons';
 
+// Support desk — fully integrated with backend API
 function SupportInner() {
   const searchParams = useSearchParams();
   const { showToast } = useToast();
