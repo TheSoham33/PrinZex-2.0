@@ -1,12 +1,11 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchPayouts } from '@/lib/api/seller-inventory';
+import { fetchPendingPayoutBalance, requestPayout } from '@/lib/api/wallet';
+import { fetchStoreInfo } from '@/lib/api/seller-settings';
 import {
-  COMMISSION_RATE,
-  NEXT_PAYOUT_DATE,
   PAYOUT_STATUS_STYLES,
-  PENDING_BALANCE,
 } from '@/lib/mock-data/seller-inventory';
 import PayoutCard from '@/components/seller-dashboard/PayoutCard';
 import { useToast } from '@/components/seller-dashboard/Toast';
@@ -21,12 +20,35 @@ import {
 
 export default function SellerPayoutsPage() {
   const { showToast } = useToast();
-  const { data, isLoading, isError, refetch } = useQuery({
+  const queryClient = useQueryClient();
+
+  const { data: payoutsData, isLoading: historyLoading } = useQuery({
     queryKey: ['seller-payouts'],
-    queryFn: fetchPayouts,
+    queryFn: () => fetchPayouts({}),
   });
 
-  const payouts = data ?? [];
+  const { data: balanceData, isLoading: balanceLoading } = useQuery({
+    queryKey: ['seller-pending-balance'],
+    queryFn: fetchPendingPayoutBalance,
+  });
+
+  const { data: storeData } = useQuery({
+    queryKey: ['seller-store-info'],
+    queryFn: fetchStoreInfo,
+  });
+
+  const requestPayoutMutation = useMutation({
+    mutationFn: requestPayout,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-pending-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-payouts'] });
+      showToast('Payout requested successfully');
+    },
+    onError: (err: any) => showToast(err.message, 'error'),
+  });
+
+  const payouts = payoutsData || [];
+  const COMMISSION_RATE = storeData ? Math.round(Number(storeData.commissionRate) * 100) : 12;
 
   const handleDownload = () => {
     // TODO: generate a real PDF statement server-side.
@@ -34,21 +56,7 @@ export default function SellerPayoutsPage() {
     setTimeout(() => window.print(), 400);
   };
 
-  if (isError) {
-    return (
-      <div className="mx-auto max-w-4xl">
-        <div className="card flex flex-col items-center px-6 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlertCircle className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-lg font-bold text-slate-900">Couldn&apos;t load payouts</h1>
-          <button type="button" onClick={() => refetch()} className="btn-primary mt-6">
-            <IconRefreshCw className="h-4 w-4" /> Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const isLoading = historyLoading || balanceLoading;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -61,9 +69,9 @@ export default function SellerPayoutsPage() {
 
       <div className="mt-6">
         <PayoutCard
-          balance={PENDING_BALANCE}
-          nextPayoutDate={NEXT_PAYOUT_DATE}
-          onRequestEarly={() => showToast('Early payout requested — we’ll review within 24 hours.')}
+          balance={balanceData?.balance ?? 0}
+          nextPayoutDate={balanceData?.nextPayoutDate ?? 'Next Monday'}
+          onRequestEarly={() => requestPayoutMutation.mutate()}
         />
       </div>
 
@@ -149,7 +157,7 @@ export default function SellerPayoutsPage() {
                 </tr>
               </thead>
               <tbody>
-                {payouts.map((payout) => (
+                {payouts.map((payout: any) => (
                   <tr key={payout.id} className="border-b border-slate-100 last:border-0">
                     <td className="px-4 py-3">
                       <p className="font-mono text-sm font-medium text-slate-900">{payout.id}</p>
@@ -157,7 +165,7 @@ export default function SellerPayoutsPage() {
                         {payout.bankAccount}
                       </p>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{formatDate(payout.date)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{formatDate(payout.createdAt)}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{payout.ordersIncluded}</td>
                     <td className="px-4 py-3 text-sm font-bold text-slate-900">
                       {formatCurrency(payout.amount)}
@@ -165,10 +173,10 @@ export default function SellerPayoutsPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ring-inset ${
-                          PAYOUT_STATUS_STYLES[payout.status]
+                          PAYOUT_STATUS_STYLES[payout.status.toLowerCase() as keyof typeof PAYOUT_STATUS_STYLES] || 'bg-slate-50 text-slate-700 ring-slate-600/20'
                         }`}
                       >
-                        {payout.status}
+                        {payout.status.toLowerCase()}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">

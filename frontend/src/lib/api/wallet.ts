@@ -26,6 +26,18 @@ export const fetchWalletBalance = async (): Promise<number> => {
   return data.balance;
 };
 
+/** Get the seller's pending balance for payouts. */
+export const fetchPendingPayoutBalance = async (): Promise<any> => {
+  return apiRequest<any>('/seller/payouts/pending-balance');
+};
+
+/** Request an early payout. */
+export const requestPayout = async (): Promise<any> => {
+  return apiRequest<any>('/seller/payouts/request', {
+    method: 'POST',
+  });
+};
+
 /** Get all wallet transactions with pagination. */
 export const fetchWalletTransactions = async (page = 1, limit = 10): Promise<any[]> => {
   const res = await apiRequest<any>('/customer/wallet/transactions', {
