@@ -115,12 +115,12 @@ export async function login(input: AdminLoginInput): Promise<AdminSession & { ad
 
   // For development: auto-seed the admin if it's the default one and doesn't exist
   if (!admin && email === 'admin@prinzex.com' && password === 'Admin@123') {
-    const bcrypt = await import('bcryptjs');
+    const { hashPassword } = await import('../../utils/hash');
     admin = await prisma.admin.create({
       data: {
         name: 'Super Admin',
         email: 'admin@prinzex.com',
-        passwordHash: await bcrypt.hash('Admin@123', 10),
+        passwordHash: await hashPassword('Admin@123'),
         role: 'SUPER_ADMIN',
         isActive: true,
       },

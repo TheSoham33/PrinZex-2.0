@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, type FormEvent, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { adminLoginStart, adminLoginSuccess, adminLogout } from '@/store/slices/adminAuthSlice';
 import PasswordInput from '@/components/auth/PasswordInput';
@@ -9,10 +9,18 @@ import { IconAlertCircle, IconPrinter, IconShieldCheck } from '@/components/icon
 import { EMAIL_REGEX } from '@/lib/seller-types';
 import { adminLogin } from '@/lib/api/auth';
 
-export default function AdminLoginPage() {
+function AdminLoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl');
   const dispatch = useAppDispatch();
-  const status = useAppSelector((state) => state.adminAuth.status);
+  const { admin, status } = useAppSelector((state) => state.adminAuth);
+
+  useEffect(() => {
+    if (admin) {
+      router.replace(returnUrl || '/admin/dashboard');
+    }
+  }, [admin, router, returnUrl]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,7 +47,7 @@ export default function AdminLoginPage() {
       });
 
       dispatch(adminLoginSuccess(result));
-      router.push('/admin/dashboard');
+      router.push(returnUrl || '/admin/dashboard');
     } catch (err: any) {
       dispatch(adminLogout());
       setErrors({ general: err.message || 'Login failed' });
@@ -117,5 +125,15 @@ export default function AdminLoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="h-96 w-full max-w-md animate-pulse bg-white rounded-2xl" />
+    </div>}>
+      <AdminLoginContent />
+    </Suspense>
   );
 }
