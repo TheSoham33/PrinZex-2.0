@@ -1,14 +1,15 @@
 'use client';
 
-import type { CostBreakdown, ServiceOffering } from '@/lib/mock-data/stores';
+import type { CostBreakdown, ServiceOffering } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { IconShieldCheck } from '@/components/icons';
+import { IconShieldCheck, IconLock } from '@/components/icons';
 
 interface OrderSummarySidebarProps {
   storeName: string;
   service: ServiceOffering | undefined;
   quantity: number;
   cost: CostBreakdown;
+  isLoggedIn?: boolean;
 }
 
 export default function OrderSummarySidebar({
@@ -16,6 +17,7 @@ export default function OrderSummarySidebar({
   service,
   quantity,
   cost,
+  isLoggedIn = true,
 }: OrderSummarySidebarProps) {
   const rows = [
     { label: 'Subtotal', value: cost.subtotal },
@@ -54,23 +56,32 @@ export default function OrderSummarySidebar({
           </p>
         )}
 
-        <dl className="space-y-2.5 py-4 text-sm">
-          {rows.map((row) => (
-            <div key={row.label} className="flex items-center justify-between">
-              <dt className="text-slate-600">{row.label}</dt>
-              <dd className={`font-medium ${row.className ?? 'text-slate-900'}`}>
-                {row.display ?? formatCurrency(row.value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        {!isLoggedIn ? (
+          <div className="py-8 text-center">
+            <IconLock className="mx-auto h-8 w-8 text-slate-300" />
+            <p className="mt-2 text-sm text-slate-500">Log in to see exact pricing & taxes</p>
+          </div>
+        ) : (
+          <>
+            <dl className="space-y-2.5 py-4 text-sm">
+              {rows.map((row) => (
+                <div key={row.label} className="flex items-center justify-between">
+                  <dt className="text-slate-600">{row.label}</dt>
+                  <dd className={`font-medium ${row.className ?? 'text-slate-900'}`}>
+                    {row.display ?? formatCurrency(row.value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
 
-        <div className="flex items-baseline justify-between border-t border-slate-200 pt-4">
-          <span className="font-semibold text-slate-900">Total</span>
-          <span className="text-xl font-extrabold text-slate-900">
-            {formatCurrency(cost.total)}
-          </span>
-        </div>
+            <div className="flex items-baseline justify-between border-t border-slate-200 pt-4">
+              <span className="font-semibold text-slate-900">Total</span>
+              <span className="text-xl font-extrabold text-slate-900">
+                {formatCurrency(cost.total)}
+              </span>
+            </div>
+          </>
+        )}
 
         <p className="mt-4 flex items-start gap-2 rounded-lg bg-green-50 p-3 text-xs text-green-800">
           <IconShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />

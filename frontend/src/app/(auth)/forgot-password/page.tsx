@@ -2,62 +2,135 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { IconAlertCircle, IconArrowLeft, IconMailCheck, IconPrinter } from '@/components/icons';
-import { EMAIL_REGEX } from '@/lib/seller-types';
-import { fakeDelay } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { IconAlertCircle, IconArrowLeft, IconCheckCircle, IconMailCheck, IconPrinter } from '@/components/icons';
+import PasswordInput from '@/components/auth/PasswordInput';
+import { forgotPassword, resetPassword } from '@/lib/api/auth';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
+  const router = useRouter();
+  const [identifier, setIdentifier] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'resetting' | 'success'>('idle');
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSendOtp = async (event: FormEvent) => {
     event.preventDefault();
-    if (!email.trim()) {
-      setError('Email is required');
-      return;
-    }
-    if (!EMAIL_REGEX.test(email.trim())) {
-      setError('Enter a valid email address');
+    if (!identifier.trim()) {
+      setError('Email or phone is required');
       return;
     }
     setError(null);
-    setSending(true);
-    await fakeDelay(800);
-    setSending(false);
-    setSent(true);
+    setStatus('sending');
+    try {
+      await forgotPassword(identifier.trim());
+      setStatus('sent');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset code');
+      setStatus('idle');
+    }
   };
 
-  if (sent) {
+  const handleResetPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!otp.trim()) {
+      setError('OTP is required');
+      return;
+    }
+    if (!newPassword) {
+      setError('New password is required');
+      return;
+    }
+    setError(null);
+    setStatus('resetting');
+    try {
+      await resetPassword({
+        identifier: identifier.trim(),
+        otp: otp.trim(),
+        newPassword
+      });
+      setStatus('success');
+    } catch (err: any) {
+      setError(err.message || 'Failed to reset password');
+      setStatus('sent');
+    }
+  };
+
+  if (status === 'success') {
     return (
       <div className="text-center">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-50 text-green-600">
-          <IconMailCheck className="h-8 w-8" />
+          <IconCheckCircle className="h-8 w-8" />
         </span>
-        <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">Check your inbox</h1>
+        <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">Password reset</h1>
         <p className="mt-2 text-sm text-slate-600">
-          If an account exists for <span className="font-medium text-slate-900">{email}</span>,
-          we&apos;ve sent a password reset link. It expires in 30 minutes.
+          Your password has been successfully updated. You can now log in with your new password.
         </p>
+
+        <Link href="/login" className="btn-primary mt-8 block w-full text-center">
+          Log in now
+        </Link>
+      </div>
+    );
+  }
+
+  if (status === 'sent' || status === 'resetting') {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          Enter reset code
+        </h1>
+        <p className="mt-2 text-sm text-slate-600">
+          We&apos;ve sent a 6-digit code to <span className="font-semibold text-slate-900">{identifier}</span>.
+        </p>
+
+        <form onSubmit={handleResetPassword} noValidate className="mt-8 space-y-5">
+          {error && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
+              <IconAlertCircle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="otp" className="label">
+              6-digit OTP
+            </label>
+            <input
+              id="otp"
+              type="text"
+              value={otp}
+              onChange={(event) => setOtp(event.target.value)}
+              placeholder="000000"
+              maxLength={6}
+              className="input"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="newPassword" className="label">
+              New Password
+            </label>
+            <PasswordInput
+              id="newPassword"
+              value={newPassword}
+              onChange={setNewPassword}
+            />
+          </div>
+
+          <button type="submit" disabled={status === 'resetting'} className="btn-primary w-full">
+            {status === 'resetting' ? 'Resetting…' : 'Update password'}
+          </button>
+        </form>
 
         <button
           type="button"
-          onClick={() => {
-            setSent(false);
-            setEmail('');
-          }}
-          className="btn-secondary mt-6 w-full"
+          onClick={() => setStatus('idle')}
+          className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900"
         >
-          Use a different email
+          <IconArrowLeft className="h-4 w-4" /> Use a different email/phone
         </button>
-
-        <Link
-          href="/login"
-          className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700"
-        >
-          <IconArrowLeft className="h-4 w-4" /> Back to login
-        </Link>
       </div>
     );
   }
@@ -77,32 +150,33 @@ export default function ForgotPasswordPage() {
         Reset your password
       </h1>
       <p className="mt-2 text-sm text-slate-600">
-        Enter the email linked to your account and we&apos;ll send you a reset link.
+        Enter your email or phone number and we&apos;ll send you a reset code.
       </p>
 
-      <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
+      <form onSubmit={handleSendOtp} noValidate className="mt-8 space-y-5">
+        {error && (
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
+            <IconAlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
         <div>
-          <label htmlFor="email" className="label">
-            Email
+          <label htmlFor="identifier" className="label">
+            Email or Phone
           </label>
           <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            autoComplete="email"
-            className={`input ${error ? 'input-error' : ''}`}
+            id="identifier"
+            type="text"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+            placeholder="you@example.com or 9830012345"
+            className="input"
           />
-          {error && (
-            <p className="field-error">
-              <IconAlertCircle className="h-3.5 w-3.5" /> {error}
-            </p>
-          )}
         </div>
 
-        <button type="submit" disabled={sending} className="btn-primary w-full">
-          {sending ? 'Sending link…' : 'Send reset link'}
+        <button type="submit" disabled={status === 'sending'} className="btn-primary w-full">
+          {status === 'sending' ? 'Sending code…' : 'Send reset code'}
         </button>
       </form>
 

@@ -4,11 +4,14 @@ import { useEffect, useMemo, useReducer, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useAppSelector } from '@/store/hooks';
 import {
   type StoreDetail,
 } from '@/lib/types';
 import { fetchAddresses } from '@/lib/api/customer';
 import { getOrderQuote, placeOrder as placeOrderApi } from '@/lib/api/orders';
+import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
+import { useRazorpay } from '@/hooks/useRazorpay';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -20,7 +23,7 @@ import {
   orderReducer,
   EMPTY_COST,
 } from '@/components/order/orderReducer';
-import { IconArrowLeft, IconArrowRight, IconChevronRight } from '@/components/icons';
+import { IconArrowLeft, IconArrowRight, IconChevronRight, IconLock } from '@/components/icons';
 
 const TOTAL_STEPS = 4;
 
@@ -28,6 +31,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get('service') ?? '';
+  const token = useAppSelector((state) => state.auth.accessToken);
 
   const [state, dispatch] = useReducer(
     orderReducer,
@@ -36,7 +40,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   
   const { data: addresses = [] } = useQuery({
     queryKey: ['addresses'],
-    queryFn: fetchAddresses
+    queryFn: fetchAddresses,
+    enabled: !!token
   });
 
   const [agreed, setAgreed] = useState(false);
@@ -48,7 +53,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const cost = state.order.costBreakdown ?? EMPTY_COST;
 
   // Real Quote Fetching
-  const { data: quoteData } = useQuery({
+  const { data: quoteData, isError: quoteError, error: quoteErrorObj } = useQuery({
     queryKey: ['order-quote', store.id, specs, state.order.deliverySpeed],
     queryFn: () => getOrderQuote({
       sellerId: store.id,
@@ -62,7 +67,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       },
       deliverySpeed: state.order.deliverySpeed.toUpperCase()
     }),
-    enabled: !!specs.serviceId && !!specs.paperType && !!specs.size
+    enabled: !!token && !!specs.serviceId && !!specs.paperType && !!specs.size,
+    retry: false
   });
 
   useEffect(() => {
@@ -107,6 +113,13 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       dispatch({ type: 'SET_ERROR', payload: error });
       return;
     }
+
+    // Require login to proceed to Delivery (Step 3)
+    if (state.step === 2 && !token) {
+      router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      return;
+    }
+
     if (state.step < TOTAL_STEPS) {
       dispatch({ type: 'SET_STEP', payload: state.step + 1 });
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -121,6 +134,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
+
+  const { openCheckout } = useRazorpay();
+  const user = useAppSelector((state) => state.auth.user);
 
   const handlePlaceOrder = async () => {
     setPlacing(true);
@@ -144,6 +160,47 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       });
 
       const orderId = result.order.id;
+
+      // Handle Online Payment (Razorpay)
+      if (state.order.paymentMethod === 'card' || state.order.paymentMethod === 'upi') {
+        try {
+          const rzpOrder = await createPaymentOrder(orderId);
+          
+          await openCheckout({
+            amount: rzpOrder.amount,
+            currency: rzpOrder.currency,
+            name: 'PrinZex',
+            description: `Payment for Order #${orderId.slice(-6).toUpperCase()}`,
+            order_id: rzpOrder.razorpayOrderId,
+            prefill: {
+              name: user?.name,
+              email: user?.email || undefined,
+              contact: user?.phone || undefined,
+            },
+            handler: async (response: any) => {
+              try {
+                await verifyPayment({
+                  orderId,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                });
+                router.push(`/orders/confirmation/${orderId}`);
+              } catch (err: any) {
+                dispatch({ type: 'SET_ERROR', payload: `Payment verification failed: ${err.message}` });
+                setPlacing(false);
+              }
+            },
+            theme: { color: '#2563eb' }
+          });
+          return; // Stay on page until handler completes
+        } catch (err: any) {
+          // If payment initiation fails, we still have the order (status pending)
+          // We could redirect to the order detail where they can try again
+          console.error('Failed to initiate payment', err);
+        }
+      }
+
       router.push(`/orders/confirmation/${orderId}`);
     } catch (err: any) {
       dispatch({ type: 'SET_ERROR', payload: err.message });
@@ -252,6 +309,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
             service={service}
             quantity={specs.quantity}
             cost={cost}
+            isLoggedIn={!!token}
           />
         </div>
       </div>

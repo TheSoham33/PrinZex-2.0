@@ -3,15 +3,17 @@ import {
   PAPER_SIZES,
   PAPER_TYPES,
   TAX_RATE,
-  type CostBreakdown,
-  type DeliveryAddress,
-  type DeliverySpeed,
-  type Order,
-  type OrderSpecifications,
-  type PaymentMethod,
-  type ServiceOffering,
-  type UploadedFile,
 } from '@/lib/mock-data/stores';
+import type {
+  CostBreakdown,
+  DeliveryAddress,
+  DeliverySpeed,
+  Order,
+  OrderSpecifications,
+  PaymentMethod,
+  ServiceOffering,
+  UploadedFile,
+} from '@/lib/types';
 
 export interface OrderState {
   step: number;

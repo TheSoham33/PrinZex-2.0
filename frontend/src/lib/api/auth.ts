@@ -46,3 +46,17 @@ export const logout = async (role: 'CUSTOMER' | 'SELLER' | 'ADMIN', refreshToken
     body: JSON.stringify({ refreshToken }),
   });
 };
+
+export const forgotPassword = async (identifier: string): Promise<any> => {
+  return apiRequest<any>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ identifier }),
+  });
+};
+
+export const resetPassword = async (data: any): Promise<any> => {
+  return apiRequest<any>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
