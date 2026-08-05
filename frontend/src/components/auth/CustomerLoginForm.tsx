@@ -111,7 +111,7 @@ export default function CustomerLoginForm() {
       });
       
       dispatch(loginSuccess(result));
-      router.push(returnUrl || '/');
+      router.push(returnUrl || '/stores');
     } catch (err: any) {
       dispatch(logout());
       setErrors({ general: err.message || 'Login failed' });
