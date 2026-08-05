@@ -70,6 +70,39 @@ export default function SellerSettingsPage() {
   const [pincodeDraft, setPincodeDraft] = useState('');
   const [pincodeError, setPincodeError] = useState<string | null>(null);
 
+  const [notifications, setNotifications] = useState<NotificationSetting[]>([
+    {
+      key: 'new-orders',
+      label: 'New order alerts',
+      description: 'Get notified the moment a customer places an order.',
+      enabled: true,
+    },
+    {
+      key: 'low-inventory',
+      label: 'Low inventory alerts',
+      description: 'Warn me when stock drops below the threshold.',
+      enabled: true,
+    },
+    {
+      key: 'payouts',
+      label: 'Payout notifications',
+      description: 'Confirmations when money is sent to your bank.',
+      enabled: true,
+    },
+    {
+      key: 'messages',
+      label: 'Customer messages',
+      description: 'Alerts when a customer replies about an order.',
+      enabled: false,
+    },
+    {
+      key: 'announcements',
+      label: 'Platform announcements',
+      description: 'Product updates and policy changes from PrinZex.',
+      enabled: false,
+    },
+  ]);
+
   useEffect(() => {
     if (data) {
       setStoreInfo({
