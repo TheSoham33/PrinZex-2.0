@@ -18,6 +18,7 @@ import ServiceBreakdownChart from '@/components/seller-dashboard/ServiceBreakdow
 import { formatCurrency } from '@/lib/utils';
 import {
   IconAlertCircle,
+  IconCheckCircle,
   IconPackage,
   IconRefreshCw,
   IconStar,
