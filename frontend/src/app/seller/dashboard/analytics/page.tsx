@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchSellerAnalytics } from '@/lib/api/seller-analytics';
+import { 
+  fetchAnalyticsOverview, 
+  fetchRevenueByDay, 
+  fetchServiceBreakdown 
+} from '@/lib/api/seller-analytics';
 import {
   DATE_RANGE_OPTIONS,
-  percentChange,
-  sliceRange,
   type DateRangeKey,
 } from '@/lib/mock-data/seller-analytics';
 import StatCard from '@/components/seller-dashboard/StatCard';
@@ -16,7 +18,6 @@ import ServiceBreakdownChart from '@/components/seller-dashboard/ServiceBreakdow
 import { formatCurrency } from '@/lib/utils';
 import {
   IconAlertCircle,
-  IconCheckCircle,
   IconPackage,
   IconRefreshCw,
   IconStar,
@@ -24,40 +25,48 @@ import {
   IconWallet,
 } from '@/components/icons';
 
+const MAP_RANGE_TO_PERIOD: Record<string, string> = {
+  last7: '7d',
+  last30: '30d',
+  thisMonth: 'this_month',
+  lastMonth: 'last_month',
+};
+
 export default function SellerAnalyticsPage() {
   const [range, setRange] = useState<DateRangeKey>('last30');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['seller-analytics'],
-    queryFn: fetchSellerAnalytics,
+  const period = MAP_RANGE_TO_PERIOD[range] || '30d';
+
+  const overviewQuery = useQuery({
+    queryKey: ['seller-analytics-overview', period],
+    queryFn: () => fetchAnalyticsOverview(period),
   });
 
-  // Range changes only re-slice the already-fetched series — no refetch.
-  const sliced = useMemo(() => {
-    if (!data) return { current: [], previous: [] };
-    return sliceRange(data.revenueByDay, range, customFrom, customTo);
-  }, [data, range, customFrom, customTo]);
+  const revenueQuery = useQuery({
+    queryKey: ['seller-analytics-revenue', period],
+    queryFn: () => fetchRevenueByDay(period),
+  });
 
-  const totals = useMemo(() => {
-    const revenue = sliced.current.reduce((sum, row) => sum + row.revenue, 0);
-    const orders = sliced.current.reduce((sum, row) => sum + row.orders, 0);
-    const previousRevenue = sliced.previous.reduce((sum, row) => sum + row.revenue, 0);
-    const previousOrders = sliced.previous.reduce((sum, row) => sum + row.orders, 0);
+  const breakdownQuery = useQuery({
+    queryKey: ['seller-analytics-breakdown'],
+    queryFn: fetchServiceBreakdown,
+  });
 
-    return {
-      revenue,
-      orders,
-      aov: orders > 0 ? Math.round(revenue / orders) : 0,
-      revenueChange: percentChange(revenue, previousRevenue),
-      ordersChange: percentChange(orders, previousOrders),
-      aovChange: percentChange(
-        orders > 0 ? revenue / orders : 0,
-        previousOrders > 0 ? previousRevenue / previousOrders : 0,
-      ),
-    };
-  }, [sliced]);
+  const isLoading = overviewQuery.isLoading || revenueQuery.isLoading || breakdownQuery.isLoading;
+  const isError = overviewQuery.isError || revenueQuery.isError || breakdownQuery.isError;
+  const isFetching = overviewQuery.isFetching || revenueQuery.isFetching || breakdownQuery.isFetching;
+
+  const refetchAll = () => {
+    overviewQuery.refetch();
+    revenueQuery.refetch();
+    breakdownQuery.refetch();
+  };
+
+  const overview = overviewQuery.data;
+  const revenueSeries = revenueQuery.data || [];
+  const serviceBreakdown = breakdownQuery.data || [];
 
   if (isError) {
     return (
@@ -68,7 +77,7 @@ export default function SellerAnalyticsPage() {
           </span>
           <h1 className="mt-4 text-lg font-bold text-slate-900">Couldn&apos;t load analytics</h1>
           <p className="mt-1 text-sm text-slate-600">Something went wrong fetching your numbers.</p>
-          <button type="button" onClick={() => refetch()} className="btn-primary mt-6">
+          <button type="button" onClick={refetchAll} className="btn-primary mt-6">
             <IconRefreshCw className="h-4 w-4" /> Retry
           </button>
         </div>
@@ -87,7 +96,7 @@ export default function SellerAnalyticsPage() {
         </div>
         <button
           type="button"
-          onClick={() => refetch()}
+          onClick={refetchAll}
           disabled={isFetching}
           className="btn-secondary text-sm"
         >
@@ -104,80 +113,44 @@ export default function SellerAnalyticsPage() {
               type="button"
               onClick={() => setRange(option.key)}
               aria-pressed={range === option.key}
+              disabled={option.key === 'custom'} // Custom not yet supported by backend
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                 range === option.key
                   ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed'
               }`}
             >
               {option.label}
             </button>
           ))}
         </div>
-
-        {range === 'custom' && (
-          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4">
-            <div>
-              <label htmlFor="from" className="label">
-                From
-              </label>
-              <input
-                id="from"
-                type="date"
-                value={customFrom}
-                onChange={(event) => setCustomFrom(event.target.value)}
-                className="input py-2"
-              />
-            </div>
-            <div>
-              <label htmlFor="to" className="label">
-                To
-              </label>
-              <input
-                id="to"
-                type="date"
-                value={customTo}
-                onChange={(event) => setCustomTo(event.target.value)}
-                className="input py-2"
-              />
-            </div>
-            {(!customFrom || !customTo) && (
-              <p className="pb-2.5 text-xs text-slate-500">
-                Pick both dates to filter the charts.
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="Total revenue"
-          value={formatCurrency(totals.revenue)}
+          value={formatCurrency(overview?.totalRevenue ?? 0)}
           icon={IconWallet}
           iconClass="bg-green-50 text-green-600"
-          change={totals.revenueChange}
           loading={isLoading}
         />
         <StatCard
           label="Total orders"
-          value={String(totals.orders)}
+          value={String(overview?.totalOrders ?? 0)}
           icon={IconPackage}
           iconClass="bg-blue-50 text-blue-600"
-          change={totals.ordersChange}
           loading={isLoading}
         />
         <StatCard
           label="Average order value"
-          value={formatCurrency(totals.aov)}
+          value={formatCurrency(overview?.averageOrderValue ?? 0)}
           icon={IconWallet}
           iconClass="bg-violet-50 text-violet-600"
-          change={totals.aovChange}
           loading={isLoading}
         />
         <StatCard
           label="Completion rate"
-          value={`${data?.completionRate ?? 0}%`}
+          value={`${overview?.completionRate ?? 0}%`}
           icon={IconCheckCircle}
           iconClass="bg-emerald-50 text-emerald-600"
           hint="Orders fulfilled without cancellation"
@@ -185,7 +158,7 @@ export default function SellerAnalyticsPage() {
         />
         <StatCard
           label="Average rating"
-          value={`${data?.averageRating ?? 0} ★`}
+          value={`${overview?.averageRating ?? 0} ★`}
           icon={IconStar}
           iconClass="bg-amber-50 text-amber-600"
           hint="Across all customer reviews"
@@ -193,7 +166,7 @@ export default function SellerAnalyticsPage() {
         />
         <StatCard
           label="On-time delivery"
-          value={`${data?.onTimeDeliveryPct ?? 0}%`}
+          value={`${overview?.onTimeRate ?? 0}%`}
           icon={IconTruck}
           iconClass="bg-orange-50 text-orange-600"
           hint="Delivered before the deadline"
@@ -208,9 +181,13 @@ export default function SellerAnalyticsPage() {
         </div>
       ) : (
         <div className="mt-6 space-y-4">
-          <RevenueChart data={sliced.current} />
-          <OrderVolumeChart data={sliced.current} />
-          <ServiceBreakdownChart data={data?.serviceBreakdown ?? []} />
+          <RevenueChart data={revenueSeries} />
+          <OrderVolumeChart data={revenueSeries} />
+          <ServiceBreakdownChart data={serviceBreakdown.map(s => ({
+            service: s.serviceName,
+            count: s.count,
+            revenue: s.revenue
+          }))} />
         </div>
       )}
     </div>

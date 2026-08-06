@@ -1,11 +1,39 @@
-import { fakeDelay } from '@/lib/utils';
-import { MOCK_SELLER_ANALYTICS, type SellerAnalytics } from '@/lib/mock-data/seller-analytics';
+import { apiRequest } from './client';
 
-/**
- * Mock API — the full 60-day analytics payload. The date-range selector slices
- * this client-side, so changing the range never refetches.
- */
-export const fetchSellerAnalytics = async (): Promise<SellerAnalytics> => {
-  await fakeDelay(700);
-  return MOCK_SELLER_ANALYTICS;
+export interface DailyRevenue {
+  date: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface ServiceBreakdown {
+  serviceName: string;
+  count: number;
+  revenue: number;
+}
+
+export interface AnalyticsOverview {
+  totalRevenue: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  completionRate: number;
+  onTimeRate: number;
+  averageRating?: number;
+}
+
+export const fetchAnalyticsOverview = async (period: string): Promise<AnalyticsOverview> => {
+  return apiRequest<AnalyticsOverview>('/seller/analytics/overview', { params: { period } });
+};
+
+export const fetchRevenueByDay = async (period: string): Promise<DailyRevenue[]> => {
+  return apiRequest<DailyRevenue[]>('/seller/analytics/revenue-by-day', { params: { period } });
+};
+
+export const fetchServiceBreakdown = async (): Promise<ServiceBreakdown[]> => {
+  const res = await apiRequest<any[]>('/seller/analytics/service-breakdown');
+  return res.map(item => ({
+    serviceName: item.serviceName,
+    count: item.orders,
+    revenue: item.revenue
+  }));
 };
