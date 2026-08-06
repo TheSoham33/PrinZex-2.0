@@ -46,8 +46,10 @@ export default function SellerDashboardLayout({ children }: { children: React.Re
     );
   }
 
+  const isSuspended = seller.status === 'suspended';
+
   // Suspended sellers get a terminal message instead of any dashboard content.
-  if (seller.status === 'suspended') {
+  if (isSuspended) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
         <div className="card max-w-md p-8 text-center">
