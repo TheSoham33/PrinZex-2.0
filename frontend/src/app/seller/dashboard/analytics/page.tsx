@@ -18,12 +18,12 @@ import ServiceBreakdownChart from '@/components/seller-dashboard/ServiceBreakdow
 import { formatCurrency } from '@/lib/utils';
 import {
   IconAlertCircle,
-  IconCheckCircle,
   IconPackage,
   IconRefreshCw,
   IconStar,
   IconTruck,
   IconWallet,
+  IconCheckCircle,
 } from '@/components/icons';
 
 const MAP_RANGE_TO_PERIOD: Record<string, string> = {
