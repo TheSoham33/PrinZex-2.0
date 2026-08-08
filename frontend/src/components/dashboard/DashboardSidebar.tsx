@@ -15,11 +15,13 @@ import {
   IconTruck,
   IconUser,
   IconWallet,
+  IconShoppingCart,
 } from '@/components/icons';
 
 export const DASHBOARD_NAV = [
   { href: '/dashboard', label: 'Overview', icon: IconLayoutDashboard, exact: true },
   { href: '/dashboard/orders', label: 'Orders', icon: IconPackage },
+  { href: 'cart', label: 'Cart', icon: IconShoppingCart, isCart: true },
   { href: '/dashboard/tracking', label: 'Tracking', icon: IconTruck },
   { href: '/dashboard/wallet', label: 'Wallet', icon: IconWallet },
   { href: '/dashboard/addresses', label: 'Addresses', icon: IconMapPin },
@@ -32,6 +34,7 @@ export default function DashboardSidebar() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const cartItemsCount = useAppSelector((state) => state.cart.items.length);
 
   const initials = user?.name
     ? user.name
@@ -64,6 +67,27 @@ export default function DashboardSidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {DASHBOARD_NAV.map((item) => {
+          if (item.isCart) {
+            return (
+              <button
+                key="cart-btn"
+                type="button"
+                onClick={() => dispatch(toggleCart())}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              >
+                <div className="relative">
+                  <item.icon className="h-5 w-5 text-slate-400" />
+                  {cartItemsCount > 0 && (
+                    <span className="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white">
+                      {cartItemsCount}
+                    </span>
+                  )}
+                </div>
+                {item.label}
+              </button>
+            );
+          }
+
           const active = item.exact
             ? pathname === item.href
             : pathname.startsWith(item.href);

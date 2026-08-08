@@ -12,6 +12,8 @@ import { fetchAddresses } from '@/lib/api/customer';
 import { getOrderQuote, placeOrder as placeOrderApi } from '@/lib/api/orders';
 import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
 import { useRazorpay } from '@/hooks/useRazorpay';
+import { addToCart } from '@/store/slices/cartSlice';
+import { useToast } from '@/components/seller-dashboard/Toast';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -24,12 +26,13 @@ import {
   orderReducer,
   EMPTY_COST,
 } from '@/components/order/orderReducer';
-import { IconArrowLeft, IconArrowRight, IconChevronRight, IconLock } from '@/components/icons';
+import { IconArrowLeft, IconArrowRight, IconChevronRight, IconLock, IconShoppingCart } from '@/components/icons';
 
 const TOTAL_STEPS = 4;
 
 export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const router = useRouter();
+  const { showToast } = useToast();
 
   // Redirect or show error if store is closed
   useEffect(() => {
@@ -217,6 +220,36 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     }
   };
 
+  const handleAddToCart = () => {
+    // Validate current step before allowing add to cart
+    const error = validateStep(state.step);
+    if (error) {
+      dispatch({ type: 'SET_ERROR', payload: error });
+      return;
+    }
+
+    if (!state.order.file) {
+      dispatch({ type: 'SET_ERROR', payload: 'Please upload a file before adding to cart' });
+      if (state.step < 2) dispatch({ type: 'SET_STEP', payload: 2 });
+      return;
+    }
+
+    dispatch(addToCart({
+      id: `cart-${Date.now()}`,
+      storeId: store.id,
+      storeName: store.name,
+      serviceId: specs.serviceId,
+      serviceName: service?.name || 'Printing Service',
+      specifications: specs,
+      file: state.order.file,
+      specialInstructions: state.order.specialInstructions || '',
+      costBreakdown: cost,
+    }));
+
+    showToast('Added to cart successfully!');
+    router.push(`/stores/${store.id}`);
+  };
+
   return (
     <div className="container-page py-6">
       <Breadcrumbs 
@@ -285,21 +318,34 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               <IconArrowLeft className="h-4 w-4" /> Back
             </button>
 
-            <button type="button" onClick={goNext} disabled={placing} className="btn-primary">
-              {placing ? (
-                'Placing order…'
-              ) : state.step === TOTAL_STEPS ? (
-                <>Place order · {new Intl.NumberFormat('en-IN', {
-                  style: 'currency',
-                  currency: 'INR',
-                  maximumFractionDigits: 0,
-                }).format(cost.total)}</>
-              ) : (
-                <>
-                  Continue <IconArrowRight className="h-4 w-4" />
-                </>
+            <div className="flex gap-2">
+              {state.step === 1 && specs.serviceId && specs.paperType && specs.size && (
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="btn-secondary px-6"
+                >
+                  <IconShoppingCart className="h-4 w-4 mr-2" />
+                  Add to Cart
+                </button>
               )}
-            </button>
+
+              <button type="button" onClick={goNext} disabled={placing} className="btn-primary">
+                {placing ? (
+                  'Placing order…'
+                ) : state.step === TOTAL_STEPS ? (
+                  <>Place order · {new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'INR',
+                    maximumFractionDigits: 0,
+                  }).format(cost.total)}</>
+                ) : (
+                  <>
+                    Continue <IconArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 

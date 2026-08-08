@@ -3,17 +3,19 @@
 import { useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { store } from '@/store';
+import { store, type RootState } from '@/store';
 import { setStore } from '@/lib/api/client';
 import { restoreSession, type AuthState } from '@/store/slices/authSlice';
 import { restoreSellerSession, type SellerAuthState } from '@/store/slices/sellerAuthSlice';
 import { restoreAdminSession, type AdminAuthState } from '@/store/slices/adminAuthSlice';
+import CartDrawer from '@/components/cart/CartDrawer';
 
 setStore(store);
 
 const AUTH_STORAGE_KEY = 'prinzex_auth_state';
 const SELLER_STORAGE_KEY = 'prinzex_seller_state';
 const ADMIN_STORAGE_KEY = 'prinzex_admin_state';
+const CART_STORAGE_KEY = 'prinzex_cart_state';
 
 function makeQueryClient() {
   return new QueryClient({
@@ -50,8 +52,21 @@ function SessionBridge({ children }: { children: React.ReactNode }) {
       window.localStorage.removeItem(ADMIN_STORAGE_KEY);
     }
 
+    try {
+      const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+      if (raw) {
+        const { items } = JSON.parse(raw);
+        const { clearCart, addToCart } = require('@/store/slices/cartSlice');
+        store.dispatch(clearCart());
+        items.forEach((item: any) => store.dispatch(addToCart(item)));
+      }
+    } catch {
+      window.localStorage.removeItem(CART_STORAGE_KEY);
+    }
+
     return store.subscribe(() => {
-      const { auth, sellerAuth, adminAuth } = store.getState();
+      const state = store.getState() as RootState;
+      const { auth, sellerAuth, adminAuth, cart } = state;
       try {
         if (auth.user) {
           window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
@@ -70,6 +85,12 @@ function SessionBridge({ children }: { children: React.ReactNode }) {
         } else {
           window.localStorage.removeItem(ADMIN_STORAGE_KEY);
         }
+
+        if (cart.items.length > 0) {
+          window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ items: cart.items }));
+        } else {
+          window.localStorage.removeItem(CART_STORAGE_KEY);
+        }
       } catch {
         /* storage unavailable */
       }
@@ -85,7 +106,10 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
   return (
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
-        <SessionBridge>{children}</SessionBridge>
+        <SessionBridge>
+          {children}
+          <CartDrawer />
+        </SessionBridge>
       </QueryClientProvider>
     </Provider>
   );

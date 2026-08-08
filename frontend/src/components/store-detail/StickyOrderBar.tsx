@@ -63,7 +63,7 @@ export default function StickyOrderBar({ storeId, selectedService, isOpen = true
               canOrder ? 'btn-primary' : 'btn pointer-events-none bg-slate-200 text-slate-400'
             }`}
           >
-            {isOpen ? 'Continue to order' : 'Store Closed'} <IconArrowRight className="h-4 w-4" />
+            {isOpen ? 'Configure & Add to Cart' : 'Store Closed'} <IconArrowRight className="h-4 w-4" />
           </Link>
 
           <p className="mt-3 text-center text-xs text-slate-500">

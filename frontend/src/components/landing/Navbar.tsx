@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { toggleCart } from '@/store/slices/cartSlice';
 import { getMediaUrl } from '@/lib/utils';
 import {
   IconChevronDown,
@@ -16,6 +17,7 @@ import {
   IconStore,
   IconUser,
   IconX,
+  IconShoppingCart,
 } from '@/components/icons';
 
 const NAV_LINKS = [
@@ -90,6 +92,7 @@ export default function Navbar() {
     : '';
 
   const avatarUrl = getMediaUrl(user?.avatarUrl);
+  const cartItemsCount = useAppSelector((state) => state.cart.items.length);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -116,6 +119,22 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
+          {user && (
+            <button
+              type="button"
+              onClick={() => dispatch(toggleCart())}
+              className="relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label={`Cart, ${cartItemsCount} items`}
+            >
+              <IconShoppingCart className="h-6 w-6" />
+              {cartItemsCount > 0 && (
+                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white">
+                  {cartItemsCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {user ? (
             <div className="relative" ref={dropdownRef}>
               <button
