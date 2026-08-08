@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { getMediaUrl } from '@/lib/utils';
 import {
   IconChevronDown,
   IconLogOut,
@@ -88,6 +89,8 @@ export default function Navbar() {
         .toUpperCase()
     : '';
 
+  const avatarUrl = getMediaUrl(user?.avatarUrl);
+
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
       <nav className="container-page flex h-16 items-center justify-between gap-4">
@@ -122,8 +125,12 @@ export default function Navbar() {
                 aria-expanded={dropdownOpen}
                 aria-haspopup="menu"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                  {initials}
+                <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-xs font-bold text-white shadow-inner">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </span>
                 <span className="max-w-[8rem] truncate text-sm font-medium text-slate-700">
                   {user.name.split(' ')[0]}
@@ -225,8 +232,12 @@ export default function Navbar() {
             <div className="flex-1 overflow-y-auto p-4">
               {user && (
                 <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                    {initials}
+                  <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-sm font-bold text-white shadow-inner">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      initials
+                    )}
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>

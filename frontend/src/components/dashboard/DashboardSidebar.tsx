@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { getMediaUrl } from '@/lib/utils';
 import {
   IconBell,
   IconLayoutDashboard,
@@ -40,6 +41,8 @@ export default function DashboardSidebar() {
         .join('')
         .toUpperCase()
     : '';
+
+  const avatarUrl = getMediaUrl(user?.avatarUrl);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -84,10 +87,14 @@ export default function DashboardSidebar() {
       <div className="shrink-0 border-t border-slate-200 p-3">
         {user && (
           <div className="mb-2 flex items-center gap-3 rounded-lg px-3 py-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-              {initials}
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-xs font-bold text-white shadow-inner">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initials
+              )}
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>
               <p className="truncate text-xs text-slate-500">{user.email}</p>
             </div>

@@ -80,3 +80,12 @@ export function maskPhone(phone: string): string {
   if (digits.length < 4) return '●●●●';
   return `●●●●● ●${digits.slice(-4)}`;
 }
+
+/** Build a full URL for media stored on the backend. */
+export function getMediaUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+  return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+}
