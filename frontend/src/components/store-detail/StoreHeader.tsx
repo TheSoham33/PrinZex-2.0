@@ -13,24 +13,6 @@ import {
 export default function StoreHeader({ store }: { store: StoreDetail }) {
   return (
     <div>
-      <nav aria-label="Breadcrumb" className="container-page pt-5">
-        <ol className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
-          <li>
-            <Link href="/" className="hover:text-blue-600">
-              Home
-            </Link>
-          </li>
-          <IconChevronRight className="h-4 w-4" />
-          <li>
-            <Link href="/stores" className="hover:text-blue-600">
-              Stores
-            </Link>
-          </li>
-          <IconChevronRight className="h-4 w-4" />
-          <li className="font-medium text-slate-900">{store.name}</li>
-        </ol>
-      </nav>
-
       <div className="container-page pb-6 pt-5">
         <div
           className={`relative flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br sm:h-56 ${storeGradient(
