@@ -16,7 +16,6 @@ export default function StoreDetailView({ store }: { store: StoreDetail }) {
     <>
       <StoreHeader store={store} />
       <div className="container-page">
-        <StoreInfoBar store={store} />
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_20rem]">
           <StoreTabs
             store={store}
