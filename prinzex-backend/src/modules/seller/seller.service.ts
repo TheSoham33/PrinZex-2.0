@@ -67,6 +67,11 @@ export interface SellerMetadata {
   bulkDiscountTiers?: BulkDiscountTier[];
   hours?: StoreHoursEntry[];
   notifications?: Record<string, boolean>;
+  pricingOverrides?: {
+    paperType?: Record<string, number>;
+    size?: Record<string, number>;
+    colorOption?: Record<string, number>;
+  };
 }
 
 export function readSellerMetadata(json: Prisma.JsonValue | null): SellerMetadata {
@@ -1389,4 +1394,28 @@ export async function updateNotificationSettings(
   });
 
   return preferences;
+}
+
+export async function updatePricingOverrides(
+  sellerId: string,
+  overrides: SellerMetadata['pricingOverrides'],
+): Promise<SellerMetadata['pricingOverrides']> {
+  const seller = await prisma.seller.findUnique({
+    where: { id: sellerId },
+    select: { metadata: true },
+  });
+  if (!seller) {
+    throw ApiError.notFound('Store not found');
+  }
+
+  const metadata: SellerMetadata = {
+    ...readSellerMetadata(seller.metadata),
+    pricingOverrides: overrides,
+  };
+  await prisma.seller.update({
+    where: { id: sellerId },
+    data: { metadata: metadata as Prisma.InputJsonValue },
+  });
+
+  return overrides;
 }

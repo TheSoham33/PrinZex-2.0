@@ -32,6 +32,17 @@ export const updateBulkDiscounts = async (tiers: Array<{ minQty: number; discoun
   });
 };
 
+export const updatePricingOverrides = async (overrides: {
+  paperType?: Record<string, number>;
+  size?: Record<string, number>;
+  colorOption?: Record<string, number>;
+}): Promise<any> => {
+  return apiRequest<any>('/seller/settings/pricing-overrides', {
+    method: 'PATCH',
+    body: JSON.stringify({ overrides }),
+  });
+};
+
 export const fetchSellerReviews = async (): Promise<any[]> => {
   // Reviews are currently under admin or public, but let's check if there's a seller specific one.
   // Actually, we don't have a seller-specific review list endpoint yet.

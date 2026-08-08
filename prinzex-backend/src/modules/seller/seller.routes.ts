@@ -149,6 +149,10 @@ sellerRouter.patch(
   sellerController.updateStoreHours,
 );
 sellerRouter.patch(
+  '/settings/pricing-overrides',
+  sellerController.updatePricingOverrides,
+);
+sellerRouter.patch(
   '/settings/notifications',
   validate({ body: notificationSettingsBody }),
   sellerController.updateNotificationSettings,

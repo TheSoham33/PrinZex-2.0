@@ -242,6 +242,12 @@ export const updateStoreHours = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, result, 'Store hours updated'));
 });
 
+export const updatePricingOverrides = asyncHandler(async (req, res) => {
+  const { overrides } = req.body as { overrides: any };
+  const result = await sellerService.updatePricingOverrides(sellerId(req), overrides);
+  res.status(200).json(new ApiResponse(200, result, 'Pricing add-ons updated'));
+});
+
 export const updateNotificationSettings = asyncHandler(async (req, res) => {
   const { preferences } = req.body as NotificationSettingsInput;
   const result = await sellerService.updateNotificationSettings(sellerId(req), preferences);

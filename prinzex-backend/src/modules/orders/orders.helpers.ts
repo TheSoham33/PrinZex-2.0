@@ -193,15 +193,22 @@ export interface QuoteComputationInput {
   deliverySpeed: DeliverySpeed;
   commissionRate: number; // Seller.commissionRate
   discount: number; // validated coupon discount (0 when none)
+  sellerMetadata?: Prisma.JsonValue | null;
 }
 
 /** Pure, deterministic quote math — fully unit-testable offline. */
 export function computeQuote(input: QuoteComputationInput): QuoteResult {
-  const { specifications } = input;
+  const { specifications, sellerMetadata } = input;
   
-  const paperMultiplier = PAPER_TYPE_MULTIPLIERS[specifications.paperType] ?? 1.0;
-  const sizeMultiplier = PAPER_SIZE_MULTIPLIERS[specifications.size] ?? 1.0;
-  const colorMultiplier = COLOR_OPTION_MULTIPLIERS[specifications.colorOption] ?? 1.0;
+  // Extract overrides from metadata if they exist
+  let overrides: any = {};
+  if (sellerMetadata && typeof sellerMetadata === 'object' && !Array.isArray(sellerMetadata)) {
+    overrides = (sellerMetadata as any).pricingOverrides || {};
+  }
+
+  const paperPrice = overrides.paperType?.[specifications.paperType] ?? 0;
+  const sizePrice = overrides.size?.[specifications.size] ?? 0;
+  const colorPrice = overrides.colorOption?.[specifications.colorOption] ?? 0;
 
   const finishingCharge = specifications.finishing.reduce(
     (sum, type) => sum + (FINISHING_UPCHARGES[type] ?? 0),
@@ -209,7 +216,7 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   );
 
   const subtotal = round2(
-    input.basePrice * paperMultiplier * sizeMultiplier * colorMultiplier * input.quantity + (finishingCharge * input.quantity)
+    (input.basePrice + paperPrice + sizePrice + colorPrice) * input.quantity + (finishingCharge * input.quantity)
   );
   const rushFee = RUSH_FEES[input.deliverySpeed];
   const deliveryFee = DELIVERY_FEES[input.deliverySpeed];

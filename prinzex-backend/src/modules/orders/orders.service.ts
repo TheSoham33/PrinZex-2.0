@@ -179,6 +179,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     deliverySpeed: input.deliverySpeed,
     commissionRate: Number(seller.commissionRate),
     discount,
+    sellerMetadata: seller.metadata,
   });
 
   const timestamp = Date.now();
@@ -256,6 +257,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     deliverySpeed: input.deliverySpeed,
     commissionRate: Number(seller.commissionRate),
     discount,
+    sellerMetadata: seller.metadata,
   });
 
   const paysByWallet = input.paymentMethod === 'wallet';

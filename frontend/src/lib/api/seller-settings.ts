@@ -31,3 +31,14 @@ export const updateNotificationSettings = async (preferences: Record<string, boo
     body: JSON.stringify({ preferences }),
   });
 };
+
+export const updatePricingOverrides = async (overrides: {
+  paperType?: Record<string, number>;
+  size?: Record<string, number>;
+  colorOption?: Record<string, number>;
+}): Promise<any> => {
+  return apiRequest<any>('/seller/settings/pricing-overrides', {
+    method: 'PATCH',
+    body: JSON.stringify({ overrides }),
+  });
+};

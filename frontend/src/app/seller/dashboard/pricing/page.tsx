@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchSellerPricing, updateBulkPrices, updateBulkDiscounts } from '@/lib/api/seller-inventory';
+import { fetchSellerPricing, updateBulkPrices, updateBulkDiscounts, updatePricingOverrides } from '@/lib/api/seller-inventory';
 import {
   type BulkTier,
   type SellerPricingEntry,
 } from '@/lib/mock-data/seller-inventory';
+import { PAPER_TYPES, PAPER_SIZES } from '@/lib/mock-data/stores';
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
@@ -22,7 +23,11 @@ export default function SellerPricingPage() {
 
   const [pricing, setPricing] = useState<any[]>([]);
   const [tiers, setTiers] = useState<any[]>([]);
-  const [editingTier, setEditingTier] = useState<number | null>(null); // Use index as ID if needed or minQty
+  const [paperPrices, setPaperPrices] = useState<Record<string, string>>({});
+  const [sizePrices, setSizePrices] = useState<Record<string, string>>({});
+  const [colorPrices, setColorPrices] = useState<Record<string, string>>({ bw: '0', color: '0' });
+
+  const [editingTier, setEditingTier] = useState<number | null>(null);
   const [tierDraft, setTierDraft] = useState('');
   const [rushEnabled, setRushEnabled] = useState(true);
   const [rushPct, setRushPct] = useState('25');
@@ -31,6 +36,20 @@ export default function SellerPricingPage() {
     if (data) {
       setPricing(data.services || []);
       setTiers(data.bulkDiscountTiers || []);
+      
+      const overrides = (data as any).pricingOverrides || {};
+      const pp: Record<string, string> = {};
+      PAPER_TYPES.forEach(t => pp[t.value] = String(overrides.paperType?.[t.value] || '0'));
+      setPaperPrices(pp);
+
+      const sp: Record<string, string> = {};
+      PAPER_SIZES.forEach(s => sp[s.value] = String(overrides.size?.[s.value] || '0'));
+      setSizePrices(sp);
+
+      setColorPrices({
+        bw: String(overrides.colorOption?.bw || '0'),
+        color: String(overrides.colorOption?.color || '0')
+      });
     }
   }, [data]);
 
@@ -52,6 +71,15 @@ export default function SellerPricingPage() {
     onError: (err: any) => showToast(err.message, 'error')
   });
 
+  const updateOverridesMutation = useMutation({
+    mutationFn: updatePricingOverrides,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
+      showToast('Specifications pricing saved');
+    },
+    onError: (err: any) => showToast(err.message, 'error')
+  });
+
   const savePrice = (serviceId: string, basePrice: number, unit: string) => {
     updatePriceMutation.mutate([{ serviceId, basePrice, unit }]);
   };
@@ -65,6 +93,21 @@ export default function SellerPricingPage() {
       updateTiersMutation.mutate(nextTiers);
     }
     setEditingTier(null);
+  };
+
+  const handleSaveOverrides = () => {
+    const paperType: Record<string, number> = {};
+    Object.entries(paperPrices).forEach(([k, v]) => paperType[k] = Number(v));
+
+    const size: Record<string, number> = {};
+    Object.entries(sizePrices).forEach(([k, v]) => size[k] = Number(v));
+
+    const colorOption = {
+      bw: Number(colorPrices.bw),
+      color: Number(colorPrices.color)
+    };
+
+    updateOverridesMutation.mutate({ paperType, size, colorOption });
   };
 
   if (isError) {
@@ -84,21 +127,21 @@ export default function SellerPricingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl pb-12">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Pricing</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Set your base rates, bulk discounts and rush premium.
+          Set your base rates, specification add-ons, and bulk discounts.
         </p>
       </header>
 
+      {/* Service Rates */}
       <section className="card mt-6 overflow-hidden">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-          <h2 className="text-sm font-bold text-slate-900">Service rates</h2>
+          <h2 className="text-sm font-bold text-slate-900">Service base rates</h2>
         </div>
-
         {isLoading ? (
-          <div className="h-72 animate-pulse bg-slate-100" />
+          <div className="h-48 animate-pulse bg-slate-100" />
         ) : (
           pricing.map((entry) => (
             <PricingEditor 
@@ -115,60 +158,117 @@ export default function SellerPricingPage() {
         )}
       </section>
 
+      {/* Specification Overrides */}
+      <section className="card mt-6 overflow-hidden">
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-900">Paper, Size & Color Add-ons</h2>
+          <button 
+            onClick={handleSaveOverrides}
+            disabled={updateOverridesMutation.isPending}
+            className="btn-primary text-xs py-1"
+          >
+            {updateOverridesMutation.isPending ? 'Saving...' : 'Save All Overrides'}
+          </button>
+        </div>
+        
+        <div className="p-4 space-y-6">
+          {/* Paper Types */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Paper Type Extra (₹)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {PAPER_TYPES.map(type => (
+                <div key={type.value} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-600">{type.label}</span>
+                  <input 
+                    type="number" 
+                    value={paperPrices[type.value] || '0'} 
+                    onChange={(e) => setPaperPrices(p => ({ ...p, [type.value]: e.target.value }))}
+                    className="input w-24 py-1 text-right text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sizes */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Size Extra (₹)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {PAPER_SIZES.map(size => (
+                <div key={size.value} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-600">{size.label}</span>
+                  <input 
+                    type="number" 
+                    value={sizePrices[size.value] || '0'} 
+                    onChange={(e) => setSizePrices(p => ({ ...p, [size.value]: e.target.value }))}
+                    className="input w-24 py-1 text-right text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Color */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Color Option Extra (₹)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-slate-600">B&W</span>
+                <input 
+                  type="number" 
+                  value={colorPrices.bw} 
+                  onChange={(e) => setColorPrices(p => ({ ...p, bw: e.target.value }))}
+                  className="input w-24 py-1 text-right text-sm"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-slate-600">Colour</span>
+                <input 
+                  type="number" 
+                  value={colorPrices.color} 
+                  onChange={(e) => setColorPrices(p => ({ ...p, color: e.target.value }))}
+                  className="input w-24 py-1 text-right text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Bulk Discounts */}
       <section className="card mt-6 overflow-hidden">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
           <h2 className="text-sm font-bold text-slate-900">Bulk order discounts</h2>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Automatically applied when a customer orders in volume.
-          </p>
         </div>
-
         <table className="w-full">
-          <caption className="sr-only">Bulk discount tiers by quantity range</caption>
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
-              <th scope="col" className="px-4 py-2.5">
-                Quantity range
-              </th>
-              <th scope="col" className="px-4 py-2.5">
-                Discount
-              </th>
-              <th scope="col" className="px-4 py-2.5 text-right">
-                Actions
-              </th>
+              <th scope="col" className="px-4 py-2.5">Quantity range</th>
+              <th scope="col" className="px-4 py-2.5">Discount</th>
+              <th scope="col" className="px-4 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {tiers.map((tier, index) => {
               const isEditing = editingTier === index;
-              // Determine maxQty for display if not present in real data
               const nextTier = tiers[index + 1];
               const displayMax = tier.maxQty || (nextTier ? nextTier.minQty - 1 : null);
 
               return (
                 <tr key={tier.minQty} className="border-b border-slate-100 last:border-0">
                   <td className="px-4 py-3 text-sm text-slate-700">
-                    {displayMax === null
-                      ? `${tier.minQty}+ units`
-                      : `${tier.minQty}–${displayMax} units`}
+                    {displayMax === null ? `${tier.minQty}+ units` : `${tier.minQty}–${displayMax} units`}
                   </td>
                   <td className="px-4 py-3">
                     {isEditing ? (
                       <div className="flex items-center gap-1.5">
-                        <label htmlFor={`tier-${index}`} className="sr-only">
-                          Discount percentage for {tier.minQty} units and up
-                        </label>
                         <input
                           id={`tier-${index}`}
                           type="number"
                           min={0}
                           max={100}
                           value={tierDraft}
-                          onChange={(event) => setTierDraft(event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') saveTier(index);
-                            if (event.key === 'Escape') setEditingTier(null);
-                          }}
+                          onChange={(e) => setTierDraft(e.target.value)}
                           className="input w-20 py-1.5 text-sm"
                         />
                         <span className="text-sm text-slate-500">%</span>
@@ -180,30 +280,14 @@ export default function SellerPricingPage() {
                   <td className="px-4 py-3 text-right">
                     {isEditing ? (
                       <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => saveTier(index)}
-                          className="btn-primary text-xs"
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingTier(null)}
-                          className="btn-secondary text-xs"
-                        >
-                          Cancel
-                        </button>
+                        <button type="button" onClick={() => saveTier(index)} className="btn-primary text-xs">Save</button>
+                        <button type="button" onClick={() => setEditingTier(null)} className="btn-secondary text-xs">Cancel</button>
                       </div>
                     ) : (
                       <button
                         type="button"
-                        onClick={() => {
-                          setTierDraft(String(tier.discountPct));
-                          setEditingTier(index);
-                        }}
+                        onClick={() => { setTierDraft(String(tier.discountPct)); setEditingTier(index); }}
                         className="btn-secondary text-xs"
-                        aria-label={`Edit discount for ${tier.minQty} units and up`}
                       >
                         <IconPencil className="h-3.5 w-3.5" /> Edit
                       </button>
@@ -214,53 +298,6 @@ export default function SellerPricingPage() {
             })}
           </tbody>
         </table>
-      </section>
-
-      <section className="card mt-6 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-              <IconZap className="h-5 w-5" />
-            </span>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Rush order premium</h2>
-              <p className="mt-0.5 text-sm text-slate-600">
-                Charge extra for same-day turnaround jobs.
-              </p>
-            </div>
-          </div>
-          <ToggleSwitch
-            checked={rushEnabled}
-            onChange={setRushEnabled}
-            label="Enable rush order premium"
-            hideLabel
-          />
-        </div>
-
-        {rushEnabled && (
-          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4">
-            <div className="w-32">
-              <label htmlFor="rush-pct" className="label">
-                Extra charge
-              </label>
-              <div className="flex items-center gap-1.5">
-                <input
-                  id="rush-pct"
-                  type="number"
-                  min={0}
-                  max={200}
-                  value={rushPct}
-                  onChange={(event) => setRushPct(event.target.value)}
-                  className="input py-2 text-sm"
-                />
-                <span className="text-sm text-slate-500">%</span>
-              </div>
-            </div>
-            <p className="pb-2.5 text-sm text-slate-600">
-              Charge {rushPct || 0}% extra for same-day rush orders.
-            </p>
-          </div>
-        )}
       </section>
     </div>
   );
