@@ -62,6 +62,7 @@ export function createApp(): Express {
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginEmbedderPolicy: false,
     }),
   );
 
@@ -178,7 +179,10 @@ export function createApp(): Express {
   app.use('/api/upload', uploadRouter);
 
   // Static serving for uploaded files (S3 replaces this in the storage step).
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use('/uploads', (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  }, express.static(path.join(process.cwd(), 'uploads')));
 
   // 7. 404 for anything unmatched
   app.use(notFound);
