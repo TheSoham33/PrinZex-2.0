@@ -7,6 +7,7 @@ import type { AdminPermissions } from '@/store/slices/adminAuthSlice';
 import AdminTopbar from '@/components/admin/AdminTopbar';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminMobileNav from '@/components/admin/AdminMobileNav';
+import DynamicBreadcrumbs from '@/components/common/DynamicBreadcrumbs';
 import { ToastProvider } from '@/components/seller-dashboard/Toast';
 import { SIDEBAR_STORAGE_KEY } from '@/components/admin/adminNav';
 import { IconPrinter } from '@/components/icons';
@@ -93,7 +94,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <AdminTopbar />
           <AdminSidebar />
           <div className={`pt-16 transition-[padding] ${collapsed ? 'lg:pl-16' : 'lg:pl-60'}`}>
-            <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">{children}</main>
+            <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">
+              <DynamicBreadcrumbs />
+              {children}
+            </main>
           </div>
           <AdminMobileNav />
         </div>

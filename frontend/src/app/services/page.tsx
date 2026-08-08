@@ -5,6 +5,7 @@ import Footer from '@/components/landing/Footer';
 import Link from 'next/link';
 import { SERVICE_CATEGORIES } from '@/lib/seller-types';
 import { IconChevronRight } from '@/components/icons';
+import Breadcrumbs from '@/components/common/Breadcrumbs';
 
 const IMAGE_MAP: Record<string, string> = {
   'doc-bw-print': '/images/services/xerox.jpg',
@@ -62,13 +63,7 @@ export default function AllServicesPage() {
       <main className="flex-1 py-12">
         <div className="container-page">
           <header className="mb-12">
-            <nav aria-label="Breadcrumb" className="mb-4">
-              <ol className="flex items-center gap-2 text-sm text-slate-500">
-                <li><Link href="/" className="hover:text-blue-600">Home</Link></li>
-                <IconChevronRight className="h-4 w-4" />
-                <li className="font-medium text-slate-900 text-blue-600">Services</li>
-              </ol>
-            </nav>
+            <Breadcrumbs items={[{ label: 'Services', active: true }]} />
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
               All printing services
             </h1>

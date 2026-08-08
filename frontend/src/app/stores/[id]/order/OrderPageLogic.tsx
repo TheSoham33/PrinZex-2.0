@@ -18,6 +18,7 @@ import SpecificationsStep from '@/components/order/SpecificationsStep';
 import UploadStep from '@/components/order/UploadStep';
 import DeliveryStep from '@/components/order/DeliveryStep';
 import PaymentStep from '@/components/order/PaymentStep';
+import Breadcrumbs from '@/components/common/Breadcrumbs';
 import {
   createInitialState,
   orderReducer,
@@ -218,23 +219,14 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   return (
     <div className="container-page py-6">
-      <nav aria-label="Breadcrumb" className="mb-5">
-        <ol className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
-          <li>
-            <Link href="/stores" className="hover:text-blue-600">
-              Stores
-            </Link>
-          </li>
-          <IconChevronRight className="h-4 w-4" />
-          <li>
-            <Link href={`/stores/${store.id}`} className="hover:text-blue-600">
-              {store.name}
-            </Link>
-          </li>
-          <IconChevronRight className="h-4 w-4" />
-          <li className="font-medium text-slate-900">Order</li>
-        </ol>
-      </nav>
+      <Breadcrumbs 
+        items={[
+          { label: 'Stores', href: '/stores' },
+          { label: store.name, href: `/stores/${store.id}` },
+          { label: 'Order', active: true }
+        ]} 
+        className="mb-5"
+      />
 
       <div className="card mb-6 p-5">
         <OrderStepper

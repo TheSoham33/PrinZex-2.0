@@ -7,6 +7,7 @@ import { useAppSelector } from '@/store/hooks';
 import SellerNavbar from '@/components/seller-dashboard/SellerNavbar';
 import SellerSidebar from '@/components/seller-dashboard/SellerSidebar';
 import SellerMobileNav from '@/components/seller-dashboard/SellerMobileNav';
+import DynamicBreadcrumbs from '@/components/common/DynamicBreadcrumbs';
 import { ToastProvider } from '@/components/seller-dashboard/Toast';
 import { IconAlertTriangle, IconMessageSquare, IconPrinter } from '@/components/icons';
 
@@ -79,7 +80,10 @@ export default function SellerDashboardLayout({ children }: { children: React.Re
         <SellerNavbar />
         <SellerSidebar />
         <div className="pt-16 lg:pl-60">
-          <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">{children}</main>
+          <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">
+            <DynamicBreadcrumbs />
+            {children}
+          </main>
         </div>
         <SellerMobileNav />
       </div>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
 import NotFoundState from '@/components/store-detail/NotFoundState';
+import Breadcrumbs from '@/components/common/Breadcrumbs';
 import StoreDetailView from './StoreDetailView';
 import { mapBackendStoreDetailToFrontend } from '@/lib/api/mappers';
 
@@ -43,6 +44,15 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
     <div className="flex min-h-screen flex-col bg-slate-50">
       <Navbar />
       <main className="flex-1 pb-24 lg:pb-12">
+        <div className="container-page pt-6">
+          <Breadcrumbs 
+            items={[
+              { label: 'Stores', href: '/stores' },
+              { label: frontendStore?.name || 'Store Detail', active: true }
+            ]} 
+            className="mb-4"
+          />
+        </div>
         {frontendStore ? <StoreDetailView store={frontendStore} /> : <NotFoundState storeId={id} />}
       </main>
       <Footer />

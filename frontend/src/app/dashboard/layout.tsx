@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 import DashboardMobileNav from '@/components/dashboard/DashboardMobileNav';
+import DynamicBreadcrumbs from '@/components/common/DynamicBreadcrumbs';
 import { IconPrinter } from '@/components/icons';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -41,7 +42,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-slate-50">
       <DashboardSidebar />
       <div className="lg:pl-64">
-        <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">{children}</main>
+        <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">
+          <DynamicBreadcrumbs />
+          {children}
+        </main>
       </div>
       <DashboardMobileNav />
     </div>
