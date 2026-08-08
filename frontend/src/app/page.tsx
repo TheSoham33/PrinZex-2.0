@@ -1,5 +1,6 @@
 import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
+import ServiceHorizontalScroll from '@/components/landing/ServiceHorizontalScroll';
 import TrustStats from '@/components/landing/TrustStats';
 import HowItWorks from '@/components/landing/HowItWorks';
 import PopularServices from '@/components/landing/PopularServices';
@@ -13,9 +14,9 @@ export default function LandingPage() {
       <Navbar />
       <main className="flex-1">
         <Hero />
+        <ServiceHorizontalScroll />
         <TrustStats />
         <HowItWorks />
-        <PopularServices />
         <FeaturedStores />
         <SellerBanner />
       </main>
