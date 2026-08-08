@@ -456,6 +456,7 @@ export async function deleteService(
 export interface PricingInfo {
   services: SellerService[];
   bulkDiscountTiers: BulkDiscountTier[];
+  pricingOverrides: SellerMetadata['pricingOverrides'];
 }
 
 export async function getPricing(sellerId: string): Promise<PricingInfo> {
@@ -467,7 +468,11 @@ export async function getPricing(sellerId: string): Promise<PricingInfo> {
     prisma.seller.findUnique({ where: { id: sellerId }, select: { metadata: true } }),
   ]);
   const metadata = readSellerMetadata(seller?.metadata ?? null);
-  return { services, bulkDiscountTiers: metadata.bulkDiscountTiers ?? [] };
+  return { 
+    services, 
+    bulkDiscountTiers: metadata.bulkDiscountTiers ?? [],
+    pricingOverrides: metadata.pricingOverrides ?? {}
+  };
 }
 
 export async function bulkUpdatePrices(
