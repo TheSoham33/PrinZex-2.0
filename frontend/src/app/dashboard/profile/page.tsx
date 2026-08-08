@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
 import { updateProfile } from '@/lib/api/customer';
 import { apiRequest } from '@/lib/api/client';
+import { getMediaUrl } from '@/lib/utils';
 import { IconAlertCircle, IconCheckCircle, IconUser, IconRefreshCw } from '@/components/icons';
 
 export default function ProfilePage() {
@@ -21,6 +22,7 @@ export default function ProfilePage() {
   const [hasInitialized, setHasInitialized] = useState(false);
   const [uploading, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (user && !hasInitialized) {
@@ -33,6 +35,11 @@ export default function ProfilePage() {
       setHasInitialized(true);
     }
   }, [user, hasInitialized]);
+
+  // Reset image error when URL changes
+  useEffect(() => {
+    setImageError(false);
+  }, [form.avatarUrl]);
 
   const initials = form.name
     .split(' ')
@@ -83,11 +90,12 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4 border-b border-slate-200 pb-6">
           <div className="relative">
             <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-xl font-bold text-white shadow-inner">
-              {form.avatarUrl ? (
+              {form.avatarUrl && !imageError ? (
                 <img 
-                  src={form.avatarUrl.startsWith('http') ? form.avatarUrl : `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${form.avatarUrl}`} 
+                  src={getMediaUrl(form.avatarUrl) || ''} 
                   key={form.avatarUrl}
-                  alt={form.name} 
+                  alt="" 
+                  onError={() => setImageError(true)}
                   className="h-full w-full object-cover" 
                 />
               ) : (

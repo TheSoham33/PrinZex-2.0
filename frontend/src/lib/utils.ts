@@ -86,6 +86,10 @@ export function getMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (path.startsWith('http')) return path;
 
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+  const rawUrl = process.env.NEXT_PUBLIC_API_URL;
+  // If the env var is undefined or the string "undefined", use the local dev fallback.
+  const apiUrl = (!rawUrl || rawUrl === 'undefined') ? 'http://localhost:5000/api' : rawUrl;
+  
+  const baseUrl = apiUrl.replace(/\/api\/?$/, '');
   return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 }

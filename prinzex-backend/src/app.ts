@@ -59,7 +59,11 @@ export function createApp(): Express {
   app.disable('x-powered-by');
 
   // 1. Security headers
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // 2. CORS for the Next.js frontend (comma-separated origins in CORS_ORIGIN)
   const allowedOrigins = env.CORS_ORIGIN.split(',')
