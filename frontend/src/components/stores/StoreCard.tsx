@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Store } from '@/lib/mock-data/stores';
 import { storeGradient } from '@/lib/mock-data/stores';
 import { IconBadgeCheck, IconClock, IconMapPin, IconStar, IconStore } from '@/components/icons';
+import { formatCurrency } from '@/lib/utils';
 
 export default function StoreCard({ store }: { store: Store }) {
   const href = store.matchedService 

@@ -14,6 +14,7 @@ import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { useToast } from '@/components/seller-dashboard/Toast';
+import { formatCurrency } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -334,11 +335,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
                 {placing ? (
                   'Placing order…'
                 ) : state.step === TOTAL_STEPS ? (
-                  <>Place order · {new Intl.NumberFormat('en-IN', {
-                    style: 'currency',
-                    currency: 'INR',
-                    maximumFractionDigits: 0,
-                  }).format(cost.total)}</>
+                  <>Place order · {formatCurrency(cost.total)}</>
                 ) : (
                   <>
                     Continue <IconArrowRight className="h-4 w-4" />
