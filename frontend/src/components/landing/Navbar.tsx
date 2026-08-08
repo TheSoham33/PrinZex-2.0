@@ -20,8 +20,8 @@ import {
 
 const NAV_LINKS = [
   { href: '/stores', label: 'Browse Shops' },
+  { href: '/services', label: 'Services' },
   { href: '/#how-it-works', label: 'How it works' },
-  { href: '/#services', label: 'Services' },
 ];
 
 export default function Navbar() {
