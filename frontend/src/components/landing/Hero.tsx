@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { IconMapPin, IconSearch } from '@/components/icons';
 
@@ -82,6 +83,21 @@ export default function Hero() {
           <p className="mt-4 text-sm text-blue-200">
             Popular: Thesis binding · Visiting cards · Flex banners · Colour xerox
           </p>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link
+              href="#services"
+              className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold text-white ring-1 ring-inset ring-white/20 transition-colors hover:bg-white/20"
+            >
+              Browse All Services
+            </Link>
+            <Link
+              href="/stores"
+              className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold text-white ring-1 ring-inset ring-white/20 transition-colors hover:bg-white/20"
+            >
+              Browse All Shops
+            </Link>
+          </div>
         </div>
       </div>
     </section>
