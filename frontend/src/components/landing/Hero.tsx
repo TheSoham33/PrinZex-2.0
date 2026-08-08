@@ -86,7 +86,7 @@ export default function Hero() {
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
-              href="#services"
+              href="/services"
               className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold text-white ring-1 ring-inset ring-white/20 transition-colors hover:bg-white/20"
             >
               Browse All Services
