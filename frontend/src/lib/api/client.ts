@@ -87,10 +87,24 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
     throw new Error('Unauthorized');
   }
 
-  const data = await response.json();
+  // Handle non-JSON or empty responses safely
+  const contentType = response.headers.get('content-type');
+  let data: any;
+
+  if (contentType && contentType.includes('application/json')) {
+    const text = await response.text();
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (e) {
+      data = { message: 'Invalid JSON response from server' };
+    }
+  } else {
+    const text = await response.text();
+    data = { message: text || `Error ${response.status}: ${response.statusText}` };
+  }
 
   if (!response.ok) {
-    const error = new Error(data.message || 'Something went wrong') as any;
+    const error = new Error(data.message || data.error || 'Something went wrong') as any;
     error.errors = data.errors;
     error.statusCode = response.status;
     throw error;

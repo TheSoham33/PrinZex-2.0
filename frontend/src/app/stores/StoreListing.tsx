@@ -56,6 +56,7 @@ export default function StoreListing() {
       page,
       limit: 12
     }),
+    enabled: mounted,
   });
 
   const results = Array.isArray(data?.data) ? data.data : []; 
