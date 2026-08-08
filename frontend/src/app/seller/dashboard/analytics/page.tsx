@@ -16,9 +16,9 @@ import RevenueChart from '@/components/seller-dashboard/RevenueChart';
 import OrderVolumeChart from '@/components/seller-dashboard/OrderVolumeChart';
 import ServiceBreakdownChart from '@/components/seller-dashboard/ServiceBreakdownChart';
 import { formatCurrency } from '@/lib/utils';
-import * as Icons from '@/components/icons';
 import {
   IconAlertCircle,
+  IconCheckCircle,
   IconPackage,
   IconRefreshCw,
   IconStar,
@@ -152,7 +152,7 @@ export default function SellerAnalyticsPage() {
         <StatCard
           label="Completion rate"
           value={`${overview?.completionRate ?? 0}%`}
-          icon={Icons.IconCheckCircle}
+          icon={IconCheckCircle}
           iconClass="bg-emerald-50 text-emerald-600"
           hint="Orders fulfilled without cancellation"
           loading={isLoading}
