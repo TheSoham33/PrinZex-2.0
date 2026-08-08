@@ -1,6 +1,7 @@
 'use client';
 
-import type { ServiceOffering } from '@/lib/mock-data/stores';
+import { useEffect } from 'react';
+import type { ServiceOffering } from '@/lib/types';
 import ServiceCard from './ServiceCard';
 
 interface ServicesListProps {
@@ -10,6 +11,15 @@ interface ServicesListProps {
 }
 
 export default function ServicesList({ services, selectedId, onSelect }: ServicesListProps) {
+  useEffect(() => {
+    if (selectedId) {
+      const element = document.getElementById(`service-${selectedId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [selectedId]);
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-600">
@@ -17,12 +27,13 @@ export default function ServicesList({ services, selectedId, onSelect }: Service
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         {services.map((service) => (
-          <ServiceCard
-            key={service.id}
-            service={service}
-            selected={selectedId === service.id}
-            onSelect={onSelect}
-          />
+          <div key={service.id} id={`service-${service.id}`}>
+            <ServiceCard
+              service={service}
+              selected={selectedId === service.id}
+              onSelect={onSelect}
+            />
+          </div>
         ))}
       </div>
     </div>

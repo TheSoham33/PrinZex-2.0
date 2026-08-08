@@ -12,6 +12,12 @@ export interface Store {
   tags: string[];
   verified: boolean;
   isOpen: boolean;
+  matchedService?: {
+    id: string;
+    serviceName: string;
+    basePrice: number;
+    unit: string;
+  } | null;
 }
 
 export interface StoreHours {

@@ -4,9 +4,13 @@ import { storeGradient } from '@/lib/mock-data/stores';
 import { IconBadgeCheck, IconClock, IconMapPin, IconStar, IconStore } from '@/components/icons';
 
 export default function StoreCard({ store }: { store: Store }) {
+  const href = store.matchedService 
+    ? `/stores/${store.id}?service=${store.matchedService.id}`
+    : `/stores/${store.id}`;
+
   return (
     <Link
-      href={`/stores/${store.id}`}
+      href={href}
       className="card group flex h-full flex-col overflow-hidden transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg"
     >
       <div
@@ -37,18 +41,33 @@ export default function StoreCard({ store }: { store: Store }) {
           </span>
         </div>
 
-        <p className="mt-1 text-xs text-slate-500">{store.reviewCount} reviews</p>
+        {store.matchedService ? (
+          <div className="mt-3 rounded-lg bg-blue-50 p-2.5 border border-blue-100">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Matched Service</p>
+            <div className="mt-1 flex items-baseline justify-between">
+              <p className="text-sm font-bold text-slate-900">{store.matchedService.serviceName}</p>
+              <p className="text-sm font-extrabold text-blue-700">
+                {formatCurrency(store.matchedService.basePrice)}
+                <span className="ml-0.5 text-[10px] font-normal text-slate-500">/{store.matchedService.unit.split(' ')[1] || 'unit'}</span>
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-1 text-xs text-slate-500">{store.reviewCount} reviews</p>
+        )}
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {store.tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        {!store.matchedService && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {store.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="mt-auto flex items-center gap-4 pt-4 text-xs text-slate-500">
           <span className="inline-flex items-center gap-1">

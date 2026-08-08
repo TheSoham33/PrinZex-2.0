@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
@@ -53,7 +54,13 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
             className="mb-4"
           />
         </div>
-        {frontendStore ? <StoreDetailView store={frontendStore} /> : <NotFoundState storeId={id} />}
+        {frontendStore ? (
+          <Suspense fallback={<div className="container-page h-96 animate-pulse bg-slate-100 rounded-2xl" />}>
+            <StoreDetailView store={frontendStore} />
+          </Suspense>
+        ) : (
+          <NotFoundState storeId={id} />
+        )}
       </main>
       <Footer />
     </div>

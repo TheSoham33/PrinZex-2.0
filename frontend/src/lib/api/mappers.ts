@@ -21,6 +21,7 @@ export function mapBackendStoreToFrontend(b: any, userLat?: number, userLng?: nu
     tags: b.services?.slice(0, 3).map((s: any) => s.serviceName) || [],
     verified: b.isVerified || false,
     isOpen: isStoreOpen(b.openingTime, b.closingTime),
+    matchedService: b.matchedService,
   };
 }
 

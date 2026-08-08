@@ -1,14 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { StoreDetail } from '@/lib/mock-data/stores';
 import StoreHeader from '@/components/store-detail/StoreHeader';
-import StoreInfoBar from '@/components/store-detail/StoreInfoBar';
 import StoreTabs from '@/components/store-detail/StoreTabs';
 import StickyOrderBar from '@/components/store-detail/StickyOrderBar';
 
 export default function StoreDetailView({ store }: { store: StoreDetail }) {
+  const searchParams = useSearchParams();
+  const serviceIdParam = searchParams.get('service');
+  
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (serviceIdParam) {
+      setSelectedServiceId(serviceIdParam);
+    }
+  }, [serviceIdParam]);
+
   const selectedService =
     store.services.find((service) => service.id === selectedServiceId) ?? null;
 
