@@ -175,7 +175,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
   const quote = computeQuote({
     basePrice: Number(service.basePrice),
     quantity: input.quantity,
-    finishing: input.specifications.finishing,
+    specifications: input.specifications,
     deliverySpeed: input.deliverySpeed,
     commissionRate: Number(seller.commissionRate),
     discount,
@@ -252,7 +252,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
   const quote = computeQuote({
     basePrice: Number(service.basePrice),
     quantity: input.quantity,
-    finishing: input.specifications.finishing,
+    specifications: input.specifications,
     deliverySpeed: input.deliverySpeed,
     commissionRate: Number(seller.commissionRate),
     discount,

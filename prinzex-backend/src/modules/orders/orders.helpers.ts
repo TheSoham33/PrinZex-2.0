@@ -50,6 +50,25 @@ export const FINISHING_UPCHARGES: Record<string, number> = {
   cutting: 15,
 };
 
+export const PAPER_TYPE_MULTIPLIERS: Record<string, number> = {
+  standard: 1.0,
+  premium: 1.4,
+  glossy: 1.8,
+  matte: 1.6,
+};
+
+export const PAPER_SIZE_MULTIPLIERS: Record<string, number> = {
+  A4: 1.0,
+  A3: 1.9,
+  A2: 3.4,
+  custom: 2.2,
+};
+
+export const COLOR_OPTION_MULTIPLIERS: Record<string, number> = {
+  bw: 1.0,
+  color: 2.0,
+};
+
 export const RUSH_FEES: Record<DeliverySpeed, number> = {
   STANDARD: 0,
   EXPRESS: 50,
@@ -170,7 +189,7 @@ export async function validateCoupon(
 export interface QuoteComputationInput {
   basePrice: number; // SellerService.basePrice
   quantity: number;
-  finishing: string[];
+  specifications: QuoteSpecifications;
   deliverySpeed: DeliverySpeed;
   commissionRate: number; // Seller.commissionRate
   discount: number; // validated coupon discount (0 when none)
@@ -178,12 +197,20 @@ export interface QuoteComputationInput {
 
 /** Pure, deterministic quote math — fully unit-testable offline. */
 export function computeQuote(input: QuoteComputationInput): QuoteResult {
-  const finishingCharge = input.finishing.reduce(
+  const { specifications } = input;
+  
+  const paperMultiplier = PAPER_TYPE_MULTIPLIERS[specifications.paperType] ?? 1.0;
+  const sizeMultiplier = PAPER_SIZE_MULTIPLIERS[specifications.size] ?? 1.0;
+  const colorMultiplier = COLOR_OPTION_MULTIPLIERS[specifications.colorOption] ?? 1.0;
+
+  const finishingCharge = specifications.finishing.reduce(
     (sum, type) => sum + (FINISHING_UPCHARGES[type] ?? 0),
     0,
   );
 
-  const subtotal = round2(input.basePrice * input.quantity + finishingCharge);
+  const subtotal = round2(
+    input.basePrice * paperMultiplier * sizeMultiplier * colorMultiplier * input.quantity + (finishingCharge * input.quantity)
+  );
   const rushFee = RUSH_FEES[input.deliverySpeed];
   const deliveryFee = DELIVERY_FEES[input.deliverySpeed];
   const tax = round2(subtotal * GST_RATE);
