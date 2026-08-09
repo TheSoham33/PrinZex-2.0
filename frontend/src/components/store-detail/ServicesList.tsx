@@ -13,12 +13,16 @@ interface ServicesListProps {
 export default function ServicesList({ services, selectedId, onSelect }: ServicesListProps) {
   useEffect(() => {
     if (selectedId) {
-      const element = document.getElementById(`service-${selectedId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      // Small timeout to ensure the DOM has settled
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`service-${selectedId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [selectedId]);
+  }, [selectedId, services]);
 
   return (
     <div className="space-y-6">

@@ -214,7 +214,7 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
         );
       if (match) {
         matchedService = {
-          id: match.id,
+          id: match.serviceId || match.id,
           serviceName: match.serviceName,
           basePrice: Number(match.basePrice),
           unit: match.unit,
