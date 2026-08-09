@@ -83,6 +83,15 @@ export async function register(userId: string, input: RegisterSellerInput): Prom
 
   // 3. Everything succeeds or everything rolls back.
   const seller = await prisma.$transaction(async (tx) => {
+    const hours = [
+      'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'
+    ].map(day => ({
+      day,
+      open: input.openingTime,
+      close: input.closingTime,
+      closed: day === 'sunday'
+    }));
+
     const created = await tx.seller.create({
       data: {
         userId,
@@ -99,6 +108,7 @@ export async function register(userId: string, input: RegisterSellerInput): Prom
         openingTime: input.openingTime,
         closingTime: input.closingTime,
         status: 'PENDING',
+        metadata: { hours } as any,
       },
     });
 
