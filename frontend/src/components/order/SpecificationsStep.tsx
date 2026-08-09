@@ -380,15 +380,18 @@ export default function SpecificationsStep({
 
             {specs.quantity > 1 && (
               <div className="pt-2">
-                <label className="flex cursor-pointer items-center gap-3">
+                <label className="flex cursor-not-allowed items-center gap-3 opacity-60">
                   <input
                     type="checkbox"
-                    checked={applyCoverToAll}
-                    onChange={(e) => dispatch({ type: 'SET_SPEC', payload: { applyCoverToAll: e.target.checked } })}
+                    checked={true}
+                    disabled
                     className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="text-sm font-medium text-slate-700">
                     Use same cover style for all {specs.quantity} pieces
+                  </span>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                    Coming Soon
                   </span>
                 </label>
               </div>
