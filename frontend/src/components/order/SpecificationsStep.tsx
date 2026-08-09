@@ -5,6 +5,8 @@ import {
   COVER_COLORS,
   COVER_TEXT_COLORS,
   COVER_TYPES,
+  SPIRAL_COIL_TYPES,
+  SPIRAL_COVER_TYPES,
   FINISHING_OPTIONS,
   PAPER_SIZES,
   PAPER_TYPES,
@@ -28,6 +30,8 @@ export default function SpecificationsStep({
   error,
 }: SpecificationsStepProps) {
   const isHardBinding = specs.serviceId === 'bind-hard';
+  const isSpiralBinding = specs.serviceId === 'bind-spiral';
+  const isCustomizableBinding = isHardBinding || isSpiralBinding;
 
   const toggleFinishing = (value: string) => {
     const finishing = specs.finishing.includes(value)
@@ -138,7 +142,7 @@ export default function SpecificationsStep({
         </section>
       </div>
 
-      {isHardBinding && (
+      {isCustomizableBinding && (
         <section className="animate-fade-in">
           <p className="label">Page corner size <span className="text-red-500">*</span></p>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -248,15 +252,38 @@ export default function SpecificationsStep({
         />
       </section>
 
-      {isHardBinding && (
+      {isCustomizableBinding && (
         <section className="animate-fade-in rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6">
           <h3 className="mb-4 text-lg font-bold text-slate-900">Cover Customization</h3>
           
           <div className="space-y-6">
+            {isSpiralBinding && (
+              <div>
+                <p className="label">Spiral Type <span className="text-red-500">*</span></p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {SPIRAL_COIL_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => dispatch({ type: 'SET_SPEC', payload: { spiralType: type.value } })}
+                      className={`rounded-xl border p-3 bg-white text-left transition-all ${
+                        specs.spiralType === type.value
+                          ? 'border-blue-500 ring-1 ring-blue-500'
+                          : 'border-slate-200 hover:border-blue-200'
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold text-slate-900">{type.label}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">{type.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <p className="label">Cover type <span className="text-red-500">*</span></p>
               <div className="grid gap-3 sm:grid-cols-3">
-                {COVER_TYPES.map((type) => (
+                {(isSpiralBinding ? SPIRAL_COVER_TYPES : COVER_TYPES).map((type) => (
                   <button
                     key={type.value}
                     type="button"

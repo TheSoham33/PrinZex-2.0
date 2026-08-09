@@ -116,6 +116,18 @@ export const COVER_TYPES = [
   { value: 'rexine', label: 'Rexine', hint: 'Durable classic finish' },
 ];
 
+export const SPIRAL_COIL_TYPES = [
+  { value: 'plastic', label: 'Plastic Coil', hint: 'Flexible & durable' },
+  { value: 'wire-o', label: 'Wire-O (Metal)', hint: 'Professional, lays flat' },
+];
+
+export const SPIRAL_COVER_TYPES = [
+  { value: 'clear', label: 'Clear Plastic', hint: 'Transparent front' },
+  { value: 'frosted', label: 'Frosted Plastic', hint: 'Semi-transparent matte' },
+  { value: 'printed', label: 'Printed Cardstock', hint: 'Full color printed cover' },
+  { value: 'opaque', label: 'Opaque Cardstock', hint: 'Solid color heavy paper' },
+];
+
 /* ------------------------------------------------------------------ */
 /* Mock data (REMOVED)                                                 */
 /* ------------------------------------------------------------------ */

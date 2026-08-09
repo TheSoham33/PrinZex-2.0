@@ -73,6 +73,7 @@ export interface OrderSpecifications {
   coverFileUrls?: string[]; // For multiple cover designs if different per piece
   coverType?: string;
   applyCoverToAll?: boolean;
+  spiralType?: string;
 }
 
 export type DeliverySpeed = 'standard' | 'express' | 'same-day' | 'pickup';
