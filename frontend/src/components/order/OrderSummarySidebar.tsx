@@ -64,7 +64,15 @@ export default function OrderSummarySidebar({
                   <div className="mt-2 rounded bg-slate-100 p-1.5 text-slate-700">
                     <p className="font-bold text-[10px] uppercase text-slate-500">Cover</p>
                     <p>{specs.coverType} · {specs.coverColor}</p>
-                    {specs.coverFileUrl && <p className="truncate">File: {specs.coverFileUrl}</p>}
+                    {specs.applyCoverToAll !== false ? (
+                      specs.coverFileUrl && <p className="truncate">File: {specs.coverFileUrl}</p>
+                    ) : (
+                      specs.coverFileUrls && (
+                        <p className="mt-1 font-medium italic">
+                          {specs.coverFileUrls.filter(Boolean).length} of {quantity} designs uploaded
+                        </p>
+                      )
+                    )}
                   </div>
                 )}
               </div>

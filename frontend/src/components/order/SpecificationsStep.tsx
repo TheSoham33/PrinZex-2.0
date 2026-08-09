@@ -36,13 +36,23 @@ export default function SpecificationsStep({
     dispatch({ type: 'SET_SPEC', payload: { finishing } });
   };
 
-  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Simulate upload and set a fake URL (using filename for display)
-      dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: file.name } });
+      if (index !== undefined) {
+        const currentUrls = [...(specs.coverFileUrls || [])];
+        // Ensure array is long enough
+        while (currentUrls.length < specs.quantity) currentUrls.push('');
+        currentUrls[index] = file.name;
+        dispatch({ type: 'SET_SPEC', payload: { coverFileUrls: currentUrls } });
+      } else {
+        // Simulate upload and set a fake URL (using filename for display)
+        dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: file.name } });
+      }
     }
   };
+
+  const applyCoverToAll = specs.applyCoverToAll !== false;
 
   return (
     <div className="space-y-8">
@@ -302,37 +312,70 @@ export default function SpecificationsStep({
 
             <div>
               <p className="label">What will be written on cover (Upload) <span className="text-red-500">*</span></p>
-              <div className="relative">
-                <input
-                  type="file"
-                  id="cover-upload"
-                  onChange={handleCoverUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="cover-upload"
-                  className={`flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all ${
-                    specs.coverFileUrl 
-                      ? 'border-green-200 bg-green-50 text-green-700' 
-                      : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/50'
-                  }`}
-                >
-                  {specs.coverFileUrl ? (
-                    <>
-                      <IconCheckCircle className="h-6 w-6" />
-                      <span className="font-semibold">{specs.coverFileUrl}</span>
-                    </>
-                  ) : (
-                    <>
-                      <IconUpload className="h-6 w-6" />
-                      <div className="text-center">
-                        <p className="font-semibold">Click to upload cover design</p>
-                        <p className="text-xs text-slate-400">PDF, DOCX or Image up to 5MB</p>
-                      </div>
-                    </>
-                  )}
-                </label>
-              </div>
+              
+              {applyCoverToAll ? (
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="cover-upload-all"
+                    onChange={(e) => handleCoverUpload(e)}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="cover-upload-all"
+                    className={`flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all ${
+                      specs.coverFileUrl 
+                        ? 'border-green-200 bg-green-50 text-green-700' 
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/50'
+                    }`}
+                  >
+                    {specs.coverFileUrl ? (
+                      <>
+                        <IconCheckCircle className="h-6 w-6" />
+                        <span className="font-semibold truncate max-w-xs">{specs.coverFileUrl}</span>
+                      </>
+                    ) : (
+                      <>
+                        <IconUpload className="h-6 w-6" />
+                        <div className="text-center">
+                          <p className="font-semibold">Click to upload cover design</p>
+                          <p className="text-xs text-slate-400">Apply to all {specs.quantity} copies</p>
+                        </div>
+                      </>
+                    )}
+                  </label>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {Array.from({ length: specs.quantity }).map((_, idx) => (
+                    <div key={idx} className="relative">
+                      <input
+                        type="file"
+                        id={`cover-upload-${idx}`}
+                        onChange={(e) => handleCoverUpload(e, idx)}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={`cover-upload-${idx}`}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3 transition-all ${
+                          specs.coverFileUrls?.[idx]
+                            ? 'border-green-200 bg-green-50 text-green-700' 
+                            : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                          {idx + 1}
+                        </span>
+                        {specs.coverFileUrls?.[idx] ? (
+                          <span className="truncate text-xs font-semibold">{specs.coverFileUrls[idx]}</span>
+                        ) : (
+                          <span className="text-xs">Upload design for copy {idx + 1}</span>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {specs.quantity > 1 && (
@@ -340,7 +383,7 @@ export default function SpecificationsStep({
                 <label className="flex cursor-pointer items-center gap-3">
                   <input
                     type="checkbox"
-                    checked={specs.applyCoverToAll !== false}
+                    checked={applyCoverToAll}
                     onChange={(e) => dispatch({ type: 'SET_SPEC', payload: { applyCoverToAll: e.target.checked } })}
                     className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
@@ -348,11 +391,6 @@ export default function SpecificationsStep({
                     Use same cover style for all {specs.quantity} pieces
                   </span>
                 </label>
-                {!specs.applyCoverToAll && (
-                  <p className="mt-2 text-xs text-amber-600 font-medium italic">
-                    Note: You can specify individual styles in special instructions at the next step.
-                  </p>
-                )}
               </div>
             )}
           </div>
