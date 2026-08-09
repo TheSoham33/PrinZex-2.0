@@ -74,6 +74,9 @@ export interface OrderSpecifications {
   coverType?: string;
   applyCoverToAll?: boolean;
   spiralType?: string;
+  coverDesignType?: 'default' | 'custom';
+  frontCoverFileUrl?: string;
+  backCoverFileUrl?: string;
 }
 
 export type DeliverySpeed = 'standard' | 'express' | 'same-day' | 'pickup';

@@ -40,17 +40,19 @@ export default function SpecificationsStep({
     dispatch({ type: 'SET_SPEC', payload: { finishing } });
   };
 
-  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>, side?: 'front' | 'back' | 'single', index?: number) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (index !== undefined) {
+      if (side === 'front') {
+        dispatch({ type: 'SET_SPEC', payload: { frontCoverFileUrl: file.name } });
+      } else if (side === 'back') {
+        dispatch({ type: 'SET_SPEC', payload: { backCoverFileUrl: file.name } });
+      } else if (index !== undefined) {
         const currentUrls = [...(specs.coverFileUrls || [])];
-        // Ensure array is long enough
         while (currentUrls.length < specs.quantity) currentUrls.push('');
         currentUrls[index] = file.name;
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrls: currentUrls } });
       } else {
-        // Simulate upload and set a fake URL (using filename for display)
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: file.name } });
       }
     }
@@ -337,73 +339,103 @@ export default function SpecificationsStep({
               </div>
             </div>
 
-            <div>
-              <p className="label">What will be written on cover (Upload) <span className="text-red-500">*</span></p>
-              
-              {applyCoverToAll ? (
-                <div className="relative">
-                  <input
-                    type="file"
-                    id="cover-upload-all"
-                    onChange={(e) => handleCoverUpload(e)}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="cover-upload-all"
-                    className={`flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all ${
-                      specs.coverFileUrl 
-                        ? 'border-green-200 bg-green-50 text-green-700' 
-                        : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/50'
-                    }`}
-                  >
-                    {specs.coverFileUrl ? (
-                      <>
-                        <IconCheckCircle className="h-6 w-6" />
-                        <span className="font-semibold truncate max-w-xs">{specs.coverFileUrl}</span>
-                      </>
-                    ) : (
-                      <>
-                        <IconUpload className="h-6 w-6" />
-                        <div className="text-center">
-                          <p className="font-semibold">Click to upload cover design</p>
-                          <p className="text-xs text-slate-400">Apply to all {specs.quantity} copies</p>
-                        </div>
-                      </>
-                    )}
-                  </label>
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {Array.from({ length: specs.quantity }).map((_, idx) => (
-                    <div key={idx} className="relative">
-                      <input
-                        type="file"
-                        id={`cover-upload-${idx}`}
-                        onChange={(e) => handleCoverUpload(e, idx)}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor={`cover-upload-${idx}`}
-                        className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-3 transition-all ${
-                          specs.coverFileUrls?.[idx]
-                            ? 'border-green-200 bg-green-50 text-green-700' 
-                            : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/50'
-                        }`}
-                      >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
-                          {idx + 1}
-                        </span>
-                        {specs.coverFileUrls?.[idx] ? (
-                          <span className="truncate text-xs font-semibold">{specs.coverFileUrls[idx]}</span>
-                        ) : (
-                          <span className="text-xs">Upload design for copy {idx + 1}</span>
-                        )}
-                      </label>
-                    </div>
+            {isSpiralBinding && (
+              <div>
+                <p className="label">Cover Design <span className="text-red-500">*</span></p>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  {[
+                    { value: 'default', label: 'Simple Cover', hint: 'Plain or standard' },
+                    { value: 'custom', label: 'Custom Designed', hint: 'Both sides personalized' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => dispatch({ type: 'SET_SPEC', payload: { coverDesignType: opt.value as any } })}
+                      className={`rounded-xl border p-3.5 text-left transition-all ${
+                        (specs.coverDesignType || 'default') === opt.value
+                          ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                          : 'border-slate-200 hover:border-blue-200 bg-white'
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold text-slate-900">{opt.label}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">{opt.hint}</span>
+                    </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {isHardBinding || (isSpiralBinding && specs.coverDesignType === 'custom') ? (
+              <div className="space-y-4">
+                <p className="label">
+                  {isSpiralBinding ? 'Both side cover design' : 'What will be written on cover (Upload)'}{' '}
+                  <span className="text-red-500">*</span>
+                </p>
+                
+                {isSpiralBinding ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {/* Front Cover */}
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Front Cover</p>
+                      <input type="file" id="front-cover" onChange={(e) => handleCoverUpload(e, 'front')} className="hidden" />
+                      <label
+                        htmlFor="front-cover"
+                        className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 transition-all ${
+                          specs.frontCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'
+                        }`}
+                      >
+                        {specs.frontCoverFileUrl ? <><IconCheckCircle className="h-4 w-4" /><span className="truncate text-xs font-semibold">{specs.frontCoverFileUrl}</span></> : <><IconUpload className="h-4 w-4" /><span className="text-xs">Upload Front</span></>}
+                      </label>
+                    </div>
+                    {/* Back Cover */}
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Back Cover</p>
+                      <input type="file" id="back-cover" onChange={(e) => handleCoverUpload(e, 'back')} className="hidden" />
+                      <label
+                        htmlFor="back-cover"
+                        className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 transition-all ${
+                          specs.backCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'
+                        }`}
+                      >
+                        {specs.backCoverFileUrl ? <><IconCheckCircle className="h-4 w-4" /><span className="truncate text-xs font-semibold">{specs.backCoverFileUrl}</span></> : <><IconUpload className="h-4 w-4" /><span className="text-xs">Upload Back</span></>}
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="cover-upload-all"
+                      onChange={(e) => handleCoverUpload(e)}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="cover-upload-all"
+                      className={`flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all ${
+                        specs.coverFileUrl 
+                          ? 'border-green-200 bg-green-50 text-green-700' 
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/50'
+                      }`}
+                    >
+                      {specs.coverFileUrl ? (
+                        <>
+                          <IconCheckCircle className="h-6 w-6" />
+                          <span className="font-semibold truncate max-w-xs">{specs.coverFileUrl}</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconUpload className="h-6 w-6" />
+                          <div className="text-center">
+                            <p className="font-semibold">Click to upload cover design</p>
+                            <p className="text-xs text-slate-400">Apply to all {specs.quantity} copies</p>
+                          </div>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             {specs.quantity > 1 && (
               <div className="pt-2">
