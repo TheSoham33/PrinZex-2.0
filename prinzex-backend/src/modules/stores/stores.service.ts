@@ -183,21 +183,41 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   // are aggregated separately and merged.
   const reviewCounts = await reviewCountsFor(rows.map((row) => row.id));
 
+  // If a search query is provided, find the best matching service for each seller
+  // (searching all services, not just the top 5 included in storeListSelect).
+  const sellerIds = rows.map((r) => r.id);
+  const searchMatches = query.q
+    ? await prisma.sellerService.findMany({
+        where: {
+          sellerId: { in: sellerIds },
+          isActive: true,
+          OR: [
+            { serviceName: { contains: query.q, mode: 'insensitive' } },
+            { categoryName: { contains: query.q, mode: 'insensitive' } },
+          ],
+        },
+        orderBy: { basePrice: 'asc' },
+      })
+    : [];
+
   const items: StoreListItem[] = rows.map(({ _count, ...seller }) => {
     let matchedService = null;
-    
+
     if (query.q) {
       const q = query.q.toLowerCase();
-      const match = seller.services.find(s => 
-        s.serviceName.toLowerCase().includes(q) || 
-        s.categoryName.toLowerCase().includes(q)
-      );
+      // Find the cheapest matching service from either searchMatches OR the pre-fetched top 5.
+      const match =
+        searchMatches.find((m) => m.sellerId === seller.id) ||
+        seller.services.find(
+          (s) =>
+            s.serviceName.toLowerCase().includes(q) || s.categoryName.toLowerCase().includes(q),
+        );
       if (match) {
         matchedService = {
           id: match.id,
           serviceName: match.serviceName,
           basePrice: Number(match.basePrice),
-          unit: match.unit
+          unit: match.unit,
         };
       }
     }
