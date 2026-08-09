@@ -353,6 +353,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
             quantity={specs.quantity}
             cost={cost}
             isLoggedIn={!!token}
+            specs={specs}
           />
         </div>
       </div>

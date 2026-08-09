@@ -91,6 +91,31 @@ export const FINISHING_OPTIONS = [
 
 export const TAX_RATE = 0.18;
 
+export const BINDING_CORNER_SIZES = [
+  { value: 'small', label: 'Small', hint: 'Rounded 5mm' },
+  { value: 'medium', label: 'Medium', hint: 'Rounded 10mm' },
+  { value: 'sharp', label: 'Sharp', hint: 'Square corners' },
+];
+
+export const COVER_COLORS = [
+  { value: 'navy', label: 'Navy Blue', class: 'bg-[#000080]' },
+  { value: 'maroon', label: 'Maroon', class: 'bg-[#800000]' },
+  { value: 'black', label: 'Black', class: 'bg-black' },
+  { value: 'green', label: 'Dark Green', class: 'bg-[#006400]' },
+];
+
+export const COVER_TEXT_COLORS = [
+  { value: 'gold', label: 'Gold Foil', class: 'bg-[#D4AF37]' },
+  { value: 'silver', label: 'Silver Foil', class: 'bg-[#C0C0C0]' },
+  { value: 'white', label: 'White', class: 'bg-white' },
+];
+
+export const COVER_TYPES = [
+  { value: 'leather', label: 'Leatherette', hint: 'Premium textured finish' },
+  { value: 'matte', label: 'Matte Laminated', hint: 'Smooth non-reflective' },
+  { value: 'rexine', label: 'Rexine', hint: 'Durable classic finish' },
+];
+
 /* ------------------------------------------------------------------ */
 /* Mock data (REMOVED)                                                 */
 /* ------------------------------------------------------------------ */

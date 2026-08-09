@@ -64,6 +64,14 @@ export interface OrderSpecifications {
   quantity: number;
   colorOption: 'color' | 'bw';
   finishing: string[];
+  // New fields for Hard Binding
+  pageCornerSize?: string;
+  colorPages?: string; // Particular pages color (e.g. "5, 10-12")
+  coverColor?: string;
+  coverTextColor?: string;
+  coverFileUrl?: string; // For the cover content what will be written in cover
+  coverType?: string;
+  applyCoverToAll?: boolean;
 }
 
 export type DeliverySpeed = 'standard' | 'express' | 'same-day' | 'pickup';

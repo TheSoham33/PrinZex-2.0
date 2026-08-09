@@ -1,6 +1,10 @@
 'use client';
 
 import {
+  BINDING_CORNER_SIZES,
+  COVER_COLORS,
+  COVER_TEXT_COLORS,
+  COVER_TYPES,
   FINISHING_OPTIONS,
   PAPER_SIZES,
   PAPER_TYPES,
@@ -8,7 +12,7 @@ import {
 import type { OrderSpecifications, ServiceOffering } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
-import { IconAlertCircle } from '@/components/icons';
+import { IconAlertCircle, IconUpload, IconCheckCircle } from '@/components/icons';
 
 interface SpecificationsStepProps {
   specs: OrderSpecifications;
@@ -23,11 +27,21 @@ export default function SpecificationsStep({
   dispatch,
   error,
 }: SpecificationsStepProps) {
+  const isHardBinding = specs.serviceId === 'bind-hard';
+
   const toggleFinishing = (value: string) => {
     const finishing = specs.finishing.includes(value)
       ? specs.finishing.filter((item) => item !== value)
       : [...specs.finishing, value];
     dispatch({ type: 'SET_SPEC', payload: { finishing } });
+  };
+
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Simulate upload and set a fake URL (using filename for display)
+      dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: file.name } });
+    }
   };
 
   return (
@@ -66,51 +80,76 @@ export default function SpecificationsStep({
         </select>
       </section>
 
-      <section>
-        <p className="label">
-          Paper type <span className="text-red-500">*</span>
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {PAPER_TYPES.map((type) => (
-            <button
-              key={type.value}
-              type="button"
-              onClick={() => dispatch({ type: 'SET_SPEC', payload: { paperType: type.value } })}
-              className={`rounded-xl border p-3.5 text-left transition-all ${
-                specs.paperType === type.value
-                  ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
-                  : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
-              }`}
-            >
-              <span className="block text-sm font-semibold text-slate-900">{type.label}</span>
-              <span className="mt-0.5 block text-xs text-slate-500">{type.hint}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      <div className="grid gap-6 sm:grid-cols-2">
+        <section>
+          <p className="label">
+            Paper type <span className="text-red-500">*</span>
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {PAPER_TYPES.map((type) => (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => dispatch({ type: 'SET_SPEC', payload: { paperType: type.value } })}
+                className={`rounded-xl border p-3.5 text-left transition-all ${
+                  specs.paperType === type.value
+                    ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                    : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
+                }`}
+              >
+                <span className="block text-sm font-semibold text-slate-900">{type.label}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{type.hint}</span>
+              </button>
+            ))}
+          </div>
+        </section>
 
-      <section>
-        <p className="label">
-          Size <span className="text-red-500">*</span>
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {PAPER_SIZES.map((size) => (
-            <button
-              key={size.value}
-              type="button"
-              onClick={() => dispatch({ type: 'SET_SPEC', payload: { size: size.value } })}
-              className={`rounded-xl border p-3.5 text-left transition-all ${
-                specs.size === size.value
-                  ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
-                  : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
-              }`}
-            >
-              <span className="block text-sm font-semibold text-slate-900">{size.label}</span>
-              <span className="mt-0.5 block text-xs text-slate-500">{size.hint}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+        <section>
+          <p className="label">
+            Size <span className="text-red-500">*</span>
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {PAPER_SIZES.map((size) => (
+              <button
+                key={size.value}
+                type="button"
+                onClick={() => dispatch({ type: 'SET_SPEC', payload: { size: size.value } })}
+                className={`rounded-xl border p-3.5 text-left transition-all ${
+                  specs.size === size.value
+                    ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                    : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
+                }`}
+              >
+                <span className="block text-sm font-semibold text-slate-900">{size.label}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{size.hint}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      {isHardBinding && (
+        <section className="animate-fade-in">
+          <p className="label">Page corner size <span className="text-red-500">*</span></p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {BINDING_CORNER_SIZES.map((corner) => (
+              <button
+                key={corner.value}
+                type="button"
+                onClick={() => dispatch({ type: 'SET_SPEC', payload: { pageCornerSize: corner.value } })}
+                className={`rounded-xl border p-3.5 text-left transition-all ${
+                  specs.pageCornerSize === corner.value
+                    ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                    : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
+                }`}
+              >
+                <span className="block text-sm font-semibold text-slate-900">{corner.label}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{corner.hint}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-6 sm:grid-cols-2">
         <section>
@@ -143,7 +182,7 @@ export default function SpecificationsStep({
                   payload: { quantity: Math.max(1, Number(event.target.value) || 1) },
                 })
               }
-              className="input text-center"
+              className="input text-center font-bold"
             />
             <button
               type="button"
@@ -157,7 +196,7 @@ export default function SpecificationsStep({
         </section>
 
         <section>
-          <p className="label">Colour</p>
+          <p className="label">Colour <span className="text-red-500">*</span></p>
           <div className="grid grid-cols-2 gap-3">
             {(
               [
@@ -184,6 +223,141 @@ export default function SpecificationsStep({
           </div>
         </section>
       </div>
+
+      <section>
+        <label htmlFor="colorPages" className="label">
+          Particular pages colour (optional)
+        </label>
+        <textarea
+          id="colorPages"
+          rows={2}
+          value={specs.colorPages || ''}
+          onChange={(e) => dispatch({ type: 'SET_SPEC', payload: { colorPages: e.target.value } })}
+          placeholder="e.g. 1, 5, 10-15 (These pages will be printed in colour)"
+          className="input resize-none"
+        />
+      </section>
+
+      {isHardBinding && (
+        <section className="animate-fade-in rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6">
+          <h3 className="mb-4 text-lg font-bold text-slate-900">Cover Customization</h3>
+          
+          <div className="space-y-6">
+            <div>
+              <p className="label">Cover type <span className="text-red-500">*</span></p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {COVER_TYPES.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => dispatch({ type: 'SET_SPEC', payload: { coverType: type.value } })}
+                    className={`rounded-xl border p-3 bg-white text-left transition-all ${
+                      specs.coverType === type.value
+                        ? 'border-blue-500 ring-1 ring-blue-500'
+                        : 'border-slate-200 hover:border-blue-200'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold text-slate-900">{type.label}</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">{type.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <p className="label">Colour for cover <span className="text-red-500">*</span></p>
+                <div className="flex flex-wrap gap-3">
+                  {COVER_COLORS.map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      onClick={() => dispatch({ type: 'SET_SPEC', payload: { coverColor: color.value } })}
+                      title={color.label}
+                      className={`h-10 w-10 rounded-full border-2 transition-all ${
+                        specs.coverColor === color.value ? 'border-blue-600 ring-2 ring-blue-100' : 'border-white shadow-sm'
+                      } ${color.class}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="label">Colour for cover text <span className="text-red-500">*</span></p>
+                <div className="flex flex-wrap gap-3">
+                  {COVER_TEXT_COLORS.map((color) => (
+                    <button
+                      key={color.value}
+                      type="button"
+                      onClick={() => dispatch({ type: 'SET_SPEC', payload: { coverTextColor: color.value } })}
+                      title={color.label}
+                      className={`h-10 w-10 rounded-full border-2 transition-all ${
+                        specs.coverTextColor === color.value ? 'border-blue-600 ring-2 ring-blue-100' : 'border-slate-200 shadow-sm'
+                      } ${color.class}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="label">What will be written on cover (Upload) <span className="text-red-500">*</span></p>
+              <div className="relative">
+                <input
+                  type="file"
+                  id="cover-upload"
+                  onChange={handleCoverUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="cover-upload"
+                  className={`flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all ${
+                    specs.coverFileUrl 
+                      ? 'border-green-200 bg-green-50 text-green-700' 
+                      : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/50'
+                  }`}
+                >
+                  {specs.coverFileUrl ? (
+                    <>
+                      <IconCheckCircle className="h-6 w-6" />
+                      <span className="font-semibold">{specs.coverFileUrl}</span>
+                    </>
+                  ) : (
+                    <>
+                      <IconUpload className="h-6 w-6" />
+                      <div className="text-center">
+                        <p className="font-semibold">Click to upload cover design</p>
+                        <p className="text-xs text-slate-400">PDF, DOCX or Image up to 5MB</p>
+                      </div>
+                    </>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {specs.quantity > 1 && (
+              <div className="pt-2">
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={specs.applyCoverToAll !== false}
+                    onChange={(e) => dispatch({ type: 'SET_SPEC', payload: { applyCoverToAll: e.target.checked } })}
+                    className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700">
+                    Use same cover style for all {specs.quantity} pieces
+                  </span>
+                </label>
+                {!specs.applyCoverToAll && (
+                  <p className="mt-2 text-xs text-amber-600 font-medium italic">
+                    Note: You can specify individual styles in special instructions at the next step.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <section>
         <p className="label">Finishing (optional)</p>

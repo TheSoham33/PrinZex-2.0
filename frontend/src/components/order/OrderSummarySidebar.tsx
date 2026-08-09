@@ -1,6 +1,6 @@
 'use client';
 
-import type { CostBreakdown, ServiceOffering } from '@/lib/types';
+import type { CostBreakdown, OrderSpecifications, ServiceOffering } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { IconShieldCheck, IconLock } from '@/components/icons';
 
@@ -10,6 +10,7 @@ interface OrderSummarySidebarProps {
   quantity: number;
   cost: CostBreakdown;
   isLoggedIn?: boolean;
+  specs?: OrderSpecifications;
 }
 
 export default function OrderSummarySidebar({
@@ -18,6 +19,7 @@ export default function OrderSummarySidebar({
   quantity,
   cost,
   isLoggedIn = true,
+  specs,
 }: OrderSummarySidebarProps) {
   const rows = [
     { label: 'Subtotal', value: cost.subtotal },
@@ -42,13 +44,31 @@ export default function OrderSummarySidebar({
 
       <div className="px-5 py-4">
         {service ? (
-          <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900">{service.name}</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {formatCurrency(service.startingPrice)} {service.unit} · Qty {quantity}
-              </p>
+          <div className="flex flex-col gap-2 border-b border-slate-200 pb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">{service.name}</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {formatCurrency(service.startingPrice)} {service.unit} · Qty {quantity}
+                </p>
+              </div>
             </div>
+            
+            {specs && (
+              <div className="space-y-1 text-[11px] text-slate-500">
+                {specs.paperType && <p>Paper: <span className="capitalize">{specs.paperType}</span></p>}
+                {specs.size && <p>Size: {specs.size}</p>}
+                {specs.pageCornerSize && <p>Corners: <span className="capitalize">{specs.pageCornerSize}</span></p>}
+                {specs.colorPages && <p className="line-clamp-1">Color Pages: {specs.colorPages}</p>}
+                {specs.coverType && (
+                  <div className="mt-2 rounded bg-slate-100 p-1.5 text-slate-700">
+                    <p className="font-bold text-[10px] uppercase text-slate-500">Cover</p>
+                    <p>{specs.coverType} · {specs.coverColor}</p>
+                    {specs.coverFileUrl && <p className="truncate">File: {specs.coverFileUrl}</p>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <p className="border-b border-slate-200 pb-4 text-sm text-slate-500">
