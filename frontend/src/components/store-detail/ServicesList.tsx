@@ -1,0 +1,41 @@
+'use client';
+
+import { useEffect } from 'react';
+import type { ServiceOffering } from '@/lib/types';
+import ServiceCard from './ServiceCard';
+
+interface ServicesListProps {
+  services: ServiceOffering[];
+  selectedId: string | null;
+  onSelect: (serviceId: string) => void;
+}
+
+export default function ServicesList({ services, selectedId, onSelect }: ServicesListProps) {
+  useEffect(() => {
+    if (selectedId) {
+      const element = document.getElementById(`service-${selectedId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [selectedId]);
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-slate-600">
+        Select a service to continue. You&apos;ll set quantity and paper options next.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {services.map((service) => (
+          <div key={service.id} id={`service-${service.id}`}>
+            <ServiceCard
+              service={service}
+              selected={selectedId === service.id}
+              onSelect={onSelect}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
