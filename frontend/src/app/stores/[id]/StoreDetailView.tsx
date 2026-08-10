@@ -1,0 +1,47 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import type { StoreDetail } from '@/lib/mock-data/stores';
+import StoreHeader from '@/components/store-detail/StoreHeader';
+import StoreTabs from '@/components/store-detail/StoreTabs';
+import StickyOrderBar from '@/components/store-detail/StickyOrderBar';
+import { isStoreOpen } from '@/lib/api/mappers';
+
+export default function StoreDetailView({ store }: { store: StoreDetail }) {
+  const searchParams = useSearchParams();
+  const serviceIdParam = searchParams.get('service');
+  
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(store.isOpen);
+  
+  useEffect(() => {
+    setMounted(true);
+    // Recalculate on client to ensure timezone correctness
+    setIsOpen(isStoreOpen(undefined, undefined, { hours: store.hours }));
+
+    if (serviceIdParam) {
+      setSelectedServiceId(serviceIdParam);
+    }
+  }, [serviceIdParam, store.hours]);
+
+  const selectedService =
+    store.services.find((service) => service.id === selectedServiceId) ?? null;
+
+  return (
+    <>
+      <StoreHeader store={{ ...store, isOpen }} />
+      <div className="container-page">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_20rem]">
+          <StoreTabs
+            store={store}
+            selectedServiceId={selectedServiceId}
+            onSelectService={setSelectedServiceId}
+          />
+          <StickyOrderBar storeId={store.id} selectedService={selectedService} isOpen={isOpen} />
+        </div>
+      </div>
+    </>
+  );
+}
