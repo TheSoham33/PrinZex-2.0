@@ -43,6 +43,7 @@ const PUBLIC_SELLER_SELECT = {
   totalOrders: true,
   completionRate: true,
   onTimeRate: true,
+  metadata: true,
   createdAt: true,
 } satisfies Prisma.SellerSelect;
 
