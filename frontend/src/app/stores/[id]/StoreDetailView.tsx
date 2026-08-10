@@ -13,11 +13,9 @@ export default function StoreDetailView({ store }: { store: StoreDetail }) {
   const serviceIdParam = searchParams.get('service');
   
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(store.isOpen);
   
   useEffect(() => {
-    setMounted(true);
     // Recalculate on client to ensure timezone correctness
     setIsOpen(isStoreOpen(undefined, undefined, { hours: store.hours }));
 
