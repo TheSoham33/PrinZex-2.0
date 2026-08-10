@@ -7,9 +7,9 @@ import { Schema, model } from 'mongoose';
  * Schema-flexible per `type` via the `metadata` map.
  */
 
-export type ContentType = 'banner' | 'faq' | 'blog' | 'template';
+export type ContentType = 'banner' | 'faq' | 'blog' | 'template' | 'settings';
 
-export const CONTENT_TYPES: ContentType[] = ['banner', 'faq', 'blog', 'template'];
+export const CONTENT_TYPES: ContentType[] = ['banner', 'faq', 'blog', 'template', 'settings'];
 
 export interface IContent {
   type: ContentType;
