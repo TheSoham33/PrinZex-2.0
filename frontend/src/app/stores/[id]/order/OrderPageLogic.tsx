@@ -226,7 +226,6 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
     if (!state.order.file) {
       dispatch({ type: 'SET_ERROR', payload: 'Please upload a file before adding to cart' });
-      if (state.step < 2) dispatch({ type: 'SET_STEP', payload: 2 });
       return;
     }
 
