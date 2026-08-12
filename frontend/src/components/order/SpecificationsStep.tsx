@@ -11,7 +11,6 @@ import {
   PAPER_SIZES,
   PAPER_TYPES,
 } from '@/lib/mock-data/stores';
-<<<<<<< HEAD
 import type { OrderSpecifications, ServiceOffering, UploadedFile } from '@/lib/types';
 import { formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
@@ -20,21 +19,12 @@ import { useRef, useState, type DragEvent } from 'react';
 
 const ACCEPTED = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
 const MAX_BYTES = 25 * 1024 * 1024;
-=======
-import type { OrderSpecifications, ServiceOffering } from '@/lib/types';
-import { formatCurrency } from '@/lib/utils';
-import type { OrderAction } from './orderReducer';
-import { IconAlertCircle, IconUpload, IconCheckCircle } from '@/components/icons';
->>>>>>> 9966c153ed4d10df828ad582708811fa8ddba071
 
 interface SpecificationsStepProps {
   specs: OrderSpecifications;
   services: ServiceOffering[];
-<<<<<<< HEAD
   file: UploadedFile | null;
   instructions: string;
-=======
->>>>>>> 9966c153ed4d10df828ad582708811fa8ddba071
   dispatch: React.Dispatch<OrderAction>;
   error: string | null;
 }
@@ -42,11 +32,8 @@ interface SpecificationsStepProps {
 export default function SpecificationsStep({
   specs,
   services,
-<<<<<<< HEAD
   file,
   instructions,
-=======
->>>>>>> 9966c153ed4d10df828ad582708811fa8ddba071
   dispatch,
   error,
 }: SpecificationsStepProps) {
@@ -54,7 +41,6 @@ export default function SpecificationsStep({
   const isSpiralBinding = specs.serviceId === 'bind-spiral';
   const isCustomizableBinding = isHardBinding || isSpiralBinding;
 
-<<<<<<< HEAD
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -78,8 +64,6 @@ export default function SpecificationsStep({
     acceptFile(event.dataTransfer.files?.[0]);
   };
 
-=======
->>>>>>> 9966c153ed4d10df828ad582708811fa8ddba071
   const toggleFinishing = (value: string) => {
     const finishing = specs.finishing.includes(value)
       ? specs.finishing.filter((item) => item !== value)
@@ -106,18 +90,13 @@ export default function SpecificationsStep({
   };
 
   const applyCoverToAll = specs.applyCoverToAll !== false;
-
-<<<<<<< HEAD
   const shownError = localError ?? error;
 
-=======
->>>>>>> 9966c153ed4d10df828ad582708811fa8ddba071
   return (
     <div className="space-y-8">
       <header>
         <h2 className="text-xl font-bold text-slate-900">Print specifications</h2>
         <p className="mt-1 text-sm text-slate-600">
-<<<<<<< HEAD
           Upload your file and choose how you want it printed.
         </p>
       </header>
@@ -192,18 +171,6 @@ export default function SpecificationsStep({
         />
       </section>
 
-=======
-          Tell us exactly how you want it printed. Pricing updates as you choose.
-        </p>
-      </header>
-
-      {error && (
-        <p className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          <IconAlertCircle className="h-4 w-4 shrink-0" /> {error}
-        </p>
-      )}
-
->>>>>>> 9966c153ed4d10df828ad582708811fa8ddba071
       <section>
         <label htmlFor="service" className="label">
           Service <span className="text-red-500">*</span>
@@ -614,7 +581,6 @@ export default function SpecificationsStep({
           })}
         </div>
       </section>
-<<<<<<< HEAD
 
       <section>
         <label htmlFor="instructions" className="label">
@@ -631,8 +597,6 @@ export default function SpecificationsStep({
         />
         <p className="mt-1.5 text-right text-xs text-slate-400">{instructions.length}/500</p>
       </section>
-=======
->>>>>>> 9966c153ed4d10df828ad582708811fa8ddba071
     </div>
   );
 }
