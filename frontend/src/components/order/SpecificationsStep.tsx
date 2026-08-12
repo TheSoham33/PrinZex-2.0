@@ -75,6 +75,10 @@ export default function SpecificationsStep({
     let finalFile = selected;
 
     try {
+      if (selected.type === 'application/pdf') {
+        const arrayBuffer = await selected.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        totalPages = pdfDoc.getPageCount();
       } else {
         // Simulation of PDF conversion
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -185,6 +189,7 @@ export default function SpecificationsStep({
         const currentUrls = [...(specs.coverFileUrls || [])];
         while (currentUrls.length < specs.quantity) currentUrls.push('');
         currentUrls[index] = previewUrl;
+        // In a real app, filenames would be in a separate array or part of the object
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrls: currentUrls } });
       } else {
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: previewUrl, coverFileName: file.name } });
@@ -291,11 +296,14 @@ export default function SpecificationsStep({
               </div>
             </div>
 
+            {/* Page Count Confirmation (Read-only) */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Total pages</p>
-                  <p className="text-xs text-slate-500">Calculated after system conversion</p>
+                  <p className="text-xs text-slate-500">
+                    Calculated after system conversion
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex h-10 w-20 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-900">
