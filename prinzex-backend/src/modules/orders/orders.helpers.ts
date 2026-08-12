@@ -13,6 +13,7 @@ export interface QuoteSpecifications {
   size: string;
   colorOption: 'color' | 'bw';
   finishing: string[];
+  totalPages?: number;
 }
 
 export interface QuoteInput {
@@ -188,6 +189,7 @@ export async function validateCoupon(
 
 export interface QuoteComputationInput {
   basePrice: number; // SellerService.basePrice
+  unit: string;
   quantity: number;
   specifications: QuoteSpecifications;
   deliverySpeed: DeliverySpeed;
@@ -198,7 +200,7 @@ export interface QuoteComputationInput {
 
 /** Pure, deterministic quote math — fully unit-testable offline. */
 export function computeQuote(input: QuoteComputationInput): QuoteResult {
-  const { specifications, sellerMetadata } = input;
+  const { specifications, sellerMetadata, unit } = input;
   
   // Extract overrides from metadata if they exist
   let overrides: any = {};
@@ -215,8 +217,12 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     0,
   );
 
+  const totalPages = specifications.totalPages || 1;
+  const isPerPage = unit.toLowerCase().includes('page');
+  const unitFactor = isPerPage ? totalPages : 1;
+
   const subtotal = round2(
-    (input.basePrice + paperPrice + sizePrice + colorPrice) * input.quantity + (finishingCharge * input.quantity)
+    (input.basePrice + paperPrice + sizePrice + colorPrice) * unitFactor * input.quantity + (finishingCharge * input.quantity)
   );
   const rushFee = RUSH_FEES[input.deliverySpeed];
   const deliveryFee = DELIVERY_FEES[input.deliverySpeed];

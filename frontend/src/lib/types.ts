@@ -77,6 +77,7 @@ export interface OrderSpecifications {
   coverDesignType?: 'default' | 'custom';
   frontCoverFileUrl?: string;
   backCoverFileUrl?: string;
+  totalPages?: number;
 }
 
 export type DeliverySpeed = 'standard' | 'express' | 'same-day' | 'pickup';

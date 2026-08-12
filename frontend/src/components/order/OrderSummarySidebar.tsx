@@ -49,7 +49,7 @@ export default function OrderSummarySidebar({
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{service.name}</p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {formatCurrency(service.startingPrice)} {service.unit} · Qty {quantity}
+                  {formatCurrency(service.startingPrice)} {service.unit} · {specs?.totalPages ? `${specs.totalPages} pages · ` : ''}Qty {quantity}
                 </p>
               </div>
             </div>

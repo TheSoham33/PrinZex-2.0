@@ -319,7 +319,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
                 </button>
               )}
 
-              <button type="button" onClick={goNext} disabled={placing} className="btn-primary">
+              <button type="button" onClick={goNext} disabled={placing || state.error !== null} className="btn-primary">
                 {placing ? (
                   'Placing order…'
                 ) : state.step === TOTAL_STEPS ? (

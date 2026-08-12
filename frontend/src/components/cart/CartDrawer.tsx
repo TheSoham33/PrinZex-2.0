@@ -76,7 +76,7 @@ export default function CartDrawer() {
                     </p>
                     <h4 className="mt-1 font-bold text-slate-900">{item.serviceName}</h4>
                     <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                      {item.specifications.quantity}x, {item.specifications.paperType}, {item.specifications.size}
+                      {item.specifications.quantity}x, {item.specifications.totalPages ? `${item.specifications.totalPages}p, ` : ''}{item.specifications.paperType}, {item.specifications.size}
                     </p>
                     <div className="mt-3 flex items-center justify-between">
                       <span className="text-sm font-bold text-slate-900">

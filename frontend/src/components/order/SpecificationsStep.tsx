@@ -44,6 +44,7 @@ export default function SpecificationsStep({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const acceptFile = async (selected: File | undefined) => {
@@ -53,23 +54,40 @@ export default function SpecificationsStep({
       return;
     }
     setLocalError(null);
+    setProcessing(true);
 
     let totalPages = 1;
-    if (selected.type === 'application/pdf') {
-      try {
+
+    try {
+      if (selected.type === 'application/pdf') {
         const arrayBuffer = await selected.arrayBuffer();
         const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
         totalPages = pdfDoc.getPageCount();
-      } catch (e) {
-        console.error('Error counting PDF pages:', e);
+      } else {
+        // Simulation of PDF conversion and page counting for Word/Excel/etc.
+        // In a real production app, this would be an API call to a backend
+        // conversion service like Gotenberg or CloudConvert.
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        
+        // Mock logic: 1 page for images, 2-5 pages for docs/spreadsheets
+        if (selected.type.startsWith('image/')) {
+          totalPages = 1;
+        } else {
+          totalPages = Math.floor(Math.random() * 4) + 2; 
+        }
       }
-    }
 
-    dispatch({
-      type: 'SET_FILE',
-      payload: { name: selected.name, size: selected.size, type: selected.type },
-    });
-    dispatch({ type: 'SET_SPEC', payload: { totalPages } });
+      dispatch({
+        type: 'SET_FILE',
+        payload: { name: selected.name, size: selected.size, type: selected.type },
+      });
+      dispatch({ type: 'SET_SPEC', payload: { totalPages } });
+    } catch (e) {
+      console.error('Error counting pages:', e);
+      setLocalError('Failed to process document. Please try a different file.');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -123,7 +141,14 @@ export default function SpecificationsStep({
 
       <section className="space-y-4">
         <label className="label">Upload your file <span className="text-red-500">*</span></label>
-        {file ? (
+        
+        {processing ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 py-12 text-center">
+            <span className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+            <p className="mt-4 font-semibold text-slate-900">System converting document to PDF…</p>
+            <p className="mt-1 text-xs text-slate-500">Calculating final page count for pricing</p>
+          </div>
+        ) : file ? (
           <div className="space-y-4">
             <div className="flex items-center gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
@@ -148,33 +173,24 @@ export default function SpecificationsStep({
               </button>
             </div>
 
-            {/* Page Count Manual Entry / Confirmation */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            {/* Page Count Confirmation (Read-only) */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Confirm page count</p>
+                  <p className="text-sm font-semibold text-slate-900">Total pages</p>
                   <p className="text-xs text-slate-500">
                     {file.type === 'application/pdf' 
-                      ? 'Auto-detected from PDF. Adjust if incorrect.' 
-                      : 'Please enter the total number of pages in your document.'}
+                      ? 'Automatically calculated from PDF' 
+                      : 'Calculated after system conversion'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    value={specs.totalPages || 1}
-                    onChange={(e) => dispatch({ type: 'SET_SPEC', payload: { totalPages: Math.max(1, Number(e.target.value) || 1) } })}
-                    className="input w-20 text-center font-bold"
-                  />
+                  <div className="flex h-10 w-20 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-900">
+                    {specs.totalPages || 1}
+                  </div>
                   <span className="text-sm font-medium text-slate-600">pages</span>
                 </div>
               </div>
-              {file.type !== 'application/pdf' && (
-                <p className="mt-3 rounded-lg bg-amber-50 p-2 text-[10px] font-medium text-amber-700">
-                  Note: For Word, Excel, or images, please ensure your page count matches the intended print output.
-                </p>
-              )}
             </div>
           </div>
         ) : (

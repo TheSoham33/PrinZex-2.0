@@ -101,7 +101,7 @@ export default function CheckoutPage() {
                         <h3 className="font-semibold text-slate-900">{item.serviceName}</h3>
                         <p className="text-sm text-slate-500">{item.storeName}</p>
                         <p className="mt-1 text-xs text-slate-400">
-                          {item.specifications.quantity}x · {item.specifications.paperType} · {item.specifications.size}
+                          {item.specifications.quantity}x · {item.specifications.totalPages ? `${item.specifications.totalPages} pages · ` : ''}{item.specifications.paperType} · {item.specifications.size}
                         </p>
                       </div>
                       <span className="font-bold text-slate-900">{formatCurrency(item.costBreakdown.total)}</span>

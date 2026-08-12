@@ -148,13 +148,18 @@ export function computeCost(
   const size = PAPER_SIZES.find((entry) => entry.value === specs.size)?.multiplier ?? 1;
   const colour = specs.colorOption === 'color' ? 2 : 1;
   const quantity = Math.max(1, specs.quantity || 1);
+  const totalPages = specs.totalPages || 1;
 
   const finishingPerUnit = specs.finishing.reduce((sum, key) => {
     const option = FINISHING_OPTIONS.find((entry) => entry.value === key);
     return sum + (option?.price ?? 0);
   }, 0);
 
-  const subtotal = Math.round(base * paper * size * colour * quantity + finishingPerUnit * quantity);
+  // If unit is "per page", multiply by totalPages
+  const isPerPage = service?.unit.toLowerCase().includes('page');
+  const unitFactor = isPerPage ? totalPages : 1;
+
+  const subtotal = Math.round(base * unitFactor * paper * size * colour * quantity + finishingPerUnit * quantity);
   const rushFee = 0;
   const tax = Math.round((subtotal + deliveryFee) * TAX_RATE);
 
