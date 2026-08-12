@@ -65,8 +65,6 @@ export default function SpecificationsStep({
         totalPages = pdfDoc.getPageCount();
       } else {
         // Simulation of PDF conversion and page counting for Word/Excel/etc.
-        // In a real production app, this would be an API call to a backend
-        // conversion service like Gotenberg or CloudConvert.
         await new Promise((resolve) => setTimeout(resolve, 2000));
         
         // Mock logic: 1 page for images, 2-5 pages for docs/spreadsheets
