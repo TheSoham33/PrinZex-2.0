@@ -90,8 +90,20 @@ export default function SpecificationsStep({
           totalPages = Math.floor(Math.random() * 4) + 2; 
         }
 
-        // Mocking the "Converted" PDF file metadata
-        const blob = new Blob([await selected.arrayBuffer()], { type: 'application/pdf' });
+        // CREATE A VALID PDF BLOB (instead of just changing the mime-type)
+        const pdfDoc = await PDFDocument.create();
+        const page = pdfDoc.addPage([600, 400]);
+        const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        
+        page.drawText('Converted Document Preview', { x: 50, y: 350, size: 20, font, color: rgb(0, 0.4, 0.8) });
+        page.drawText(`File: ${selected.name}`, { x: 50, y: 320, size: 14, font });
+        page.drawText(`System has processed this ${selected.type.split('/')[1].toUpperCase()} file.`, { x: 50, y: 300, size: 12 });
+        page.drawText(`Estimated Print Pages: ${totalPages}`, { x: 50, y: 280, size: 12 });
+        page.drawText('This is a system-generated preview for your verification.', { x: 50, y: 240, size: 10, color: rgb(0.5, 0.5, 0.5) });
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        
         finalFile = new File([blob], selected.name.replace(/\.[^/.]+$/, "") + ".pdf", {
           type: 'application/pdf',
           lastModified: Date.now(),
