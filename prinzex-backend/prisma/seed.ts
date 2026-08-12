@@ -318,10 +318,9 @@ const SELLERS: Array<{
     onTimeRate: 96.2,
     servedPincodes: ['560034', '560095', '560030'],
     services: [
-      { categoryId: 'cat_documents', categoryName: 'Document Printing', serviceId: 'bw_a4', serviceName: 'B/W Print (A4)', basePrice: 2.0, unit: 'per page' },
-      { categoryId: 'cat_documents', categoryName: 'Document Printing', serviceId: 'color_a4', serviceName: 'Colour Print (A4)', basePrice: 10.0, unit: 'per page' },
-      { categoryId: 'cat_business', categoryName: 'Business Stationery', serviceId: 'business_cards', serviceName: 'Business Cards (100 pcs)', basePrice: 350.0, unit: 'per pack' },
-      { categoryId: 'cat_photos', categoryName: 'Photo Printing', serviceId: 'passport_photos', serviceName: 'Passport Photos (8 pcs)', basePrice: 99.0, unit: 'per set' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-bw-print', serviceName: 'B&W Printing', basePrice: 2.0, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-color-print', serviceName: 'Colour Printing', basePrice: 10.0, unit: 'per page' },
+      { categoryId: 'specialty', categoryName: 'Specialty Printing', serviceId: 'spec-photo-prints', serviceName: 'Photo Print', basePrice: 99.0, unit: 'per set' },
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
     account: { holder: 'Ramesh Gupta', number: '50100234567890', ifsc: 'HDFC0001234', pan: 'ABCDE1234F' },
@@ -348,10 +347,9 @@ const SELLERS: Array<{
     onTimeRate: 94.8,
     servedPincodes: ['560038', '560008', '560066'],
     services: [
-      { categoryId: 'cat_documents', categoryName: 'Document Printing', serviceId: 'bw_a4', serviceName: 'B/W Print (A4)', basePrice: 1.5, unit: 'per page' },
-      { categoryId: 'cat_documents', categoryName: 'Document Printing', serviceId: 'color_a4', serviceName: 'Colour Print (A4)', basePrice: 9.0, unit: 'per page' },
-      { categoryId: 'cat_finishing', categoryName: 'Finishing', serviceId: 'spiral_binding', serviceName: 'Spiral Binding', basePrice: 60.0, unit: 'per document' },
-      { categoryId: 'cat_finishing', categoryName: 'Finishing', serviceId: 'lamination', serviceName: 'Lamination (A4)', basePrice: 20.0, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-bw-print', serviceName: 'B&W Printing', basePrice: 1.5, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-color-print', serviceName: 'Colour Printing', basePrice: 9.0, unit: 'per page' },
+      { categoryId: 'binding', categoryName: 'Book binding & finishing', serviceId: 'bind-spiral', serviceName: 'Spiral Binding', basePrice: 60.0, unit: 'per document' },
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
     account: { holder: 'Anil Deshmukh', number: '50200345678901', ifsc: 'ICIC0005678', pan: 'FGHIJ5678K' },
@@ -378,9 +376,8 @@ const SELLERS: Array<{
     onTimeRate: 97.5,
     servedPincodes: ['560102', '560068', '560076'],
     services: [
-      { categoryId: 'cat_largeformat', categoryName: 'Large Format', serviceId: 'poster_a3', serviceName: 'Poster Print (A3)', basePrice: 49.0, unit: 'per piece' },
-      { categoryId: 'cat_largeformat', categoryName: 'Large Format', serviceId: 'flex_banner', serviceName: 'Flex Banner', basePrice: 499.0, unit: 'per sqft' },
-      { categoryId: 'cat_custom', categoryName: 'Custom Printing', serviceId: 'invitation_cards', serviceName: 'Invitation Cards', basePrice: 12.0, unit: 'per piece' },
+      { categoryId: 'large-format', categoryName: 'Large format printing', serviceId: 'lf-flex-banner', serviceName: 'Flex Banners', basePrice: 499.0, unit: 'per sqft' },
+      { categoryId: 'specialty', categoryName: 'Specialty printing', serviceId: 'spec-canvas', serviceName: 'Canvas Print', basePrice: 12.0, unit: 'per piece' },
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
     account: { holder: 'Kavitha Rao', number: '50300456789012', ifsc: 'SBIN0009012', pan: 'KLMNO9012P' },
@@ -407,7 +404,7 @@ const SELLERS: Array<{
     onTimeRate: 0,
     servedPincodes: ['560029', '560030'],
     services: [
-      { categoryId: 'cat_documents', categoryName: 'Document Printing', serviceId: 'bw_a4', serviceName: 'B/W Print (A4)', basePrice: 1.0, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-bw-print', serviceName: 'B&W Printing', basePrice: 1.0, unit: 'per page' },
     ],
     documents: [], // pending seller — no documents uploaded yet
     account: { holder: 'Mohan Lal', number: '50400567890123', ifsc: 'UTIB0003456', pan: 'PQRST3456Q' },
@@ -646,24 +643,24 @@ const ORDER_SEEDS: OrderSeed[] = [
   {
     status: 'delivered', placedHoursAgo: 192, customerIndex: 0, sellerIndex: 0,
     items: [
-      { serviceKey: 'color_a4', quantity: 10, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/brochure.pdf' },
-      { serviceKey: 'business_cards', quantity: 1, specs: { paperType: 'Matte 300gsm', finish: 'matte_lamination', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/card_design.ai' },
+      { serviceKey: 'doc-color-print', quantity: 10, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/brochure.pdf' },
+      { serviceKey: 'spec-photo-prints', quantity: 1, specs: { paperType: 'Matte 300gsm', finish: 'matte_lamination', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/card_design.ai' },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'paid',
   },
   {
     status: 'delivered', placedHoursAgo: 120, customerIndex: 1, sellerIndex: 1,
     items: [
-      { serviceKey: 'bw_a4', quantity: 100, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/thesis.pdf' },
-      { serviceKey: 'spiral_binding', quantity: 2, specs: { bindingColor: 'black', cover: 'transparent' } },
+      { serviceKey: 'doc-bw-print', quantity: 100, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/thesis.pdf' },
+      { serviceKey: 'bind-spiral', quantity: 2, specs: { bindingColor: 'black', cover: 'transparent' } },
     ],
     deliverySpeed: 'EXPRESS', isRush: true, paymentMethod: 'wallet', paymentStatus: 'paid', couponCode: 'WELCOME10', discount: 25,
   },
   {
     status: 'out_for_delivery', placedHoursAgo: 3, customerIndex: 2, sellerIndex: 0,
     items: [
-      { serviceKey: 'passport_photos', quantity: 2, specs: { background: 'white', size: '35x45mm' }, fileUrl: 'https://cdn.prinzex.com/uploads/face.jpg' },
-      { serviceKey: 'bw_a4', quantity: 20, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/forms.pdf' },
+      { serviceKey: 'spec-photo-prints', quantity: 2, specs: { background: 'white', size: '35x45mm' }, fileUrl: 'https://cdn.prinzex.com/uploads/face.jpg' },
+      { serviceKey: 'doc-bw-print', quantity: 20, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/forms.pdf' },
     ],
     deliverySpeed: 'SAME_DAY', isRush: true, paymentMethod: 'razorpay', paymentStatus: 'paid',
     specialInstructions: 'Call on arrival — gate security will hold the package.',
@@ -671,50 +668,50 @@ const ORDER_SEEDS: OrderSeed[] = [
   {
     status: 'out_for_delivery', placedHoursAgo: 5, customerIndex: 3, sellerIndex: 2,
     items: [
-      { serviceKey: 'poster_a3', quantity: 3, specs: { paperType: 'Art paper 170gsm', size: 'A3', lamination: 'gloss' }, fileUrl: 'https://cdn.prinzex.com/uploads/poster.pdf' },
-      { serviceKey: 'invitation_cards', quantity: 50, specs: { paperType: 'Ivory 250gsm', size: '5x7in', envelope: true }, fileUrl: 'https://cdn.prinzex.com/uploads/invite.pdf' },
+      { serviceKey: 'lf-flex-banner', quantity: 3, specs: { paperType: 'Art paper 170gsm', size: 'A3', lamination: 'gloss' }, fileUrl: 'https://cdn.prinzex.com/uploads/poster.pdf' },
+      { serviceKey: 'spec-canvas', quantity: 50, specs: { paperType: 'Ivory 250gsm', size: '5x7in', envelope: true }, fileUrl: 'https://cdn.prinzex.com/uploads/invite.pdf' },
     ],
     deliverySpeed: 'EXPRESS', paymentMethod: 'cod', paymentStatus: 'pending',
   },
   {
     status: 'ready_for_pickup', placedHoursAgo: 4, customerIndex: 4, sellerIndex: 1,
     items: [
-      { serviceKey: 'lamination', quantity: 10, specs: { size: 'A4', thickness: '125micron' } },
+      { serviceKey: 'doc-bw-print', quantity: 10, specs: { size: 'A4', thickness: '125micron' } },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'paid',
   },
   {
     status: 'processing', placedHoursAgo: 2, customerIndex: 0, sellerIndex: 2,
     items: [
-      { serviceKey: 'flex_banner', quantity: 4, specs: { material: 'normal_flex', eyelets: true, dimensions: '2x3ft' }, fileUrl: 'https://cdn.prinzex.com/uploads/shop_banner.pdf' },
+      { serviceKey: 'lf-flex-banner', quantity: 4, specs: { material: 'normal_flex', eyelets: true, dimensions: '2x3ft' }, fileUrl: 'https://cdn.prinzex.com/uploads/shop_banner.pdf' },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'paid',
   },
   {
     status: 'confirmed', placedHoursAgo: 24, customerIndex: 1, sellerIndex: 0,
     items: [
-      { serviceKey: 'bw_a4', quantity: 30, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/notes.pdf' },
+      { serviceKey: 'doc-bw-print', quantity: 30, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/notes.pdf' },
     ],
     deliverySpeed: 'PICKUP', paymentMethod: 'cod', paymentStatus: 'pending',
   },
   {
     status: 'placed', placedHoursAgo: 1, customerIndex: 2, sellerIndex: 1,
     items: [
-      { serviceKey: 'color_a4', quantity: 5, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' } },
+      { serviceKey: 'doc-color-print', quantity: 5, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' } },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'pending',
   },
   {
     status: 'placed', placedHoursAgo: 0.5, customerIndex: 4, sellerIndex: 2,
     items: [
-      { serviceKey: 'invitation_cards', quantity: 100, specs: { paperType: 'Metallic 300gsm', size: '5x7in', envelope: true }, fileUrl: 'https://cdn.prinzex.com/uploads/wedding_invite.pdf' },
+      { serviceKey: 'spec-canvas', quantity: 100, specs: { paperType: 'Metallic 300gsm', size: '5x7in', envelope: true }, fileUrl: 'https://cdn.prinzex.com/uploads/wedding_invite.pdf' },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'pending',
   },
   {
     status: 'cancelled', placedHoursAgo: 72, customerIndex: 3, sellerIndex: 0,
     items: [
-      { serviceKey: 'business_cards', quantity: 1, specs: { paperType: 'Matte 300gsm', finish: 'spot_uv', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/old_card.ai' },
+      { serviceKey: 'spec-photo-prints', quantity: 1, specs: { paperType: 'Matte 300gsm', finish: 'spot_uv', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/old_card.ai' },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'refunded',
     cancelReason: 'Change in design requirements after placing the order',

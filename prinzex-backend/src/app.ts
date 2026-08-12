@@ -59,7 +59,12 @@ export function createApp(): Express {
   app.disable('x-powered-by');
 
   // 1. Security headers
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
 
   // 2. CORS for the Next.js frontend (comma-separated origins in CORS_ORIGIN)
   const allowedOrigins = env.CORS_ORIGIN.split(',')
@@ -174,7 +179,10 @@ export function createApp(): Express {
   app.use('/api/upload', uploadRouter);
 
   // Static serving for uploaded files (S3 replaces this in the storage step).
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use('/uploads', (req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  }, express.static(path.join(process.cwd(), 'uploads')));
 
   // 7. 404 for anything unmatched
   app.use(notFound);

@@ -43,6 +43,7 @@ const PUBLIC_SELLER_SELECT = {
   totalOrders: true,
   completionRate: true,
   onTimeRate: true,
+  metadata: true,
   createdAt: true,
 } satisfies Prisma.SellerSelect;
 
@@ -58,7 +59,16 @@ const storeListSelect = {
 
 type StoreListRow = Prisma.SellerGetPayload<{ select: typeof storeListSelect }>;
 
-type StoreListItem = Omit<StoreListRow, '_count'> & { orderCount: number; reviewCount: number };
+type StoreListItem = Omit<StoreListRow, '_count'> & { 
+  orderCount: number; 
+  reviewCount: number;
+  matchedService?: {
+    id: string;
+    serviceName: string;
+    basePrice: number;
+    unit: string;
+  } | null;
+};
 
 export interface CachedResult<T> {
   result: T;
@@ -121,7 +131,9 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
 
   const where: Prisma.SellerWhereInput = {
     status: 'APPROVED',
-    ...(query.city ? { city: { equals: query.city, mode: 'insensitive' } } : {}),
+    ...(query.city && query.city.trim().length >= 1 && query.city.trim().toLowerCase() !== 'location'
+      ? { city: { contains: query.city.trim(), mode: 'insensitive' } }
+      : {}),
     ...(and.length > 0 ? { AND: and } : {}),
   };
 
@@ -172,11 +184,52 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   // are aggregated separately and merged.
   const reviewCounts = await reviewCountsFor(rows.map((row) => row.id));
 
-  const items: StoreListItem[] = rows.map(({ _count, ...seller }) => ({
-    ...seller,
-    orderCount: _count.orders,
-    reviewCount: reviewCounts.get(seller.id) ?? 0,
-  }));
+  // If a search query is provided, find the best matching service for each seller
+  // (searching all services, not just the top 5 included in storeListSelect).
+  const sellerIds = rows.map((r) => r.id);
+  const searchMatches = query.q
+    ? await prisma.sellerService.findMany({
+        where: {
+          sellerId: { in: sellerIds },
+          isActive: true,
+          OR: [
+            { serviceName: { contains: query.q, mode: 'insensitive' } },
+            { categoryName: { contains: query.q, mode: 'insensitive' } },
+          ],
+        },
+        orderBy: { basePrice: 'asc' },
+      })
+    : [];
+
+  const items: StoreListItem[] = rows.map(({ _count, ...seller }) => {
+    let matchedService = null;
+
+    if (query.q) {
+      const q = query.q.toLowerCase();
+      // Find the cheapest matching service from either searchMatches OR the pre-fetched top 5.
+      const match =
+        searchMatches.find((m) => m.sellerId === seller.id) ||
+        seller.services.find(
+          (s) =>
+            s.serviceName.toLowerCase().includes(q) || s.categoryName.toLowerCase().includes(q),
+        );
+      if (match) {
+        matchedService = {
+          id: match.serviceId || match.id,
+          serviceName: match.serviceName,
+          basePrice: Number(match.basePrice),
+          unit: match.unit,
+        };
+      }
+    }
+
+    return {
+      ...seller,
+      orderCount: _count.orders,
+      reviewCount: reviewCounts.get(seller.id) ?? 0,
+      matchedService,
+    };
+  });
 
   const result = buildPaginatedResponse(items, total, { page: query.page, limit: query.limit });
   await setCache(cacheKey, result, REDIS_TTL.CACHE_LIST);
