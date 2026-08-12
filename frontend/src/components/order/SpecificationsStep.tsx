@@ -16,7 +16,7 @@ import { formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useRef, useState, type DragEvent } from 'react';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 const ACCEPTED = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
 const MAX_BYTES = 25 * 1024 * 1024;
