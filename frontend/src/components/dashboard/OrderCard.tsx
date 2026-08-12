@@ -1,11 +1,16 @@
 import Link from 'next/link';
+import { useState } from 'react';
 import type { DashboardOrder } from '@/lib/mock-data/orders';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import OrderStatusBadge from './OrderStatusBadge';
-import { IconChevronRight, IconMapPin, IconStore, IconTruck } from '@/components/icons';
+import ReviewModal from './ReviewModal';
+import { IconChevronRight, IconMapPin, IconStore, IconTruck, IconStar } from '@/components/icons';
 
 export default function OrderCard({ order }: { order: DashboardOrder }) {
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const trackable = order.status === 'out_for_delivery';
+  // Allow reviews as soon as order is placed (uploaded)
+  const canReview = !['cancelled', 'returned'].includes(order.status);
 
   return (
     <div className="card p-4 transition-shadow hover:shadow-md sm:p-5">
@@ -60,7 +65,23 @@ export default function OrderCard({ order }: { order: DashboardOrder }) {
             <IconMapPin className="h-3.5 w-3.5" /> Ready at store
           </span>
         )}
+        {canReview && (
+          <button 
+            type="button" 
+            onClick={() => setReviewModalOpen(true)}
+            className="btn-secondary text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
+          >
+            <IconStar className="h-3.5 w-3.5" /> Rate & Review
+          </button>
+        )}
       </div>
+
+      <ReviewModal 
+        orderId={order.id} 
+        storeName={order.storeName} 
+        isOpen={reviewModalOpen} 
+        onClose={() => setReviewModalOpen(false)} 
+      />
     </div>
   );
 }

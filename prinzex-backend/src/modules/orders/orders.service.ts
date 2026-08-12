@@ -599,8 +599,11 @@ export async function createReview(customerId: string, orderId: string, input: C
   if (!order) {
     throw ApiError.notFound('Order not found');
   }
-  if (order.status !== 'delivered') {
-    throw ApiError.badRequest('You can review an order only after it is delivered');
+  
+  // Allow reviews after order is placed/uploaded, not just after delivery
+  const allowReviewStatuses = ['placed', 'confirmed', 'processing', 'ready_for_pickup', 'out_for_delivery', 'delivered'];
+  if (!allowReviewStatuses.includes(order.status)) {
+    throw ApiError.badRequest('You can review an order once it has been placed');
   }
   const existing = await prisma.review.findUnique({ where: { orderId: order.id } });
   if (existing) {

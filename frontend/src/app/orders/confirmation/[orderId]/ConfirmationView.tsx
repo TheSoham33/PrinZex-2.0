@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { Order } from '@/lib/mock-data/stores';
 import { DELIVERY_SPEEDS } from '@/lib/mock-data/stores';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import ReviewModal from '@/components/dashboard/ReviewModal';
 import {
   IconArrowRight,
   IconCheckCircle,
@@ -13,12 +14,14 @@ import {
   IconPackage,
   IconStore,
   IconTruck,
+  IconStar,
 } from '@/components/icons';
 
 export default function ConfirmationView({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -148,13 +151,26 @@ export default function ConfirmationView({ orderId }: { orderId: string }) {
               <Link href="/dashboard/orders" className="btn-primary flex-1">
                 Track my order <IconArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/stores" className="btn-secondary flex-1">
-                Order something else
-              </Link>
+              <button 
+                type="button" 
+                onClick={() => setReviewModalOpen(true)}
+                className="btn-secondary flex-1 border-amber-200 text-amber-700 hover:bg-amber-50"
+              >
+                <IconStar className="h-4 w-4" /> Rate experience
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {order && (
+        <ReviewModal 
+          orderId={orderId} 
+          storeName={order.storeName} 
+          isOpen={reviewModalOpen} 
+          onClose={() => setReviewModalOpen(false)} 
+        />
+      )}
     </div>
   );
 }

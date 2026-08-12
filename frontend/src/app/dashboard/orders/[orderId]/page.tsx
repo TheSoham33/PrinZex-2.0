@@ -1,11 +1,12 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOrderById } from '@/lib/api/orders';
 import OrderStatusBadge from '@/components/dashboard/OrderStatusBadge';
 import OrderTimeline from '@/components/dashboard/OrderTimeline';
+import ReviewModal from '@/components/dashboard/ReviewModal';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import {
   IconAlertCircle,
@@ -13,6 +14,7 @@ import {
   IconPhone,
   IconStore,
   IconTruck,
+  IconStar,
 } from '@/components/icons';
 
 export default function OrderDetailPage({
@@ -22,6 +24,7 @@ export default function OrderDetailPage({
 }) {
   // `params` is a Promise in Next.js 15 — `use()` unwraps it in a Client Component.
   const { orderId } = use(params);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['dashboard-orders', orderId],
@@ -125,6 +128,15 @@ export default function OrderDetailPage({
                 <IconTruck className="h-4 w-4" /> Track live
               </Link>
             )}
+            {!['cancelled', 'returned'].includes(order.status) && (
+              <button 
+                type="button"
+                onClick={() => setReviewModalOpen(true)}
+                className="btn-secondary w-full justify-start border-amber-200 text-amber-700 hover:bg-amber-50"
+              >
+                <IconStar className="h-4 w-4" /> Rate & Review Order
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -133,6 +145,13 @@ export default function OrderDetailPage({
         <h2 className="mb-5 text-sm font-semibold text-slate-900">Order timeline</h2>
         <OrderTimeline timeline={order.timeline} />
       </div>
+
+      <ReviewModal 
+        orderId={order.id} 
+        storeName={order.storeName} 
+        isOpen={reviewModalOpen} 
+        onClose={() => setReviewModalOpen(false)} 
+      />
     </div>
   );
 }
