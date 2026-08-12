@@ -16,6 +16,7 @@ import { formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash } from '@/components/icons';
 import { useRef, useState, type DragEvent } from 'react';
+import { PDFDocument } from 'pdf-lib';
 
 const ACCEPTED = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -45,17 +46,30 @@ export default function SpecificationsStep({
   const [dragging, setDragging] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const acceptFile = (selected: File | undefined) => {
+  const acceptFile = async (selected: File | undefined) => {
     if (!selected) return;
     if (selected.size > MAX_BYTES) {
       setLocalError('That file is larger than 25 MB. Please compress it and try again.');
       return;
     }
     setLocalError(null);
+
+    let totalPages = 1;
+    if (selected.type === 'application/pdf') {
+      try {
+        const arrayBuffer = await selected.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        totalPages = pdfDoc.getPageCount();
+      } catch (e) {
+        console.error('Error counting PDF pages:', e);
+      }
+    }
+
     dispatch({
       type: 'SET_FILE',
       payload: { name: selected.name, size: selected.size, type: selected.type },
     });
+    dispatch({ type: 'SET_SPEC', payload: { totalPages } });
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -110,27 +124,58 @@ export default function SpecificationsStep({
       <section className="space-y-4">
         <label className="label">Upload your file <span className="text-red-500">*</span></label>
         {file ? (
-          <div className="flex items-center gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-              <IconFileText className="h-6 w-6" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-slate-900">{file.name}</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {formatFileSize(file.size)} · Ready to print
-              </p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                <IconFileText className="h-6 w-6" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-slate-900">{file.name}</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {formatFileSize(file.size)} · Ready to print
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  dispatch({ type: 'SET_FILE', payload: null });
+                  if (inputRef.current) inputRef.current.value = '';
+                }}
+                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                aria-label="Remove file"
+              >
+                <IconTrash className="h-5 w-5" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                dispatch({ type: 'SET_FILE', payload: null });
-                if (inputRef.current) inputRef.current.value = '';
-              }}
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-              aria-label="Remove file"
-            >
-              <IconTrash className="h-5 w-5" />
-            </button>
+
+            {/* Page Count Manual Entry / Confirmation */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Confirm page count</p>
+                  <p className="text-xs text-slate-500">
+                    {file.type === 'application/pdf' 
+                      ? 'Auto-detected from PDF. Adjust if incorrect.' 
+                      : 'Please enter the total number of pages in your document.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={specs.totalPages || 1}
+                    onChange={(e) => dispatch({ type: 'SET_SPEC', payload: { totalPages: Math.max(1, Number(e.target.value) || 1) } })}
+                    className="input w-20 text-center font-bold"
+                  />
+                  <span className="text-sm font-medium text-slate-600">pages</span>
+                </div>
+              </div>
+              {file.type !== 'application/pdf' && (
+                <p className="mt-3 rounded-lg bg-amber-50 p-2 text-[10px] font-medium text-amber-700">
+                  Note: For Word, Excel, or images, please ensure your page count matches the intended print output.
+                </p>
+              )}
+            </div>
           </div>
         ) : (
           <div
