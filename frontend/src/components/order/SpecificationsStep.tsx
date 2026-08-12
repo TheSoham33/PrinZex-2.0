@@ -15,7 +15,7 @@ import type { OrderSpecifications, ServiceOffering, UploadedFile } from '@/lib/t
 import { formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
-import { useRef, useState, type DragEvent, useEffect } from 'react';
+import { useRef, useState, type DragEvent } from 'react';
 import { PDFDocument } from 'pdf-lib';
 
 const ACCEPTED = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
@@ -45,6 +45,8 @@ export default function SpecificationsStep({
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showWarning, setShowWarning] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const acceptFile = async (selected: File | undefined) => {
@@ -54,9 +56,23 @@ export default function SpecificationsStep({
       return;
     }
     setLocalError(null);
+
+    if (selected.type !== 'application/pdf') {
+      setPendingFile(selected);
+      setShowWarning(true);
+      return;
+    }
+
+    await processFile(selected);
+  };
+
+  const processFile = async (selected: File) => {
     setProcessing(true);
+    setShowWarning(false);
+    setPendingFile(null);
 
     let totalPages = 1;
+    let finalFile = selected;
 
     try {
       if (selected.type === 'application/pdf') {
@@ -64,7 +80,7 @@ export default function SpecificationsStep({
         const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
         totalPages = pdfDoc.getPageCount();
       } else {
-        // Simulation of PDF conversion and page counting for Word/Excel/etc.
+        // Simulation of PDF conversion
         await new Promise((resolve) => setTimeout(resolve, 2000));
         
         // Mock logic: 1 page for images, 2-5 pages for docs/spreadsheets
@@ -73,17 +89,29 @@ export default function SpecificationsStep({
         } else {
           totalPages = Math.floor(Math.random() * 4) + 2; 
         }
+
+        // Mocking the "Converted" PDF file metadata
+        const blob = new Blob([await selected.arrayBuffer()], { type: 'application/pdf' });
+        finalFile = new File([blob], selected.name.replace(/\.[^/.]+$/, "") + ".pdf", {
+          type: 'application/pdf',
+          lastModified: Date.now(),
+        });
       }
 
-      const previewUrl = URL.createObjectURL(selected);
+      const previewUrl = URL.createObjectURL(finalFile);
 
       dispatch({
         type: 'SET_FILE',
-        payload: { name: selected.name, size: selected.size, type: selected.type, previewUrl },
+        payload: { 
+          name: finalFile.name, 
+          size: finalFile.size, 
+          type: finalFile.type, 
+          previewUrl 
+        },
       });
       dispatch({ type: 'SET_SPEC', payload: { totalPages } });
     } catch (e) {
-      console.error('Error counting pages:', e);
+      console.error('Error processing document:', e);
       setLocalError('Failed to process document. Please try a different file.');
     } finally {
       setProcessing(false);
@@ -115,7 +143,6 @@ export default function SpecificationsStep({
         const currentUrls = [...(specs.coverFileUrls || [])];
         while (currentUrls.length < specs.quantity) currentUrls.push('');
         currentUrls[index] = previewUrl;
-        // In a real app, filenames would be in a separate array or part of the object
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrls: currentUrls } });
       } else {
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: previewUrl, coverFileName: file.name } });
@@ -144,11 +171,41 @@ export default function SpecificationsStep({
       <section className="space-y-4">
         <label className="label">Upload your file <span className="text-red-500">*</span></label>
         
+        {showWarning && pendingFile && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 animate-fade-in">
+            <div className="flex gap-3">
+              <IconAlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+              <div>
+                <p className="text-sm font-bold text-amber-900">PDF Conversion Required</p>
+                <p className="mt-1 text-xs text-amber-700 leading-relaxed">
+                  The file <span className="font-mono font-bold text-amber-800">{pendingFile.name}</span> will be automatically converted to PDF for accurate page counting and preview. Do you want to proceed?
+                </p>
+                <div className="mt-4 flex gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => processFile(pendingFile)}
+                    className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-700"
+                  >
+                    OK, Convert
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => { setShowWarning(false); setPendingFile(null); if(inputRef.current) inputRef.current.value = ''; }}
+                    className="rounded-lg bg-white border border-amber-200 px-4 py-2 text-xs font-bold text-amber-700 hover:bg-amber-100"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {processing ? (
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 py-12 text-center">
             <span className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
             <p className="mt-4 font-semibold text-slate-900">System converting document to PDF…</p>
-            <p className="mt-1 text-xs text-slate-500">Calculating final page count for pricing</p>
+            <p className="mt-1 text-xs text-slate-500">Generating final print-ready preview</p>
           </div>
         ) : file ? (
           <div className="space-y-4">
@@ -159,7 +216,7 @@ export default function SpecificationsStep({
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-slate-900">{file.name}</p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {formatFileSize(file.size)} · Ready to print
+                  {formatFileSize(file.size)} · Converted to PDF · Ready to print
                 </p>
               </div>
               <div className="flex gap-1">
@@ -192,16 +249,11 @@ export default function SpecificationsStep({
               </div>
             </div>
 
-            {/* Page Count Confirmation (Read-only) */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Total pages</p>
-                  <p className="text-xs text-slate-500">
-                    {file.type === 'application/pdf' 
-                      ? 'Automatically calculated from PDF' 
-                      : 'Calculated after system conversion'}
-                  </p>
+                  <p className="text-xs text-slate-500">Calculated after system conversion</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex h-10 w-20 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-900">
@@ -213,33 +265,35 @@ export default function SpecificationsStep({
             </div>
           </div>
         ) : (
-          <div
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => inputRef.current?.click()}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') inputRef.current?.click();
-            }}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
-              dragging
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50'
-            }`}
-          >
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm">
-              <IconUpload className="h-6 w-6" />
-            </span>
-            <p className="mt-4 text-sm font-semibold text-slate-900">
-              Drop file here, or <span className="text-blue-600">browse</span>
-            </p>
-            <p className="mt-1 text-xs text-slate-500">PDF, DOCX, JPG, PNG, AI, PSD, CDR · up to 25 MB</p>
-          </div>
+          !showWarning && (
+            <div
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => inputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') inputRef.current?.click();
+              }}
+              className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+                dragging
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50'
+              }`}
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm">
+                <IconUpload className="h-6 w-6" />
+              </span>
+              <p className="mt-4 text-sm font-semibold text-slate-900">
+                Drop file here, or <span className="text-blue-600">browse</span>
+              </p>
+              <p className="mt-1 text-xs text-slate-500">PDF, DOCX, XLSX, JPG, PNG · up to 25 MB</p>
+            </div>
+          )
         )}
 
         <input
