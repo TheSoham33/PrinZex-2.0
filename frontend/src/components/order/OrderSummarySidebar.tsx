@@ -66,12 +66,12 @@ export default function OrderSummarySidebar({
                     <p>{specs.coverType} · {specs.coverColor}</p>
                     {specs.serviceId === 'bind-spiral' && specs.coverDesignType === 'custom' ? (
                       <div className="mt-1 space-y-0.5 border-t border-slate-200 pt-1 text-[10px]">
-                        <p className="truncate">Front: {specs.frontCoverFileUrl || '—'}</p>
-                        <p className="truncate">Back: {specs.backCoverFileUrl || '—'}</p>
+                        <p className="truncate">Front: {specs.frontCoverFileName || '—'}</p>
+                        <p className="truncate">Back: {specs.backCoverFileName || '—'}</p>
                       </div>
                     ) : (
                       specs.applyCoverToAll !== false ? (
-                        specs.coverFileUrl && <p className="truncate">File: {specs.coverFileUrl}</p>
+                        specs.coverFileName && <p className="truncate">File: {specs.coverFileName}</p>
                       ) : (
                         specs.coverFileUrls && (
                           <p className="mt-1 font-medium italic">

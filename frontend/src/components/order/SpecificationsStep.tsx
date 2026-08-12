@@ -14,8 +14,8 @@ import {
 import type { OrderSpecifications, ServiceOffering, UploadedFile } from '@/lib/types';
 import { formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
-import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash } from '@/components/icons';
-import { useRef, useState, type DragEvent } from 'react';
+import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
+import { useRef, useState, type DragEvent, useEffect } from 'react';
 import { PDFDocument } from 'pdf-lib';
 
 const ACCEPTED = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
@@ -75,9 +75,11 @@ export default function SpecificationsStep({
         }
       }
 
+      const previewUrl = URL.createObjectURL(selected);
+
       dispatch({
         type: 'SET_FILE',
-        payload: { name: selected.name, size: selected.size, type: selected.type },
+        payload: { name: selected.name, size: selected.size, type: selected.type, previewUrl },
       });
       dispatch({ type: 'SET_SPEC', payload: { totalPages } });
     } catch (e) {
@@ -104,17 +106,19 @@ export default function SpecificationsStep({
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>, side?: 'front' | 'back' | 'single', index?: number) => {
     const file = e.target.files?.[0];
     if (file) {
+      const previewUrl = URL.createObjectURL(file);
       if (side === 'front') {
-        dispatch({ type: 'SET_SPEC', payload: { frontCoverFileUrl: file.name } });
+        dispatch({ type: 'SET_SPEC', payload: { frontCoverFileUrl: previewUrl, frontCoverFileName: file.name } });
       } else if (side === 'back') {
-        dispatch({ type: 'SET_SPEC', payload: { backCoverFileUrl: file.name } });
+        dispatch({ type: 'SET_SPEC', payload: { backCoverFileUrl: previewUrl, backCoverFileName: file.name } });
       } else if (index !== undefined) {
         const currentUrls = [...(specs.coverFileUrls || [])];
         while (currentUrls.length < specs.quantity) currentUrls.push('');
-        currentUrls[index] = file.name;
+        currentUrls[index] = previewUrl;
+        // In a real app, filenames would be in a separate array or part of the object
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrls: currentUrls } });
       } else {
-        dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: file.name } });
+        dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: previewUrl, coverFileName: file.name } });
       }
     }
   };
@@ -158,17 +162,34 @@ export default function SpecificationsStep({
                   {formatFileSize(file.size)} · Ready to print
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  dispatch({ type: 'SET_FILE', payload: null });
-                  if (inputRef.current) inputRef.current.value = '';
-                }}
-                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                aria-label="Remove file"
-              >
-                <IconTrash className="h-5 w-5" />
-              </button>
+              <div className="flex gap-1">
+                <a
+                  href={file.previewUrl || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`rounded-lg p-2 transition-colors ${
+                    file.previewUrl 
+                      ? 'text-slate-400 hover:bg-blue-50 hover:text-blue-600' 
+                      : 'pointer-events-none text-slate-200'
+                  }`}
+                  aria-label="View uploaded file"
+                  title={file.previewUrl ? "View file" : "Preview not available"}
+                >
+                  <IconEye className="h-5 w-5" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch({ type: 'SET_FILE', payload: null });
+                    if (inputRef.current) inputRef.current.value = '';
+                  }}
+                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                  aria-label="Remove file"
+                  title="Remove file"
+                >
+                  <IconTrash className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Page Count Confirmation (Read-only) */}
@@ -533,31 +554,45 @@ export default function SpecificationsStep({
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Front Cover</p>
                       <input type="file" id="front-cover" onChange={(e) => handleCoverUpload(e, 'front')} className="hidden" />
-                      <label
-                        htmlFor="front-cover"
-                        className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 transition-all ${
-                          specs.frontCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'
-                        }`}
-                      >
-                        {specs.frontCoverFileUrl ? <><IconCheckCircle className="h-4 w-4" /><span className="truncate text-xs font-semibold">{specs.frontCoverFileUrl}</span></> : <><IconUpload className="h-4 w-4" /><span className="text-xs">Upload Front</span></>}
-                      </label>
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="front-cover"
+                          className={`flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 transition-all ${
+                            specs.frontCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'
+                          }`}
+                        >
+                          {specs.frontCoverFileUrl ? <><IconCheckCircle className="h-4 w-4" /><span className="truncate text-xs font-semibold">{specs.frontCoverFileName || 'Front Cover'}</span></> : <><IconUpload className="h-4 w-4" /><span className="text-xs">Upload Front</span></>}
+                        </label>
+                        {specs.frontCoverFileUrl && (
+                          <a href={specs.frontCoverFileUrl} target="_blank" rel="noreferrer" className="btn-secondary p-3" title="View Front Cover">
+                            <IconEye className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                     {/* Back Cover */}
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">Back Cover</p>
                       <input type="file" id="back-cover" onChange={(e) => handleCoverUpload(e, 'back')} className="hidden" />
-                      <label
-                        htmlFor="back-cover"
-                        className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 transition-all ${
-                          specs.backCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'
-                        }`}
-                      >
-                        {specs.backCoverFileUrl ? <><IconCheckCircle className="h-4 w-4" /><span className="truncate text-xs font-semibold">{specs.backCoverFileUrl}</span></> : <><IconUpload className="h-4 w-4" /><span className="text-xs">Upload Back</span></>}
-                      </label>
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="back-cover"
+                          className={`flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 transition-all ${
+                            specs.backCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'
+                          }`}
+                        >
+                          {specs.backCoverFileUrl ? <><IconCheckCircle className="h-4 w-4" /><span className="truncate text-xs font-semibold">{specs.backCoverFileName || 'Back Cover'}</span></> : <><IconUpload className="h-4 w-4" /><span className="text-xs">Upload Back</span></>}
+                        </label>
+                        {specs.backCoverFileUrl && (
+                          <a href={specs.backCoverFileUrl} target="_blank" rel="noreferrer" className="btn-secondary p-3" title="View Back Cover">
+                            <IconEye className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="relative">
+                  <div className="flex items-center gap-2">
                     <input
                       type="file"
                       id="cover-upload-all"
@@ -566,7 +601,7 @@ export default function SpecificationsStep({
                     />
                     <label
                       htmlFor="cover-upload-all"
-                      className={`flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all ${
+                      className={`flex-1 flex cursor-pointer items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 transition-all ${
                         specs.coverFileUrl 
                           ? 'border-green-200 bg-green-50 text-green-700' 
                           : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:bg-blue-50/50'
@@ -575,7 +610,7 @@ export default function SpecificationsStep({
                       {specs.coverFileUrl ? (
                         <>
                           <IconCheckCircle className="h-6 w-6" />
-                          <span className="font-semibold truncate max-w-xs">{specs.coverFileUrl}</span>
+                          <span className="font-semibold truncate max-w-xs">{specs.coverFileName || 'Cover Design'}</span>
                         </>
                       ) : (
                         <>
@@ -587,6 +622,11 @@ export default function SpecificationsStep({
                         </>
                       )}
                     </label>
+                    {specs.coverFileUrl && (
+                      <a href={specs.coverFileUrl} target="_blank" rel="noreferrer" className="btn-secondary p-5" title="View Cover">
+                        <IconEye className="h-6 w-6" />
+                      </a>
+                    )}
                   </div>
                 )}
               </div>

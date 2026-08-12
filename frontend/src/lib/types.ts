@@ -70,13 +70,16 @@ export interface OrderSpecifications {
   coverColor?: string;
   coverTextColor?: string;
   coverFileUrl?: string; // For the cover content what will be written in cover
+  coverFileName?: string;
   coverFileUrls?: string[]; // For multiple cover designs if different per piece
   coverType?: string;
   applyCoverToAll?: boolean;
   spiralType?: string;
   coverDesignType?: 'default' | 'custom';
   frontCoverFileUrl?: string;
+  frontCoverFileName?: string;
   backCoverFileUrl?: string;
+  backCoverFileName?: string;
   totalPages?: number;
 }
 

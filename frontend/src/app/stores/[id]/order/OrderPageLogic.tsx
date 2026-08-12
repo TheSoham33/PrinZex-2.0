@@ -25,6 +25,7 @@ import {
   createInitialState,
   orderReducer,
   EMPTY_COST,
+  computeCost,
 } from '@/components/order/orderReducer';
 import { IconArrowLeft, IconArrowRight, IconChevronRight, IconLock, IconShoppingCart } from '@/components/icons';
 
@@ -62,10 +63,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   const specs = state.order.specifications as any;
   const service = store.services.find((entry) => entry.id === specs.serviceId);
-  const cost = state.order.costBreakdown ?? EMPTY_COST;
 
   // Real Quote Fetching
-  const { data: quoteData, isError: quoteError, error: quoteErrorObj } = useQuery({
+  const { data: quoteData } = useQuery({
     queryKey: ['order-quote', store.id, specs, state.order.deliverySpeed],
     queryFn: () => getOrderQuote({
       sellerId: store.id,
@@ -75,13 +75,20 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         paperType: specs.paperType,
         size: specs.size,
         colorOption: specs.colorOption,
-        finishing: specs.finishing
+        finishing: specs.finishing,
+        totalPages: specs.totalPages,
       },
-      deliverySpeed: state.order.deliverySpeed.toUpperCase()
+      deliverySpeed: (state.order.deliverySpeed || 'standard').toUpperCase()
     }),
     enabled: !!token && !!specs.serviceId && !!specs.paperType && !!specs.size,
     retry: false
   });
+
+  // Calculate local cost for non-logged in users or while loading
+  const cost = useMemo(() => {
+    if (token && quoteData) return quoteData;
+    return computeCost(specs, service, 0, 0);
+  }, [token, quoteData, specs, service]);
 
   useEffect(() => {
     if (quoteData) {
