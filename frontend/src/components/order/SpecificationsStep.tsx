@@ -15,10 +15,10 @@ import type { OrderSpecifications, ServiceOffering, UploadedFile } from '@/lib/t
 import { formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
-import { useRef, useState, type DragEvent } from 'react';
+import { useRef, useState, type DragEvent, useEffect } from 'react';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
-const ACCEPTED = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
+const ACCEPTED = '.pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
 const MAX_BYTES = 25 * 1024 * 1024;
 
 interface SpecificationsStepProps {
@@ -75,10 +75,14 @@ export default function SpecificationsStep({
     let finalFile = selected;
 
     try {
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
       if (selected.type === 'application/pdf') {
         const arrayBuffer = await selected.arrayBuffer();
-        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-        totalPages = pdfDoc.getPageCount();
+        const loadedPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        totalPages = loadedPdf.getPageCount();
       } else {
         // Simulation of PDF conversion
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -86,10 +90,6 @@ export default function SpecificationsStep({
         // Deterministic page count based on file properties
         const hash = selected.name.length + selected.size;
         totalPages = (hash % 4) + 1; // 1 to 4 pages
-
-        const pdfDoc = await PDFDocument.create();
-        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
         if (selected.type.startsWith('image/')) {
           try {
@@ -101,13 +101,26 @@ export default function SpecificationsStep({
               image = await pdfDoc.embedPng(imageBytes);
             }
             
-            const page = pdfDoc.addPage([image.width, image.height]);
-            page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+            // Standard A4 size in points (595 x 842)
+            const pageWidth = 595;
+            const pageHeight = 842;
+            const page = pdfDoc.addPage([pageWidth, pageHeight]);
+
+            // Calculate scaling to fit image on page while preserving aspect ratio
+            const scale = Math.min(pageWidth / image.width, pageHeight / image.height);
+            const drawWidth = image.width * scale;
+            const drawHeight = image.height * scale;
+
+            page.drawImage(image, {
+              x: (pageWidth - drawWidth) / 2,
+              y: (pageHeight - drawHeight) / 2,
+              width: drawWidth,
+              height: drawHeight,
+            });
             totalPages = 1;
           } catch (e) {
-            console.error('Image embedding failed, falling back to info page', e);
             const page = pdfDoc.addPage([600, 400]);
-            page.drawText('Image Processed', { x: 50, y: 350, size: 20, font: boldFont });
+            page.drawText('Image Processed (Preview)', { x: 50, y: 350, size: 20, font: boldFont });
             page.drawText(`File: ${selected.name}`, { x: 50, y: 320, size: 12, font });
           }
         } else {
