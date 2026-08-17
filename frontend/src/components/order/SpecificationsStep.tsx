@@ -16,7 +16,7 @@ import { formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useRef, useState, type DragEvent } from 'react';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 
 const ACCEPTED = '.pdf';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -173,6 +173,7 @@ export default function SpecificationsStep({
                   type="button"
                   onClick={() => {
                     dispatch({ type: 'SET_FILE', payload: null });
+                    dispatch({ type: 'SET_SPEC', payload: { totalPages: 0 } });
                     if (inputRef.current) inputRef.current.value = '';
                   }}
                   className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
