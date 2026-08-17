@@ -1,0 +1,656 @@
+// PrinZex — PostgreSQL schema
+// Holds all structured, relational data: users, stores, services, transactions,
+// payouts, addresses, reviews, support tickets and admin accounts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ──────────────────────────────────────────
+
+enum UserRole {
+  CUSTOMER
+  SELLER
+  DELIVERY_BOY
+  ADMIN
+}
+
+enum SellerStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+
+enum DeliveryBoyStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  OPS_MANAGER
+  SUPPORT_AGENT
+  FINANCE_MANAGER
+  CONTENT_MANAGER
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionReason {
+  ORDER_PAYMENT
+  REFUND
+  CASHBACK
+  REFERRAL_BONUS
+  WALLET_TOPUP
+  PAYOUT
+  COMMISSION
+  ADJUSTMENT
+}
+
+enum ReviewEntityType {
+  STORE
+  DELIVERY_BOY
+}
+
+enum DeliverySpeed {
+  STANDARD
+  EXPRESS
+  SAME_DAY
+  PICKUP
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TicketCategory {
+  DELIVERY_ISSUE
+  QUALITY_ISSUE
+  PAYMENT_ISSUE
+  CANCELLATION
+  OTHER
+}
+
+// ─── USERS ──────────────────────────────────────────
+
+model User {
+  id                String    @id @default(cuid())
+  email             String?   @unique
+  phone             String?   @unique
+  passwordHash      String?
+  name              String
+  role              UserRole  @default(CUSTOMER)
+  isEmailVerified   Boolean   @default(false)
+  isPhoneVerified   Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  avatarUrl         String?
+  googleId          String?   @unique
+  twoFactorEnabled  Boolean   @default(false)
+  twoFactorSecret   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  addresses         Address[]
+  wallet            Wallet?
+  orders            Order[]
+  reviews           Review[]
+  refreshTokens     RefreshToken[]
+  otpCodes          OtpCode[]
+  supportTickets    SupportTicket[]
+  referralCode      String?   @unique
+  referredBy        String?
+
+  @@index([email])
+  @@index([phone])
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  label       String // "Home", "Office"
+  fullAddress String
+  city        String
+  state       String
+  pincode     String
+  lat         Float?
+  lng         Float?
+  phone       String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Wallet {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  balance       Decimal  @default(0) @db.Decimal(10, 2)
+  loyaltyPoints Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  walletId    String
+  type        TransactionType
+  reason      TransactionReason
+  amount      Decimal           @db.Decimal(10, 2)
+  description String?
+  referenceId String? // orderId, payoutId, etc.
+  createdAt   DateTime          @default(now())
+
+  wallet      Wallet            @relation(fields: [walletId], references: [id])
+
+  @@index([walletId])
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  token       String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  isRevoked   Boolean  @default(false)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model OtpCode {
+  id          String   @id @default(cuid())
+  userId      String?
+  identifier  String // email or phone
+  code        String
+  purpose     String // "email_verify", "phone_verify", "password_reset", "login_otp"
+  expiresAt   DateTime
+  used        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([identifier, purpose])
+}
+
+// ─── SELLERS ────────────────────────────────────────
+
+model Seller {
+  id               String       @id @default(cuid())
+  userId           String       @unique
+  storeName        String
+  ownerName        String
+  email            String       @unique
+  phone            String
+  gstNumber        String?
+  businessType     String
+  storeAddress     String
+  city             String
+  state            String
+  pincode          String
+  lat              Float?
+  lng              Float?
+  openingTime      String
+  closingTime      String
+  logoUrl          String?
+  bannerUrl        String?
+  description      String?
+  status           SellerStatus @default(PENDING)
+  commissionRate   Decimal      @default(0.12) @db.Decimal(4, 2)
+  deliveryRadius   Int          @default(10) // km
+  isVerified       Boolean      @default(false)
+  rejectionReason  String?
+  averageRating    Decimal      @default(0) @db.Decimal(3, 2)
+  totalOrders      Int          @default(0)
+  completionRate   Decimal      @default(0) @db.Decimal(5, 2)
+  onTimeRate       Decimal      @default(0) @db.Decimal(5, 2)
+  // Seller-defined configuration blob: { bulkDiscountTiers?, hours? }.
+  // Managed via /api/seller/pricing/bulk-discounts and /api/seller/settings/hours.
+  metadata         Json?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  // NOTE: no direct `reviews Review[]` relation — Review is polymorphic via
+  // (entityType, entityId). Query store reviews with:
+  //   prisma.review.findMany({ where: { entityType: 'STORE', entityId: seller.id } })
+  services         SellerService[]
+  bankDetails      SellerBankDetails?
+  documents        SellerDocument[]
+  orders           Order[]
+  payouts          Payout[]
+  pincodes         SellerPincode[]
+  teamMembers      SellerTeamMember[]
+
+  @@index([city])
+  @@index([status])
+  @@index([lat, lng])
+}
+
+model SellerService {
+  id           String   @id @default(cuid())
+  sellerId     String
+  categoryId   String
+  categoryName String
+  serviceId    String
+  serviceName  String
+  basePrice    Decimal  @db.Decimal(10, 2)
+  unit         String // "per page", "per piece"
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  seller       Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+
+  @@unique([sellerId, serviceId])
+  @@index([sellerId])
+  @@index([categoryId])
+}
+
+model SellerBankDetails {
+  id                String   @id @default(cuid())
+  sellerId          String   @unique
+  accountHolderName String
+  accountNumber     String
+  ifscCode          String
+  panNumber         String
+  isVerified        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  seller            Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+model SellerDocument {
+  id          String    @id @default(cuid())
+  sellerId    String
+  docType     String // "gst_certificate", "business_license", "owner_id", "address_proof"
+  fileUrl     String
+  isVerified  Boolean   @default(false)
+  verifiedAt  DateTime?
+  verifiedBy  String? // adminId
+  createdAt   DateTime  @default(now())
+
+  seller      Seller    @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+}
+
+model SellerPincode {
+  id          String  @id @default(cuid())
+  sellerId    String
+  pincode     String
+  isExcluded  Boolean @default(false)
+
+  seller      Seller  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([sellerId, pincode])
+}
+
+model SellerInventory {
+  id                String    @id @default(cuid())
+  sellerId          String
+  name              String
+  category          String
+  currentStock      Int
+  unit              String
+  lowStockThreshold Int
+  lastRestocked     DateTime?
+  updatedAt         DateTime  @updatedAt
+
+  @@index([sellerId])
+}
+
+model SellerTeamMember {
+  id         String   @id @default(cuid())
+  sellerId   String
+  name       String
+  email      String
+  phone      String?
+  role       String // "manager", "operator", "support"
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  seller     Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+}
+
+// ─── DELIVERY BOYS ──────────────────────────────────
+
+model DeliveryBoy {
+  id              String            @id @default(cuid())
+  userId          String            @unique
+  name            String
+  phone           String            @unique
+  email           String?
+  city            String
+  status          DeliveryBoyStatus @default(PENDING)
+  isOnline        Boolean           @default(false)
+  currentLat      Float?
+  currentLng      Float?
+  vehicleType     String // "bike", "scooter", "car"
+  vehicleRegNo    String
+  licenseNumber   String
+  averageRating   Decimal           @default(0) @db.Decimal(3, 2)
+  totalDeliveries Int               @default(0)
+  onTimeRate      Decimal           @default(0) @db.Decimal(5, 2)
+  totalEarnings   Decimal           @default(0) @db.Decimal(10, 2)
+  // Withdrawable balance: credited Atomically when a delivery completes,
+  // zeroed when a delivery payout is requested (see Payout).
+  pendingEarnings Decimal           @default(0) @db.Decimal(10, 2)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  bankDetails     DeliveryBoyBankDetails?
+  documents       DeliveryBoyDocument[]
+  zones           DeliveryBoyZone[]
+  deliveries      Delivery[]
+  payouts         Payout[]
+
+  @@index([city])
+  @@index([status, isOnline])
+}
+
+model DeliveryBoyBankDetails {
+  id                String   @id @default(cuid())
+  deliveryBoyId     String   @unique
+  accountHolderName String
+  accountNumber     String
+  ifscCode          String
+  panNumber         String?
+
+  deliveryBoy       DeliveryBoy @relation(fields: [deliveryBoyId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryBoyDocument {
+  id            String      @id @default(cuid())
+  deliveryBoyId String
+  docType       String // "id_proof", "license", "address_proof", "vehicle_insurance"
+  fileUrl       String
+  isVerified    Boolean     @default(false)
+  expiryDate    DateTime?
+  createdAt     DateTime    @default(now())
+
+  deliveryBoy   DeliveryBoy @relation(fields: [deliveryBoyId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryBoyZone {
+  id            String      @id @default(cuid())
+  deliveryBoyId String
+  zoneName      String
+
+  deliveryBoy   DeliveryBoy @relation(fields: [deliveryBoyId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryBoyId, zoneName])
+}
+
+// ─── ORDERS ─────────────────────────────────────────
+
+model Order {
+  id                String        @id @default(cuid())
+  customerId        String
+  sellerId          String
+  status            String        @default("placed")
+  // placed | confirmed | processing | ready_for_pickup | out_for_delivery | delivered | cancelled | returned
+  total             Decimal       @db.Decimal(10, 2)
+  subtotal          Decimal       @db.Decimal(10, 2)
+  deliveryFee       Decimal       @default(0) @db.Decimal(10, 2)
+  rushFee           Decimal       @default(0) @db.Decimal(10, 2)
+  tax               Decimal       @default(0) @db.Decimal(10, 2)
+  discount          Decimal       @default(0) @db.Decimal(10, 2)
+  commissionAmount  Decimal       @default(0) @db.Decimal(10, 2)
+  deliverySpeed     DeliverySpeed
+  deliveryAddress   Json // snapshot of the address at time of order
+  estimatedDelivery DateTime
+  specialInstructions String?
+  couponCode        String?
+  paymentMethod     String
+  paymentStatus     String        @default("pending")
+  paymentId         String? // Razorpay payment ID
+  isRush            Boolean       @default(false)
+  cancelledAt       DateTime?
+  cancelReason      String?
+  // Set once the order's net earnings are locked into a Payout — orders with
+  // payoutId = null and status "delivered" form the seller's pending balance.
+  payoutId          String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  customer          User          @relation(fields: [customerId], references: [id])
+  seller            Seller        @relation(fields: [sellerId], references: [id])
+  payout            Payout?       @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+  items             OrderItem[]
+  delivery          Delivery?
+  review            Review?
+
+  @@index([customerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([payoutId])
+}
+
+model OrderItem {
+  id              String        @id @default(cuid())
+  orderId         String
+  sellerServiceId String
+  serviceName     String
+  quantity        Int
+  unitPrice       Decimal       @db.Decimal(10, 2)
+  total           Decimal       @db.Decimal(10, 2)
+  specifications  Json // paper type, size, color, finishing etc.
+  fileUrl         String? // uploaded design file URL
+
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sellerService   SellerService @relation(fields: [sellerServiceId], references: [id])
+
+  @@index([orderId])
+}
+
+// ─── DELIVERIES ─────────────────────────────────────
+
+model Delivery {
+  id              String       @id @default(cuid())
+  orderId         String       @unique
+  deliveryBoyId   String?
+  status          String       @default("pending_assignment")
+  // pending_assignment | assigned | picked_up | out_for_delivery | delivered | failed | returned
+  pickedUpAt      DateTime?
+  deliveredAt     DateTime?
+  failedAt        DateTime?
+  failReason      String?
+  podPhotoUrl     String? // proof of delivery photo
+  podSignatureUrl String?
+  podOtp          String?
+  podOtpVerified  Boolean      @default(false)
+  notes           String?
+  // What the delivery boy earned for this delivery (deliveryFee + rushFee of
+  // the order) — credited to DeliveryBoy.pendingEarnings on completion.
+  earningsAmount  Decimal      @default(0) @db.Decimal(10, 2)
+  // Set once this delivery's earnings are locked into a delivery payout
+  // (mirrors Order.payoutId).
+  payoutId        String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  order           Order        @relation(fields: [orderId], references: [id])
+  deliveryBoy     DeliveryBoy? @relation(fields: [deliveryBoyId], references: [id])
+  payout          Payout?      @relation(fields: [payoutId], references: [id], onDelete: SetNull)
+
+  @@index([deliveryBoyId])
+  @@index([status])
+  @@index([payoutId])
+}
+
+// ─── PAYOUTS ────────────────────────────────────────
+
+model Payout {
+  id              String       @id @default(cuid())
+  recipientType   String // "seller" or "delivery_boy"
+  sellerId        String?
+  deliveryBoyId   String?
+  amount          Decimal      @db.Decimal(10, 2)
+  ordersIncluded  Int          @default(0)
+  status          PayoutStatus @default(PENDING)
+  bankAccount     String // masked account number
+  initiatedAt     DateTime?
+  processedAt     DateTime?
+  // Manual bank-transfer reference recorded when ops marks the payout paid.
+  transactionRef  String?
+  failReason      String?
+  createdAt       DateTime     @default(now())
+
+  seller          Seller?      @relation(fields: [sellerId], references: [id])
+  deliveryBoy     DeliveryBoy? @relation(fields: [deliveryBoyId], references: [id])
+  orders          Order[]
+  deliveries      Delivery[]
+
+  @@index([sellerId])
+  @@index([deliveryBoyId])
+  @@index([status])
+}
+
+// ─── REVIEWS ────────────────────────────────────────
+
+model Review {
+  id                  String          @id @default(cuid())
+  orderId             String          @unique
+  customerId          String
+  entityType          ReviewEntityType
+  entityId            String // sellerId or deliveryBoyId
+  overallRating       Int // 1-5
+  qualityRating       Int?
+  deliveryRating      Int?
+  communicationRating Int?
+  valueRating         Int?
+  comment             String?
+  photoUrls           String[]
+  isVerified          Boolean         @default(true)
+  isFlagged           Boolean         @default(false)
+  sellerReply         String?
+  sellerRepliedAt     DateTime?
+  createdAt           DateTime        @default(now())
+
+  order               Order           @relation(fields: [orderId], references: [id])
+  customer            User            @relation(fields: [customerId], references: [id])
+
+  @@index([entityId, entityType])
+  @@index([customerId])
+}
+
+// ─── COUPONS ────────────────────────────────────────
+
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String // "percentage" or "flat"
+  discountValue Decimal   @db.Decimal(10, 2)
+  minOrderValue Decimal?  @db.Decimal(10, 2)
+  maxDiscount   Decimal?  @db.Decimal(10, 2)
+  usageLimit    Int?
+  usageCount    Int       @default(0)
+  perUserLimit  Int       @default(1)
+  isActive      Boolean   @default(true)
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([code])
+}
+
+// ─── SUPPORT ────────────────────────────────────────
+
+model SupportTicket {
+  id         String         @id @default(cuid())
+  userId     String
+  orderId    String?
+  subject    String
+  category   TicketCategory
+  priority   TicketPriority @default(MEDIUM)
+  status     TicketStatus   @default(OPEN)
+  assignedTo String? // adminId
+  resolvedAt DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  user       User           @relation(fields: [userId], references: [id])
+  messages   TicketMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([assignedTo])
+}
+
+model TicketMessage {
+  id         String        @id @default(cuid())
+  ticketId   String
+  senderType String // "customer" or "admin"
+  senderId   String
+  content    String
+  createdAt  DateTime      @default(now())
+
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+// ─── ADMINS ─────────────────────────────────────────
+
+model Admin {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         AdminRole @default(SUPPORT_AGENT)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  refreshTokens AdminRefreshToken[]
+
+  @@index([email])
+}
+
+model AdminRefreshToken {
+  id        String   @id @default(cuid())
+  adminId   String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}

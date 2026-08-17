@@ -1,0 +1,57 @@
+name: prinzex-backend
+
+# Local dev infrastructure for PrinZex backend: PostgreSQL + MongoDB + Redis.
+# Usage: docker compose up -d   (then: npm run db:migrate && npm run db:seed && npm run db:seed:mongo)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prinzex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: prinzex
+    ports:
+      - '5432:5432'
+    volumes:
+      - prinzex-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d prinzex']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:7
+    container_name: prinzex-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - prinzex-mongodata:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: prinzex-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - prinzex-redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  prinzex-pgdata:
+  prinzex-mongodata:
+  prinzex-redisdata:
