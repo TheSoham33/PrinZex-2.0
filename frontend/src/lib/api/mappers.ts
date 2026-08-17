@@ -31,7 +31,7 @@ export function mapBackendServiceToFrontend(s: any): ServiceOffering {
     name: s.serviceName,
     icon: 'file', // Map category to icon
     startingPrice: Number(s.basePrice),
-    unit: 'per page',
+    unit: s.unit || 'per page',
     description: s.description || '',
   };
 }

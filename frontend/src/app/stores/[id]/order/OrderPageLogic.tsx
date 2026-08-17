@@ -164,7 +164,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           paperType: specs.paperType,
           size: specs.size,
           colorOption: specs.colorOption,
-          finishing: specs.finishing
+          finishing: specs.finishing,
+          totalPages: specs.totalPages,
         },
         deliveryAddressId: (state.order.address as any)?.id,
         deliverySpeed: state.order.deliverySpeed.toUpperCase(),
