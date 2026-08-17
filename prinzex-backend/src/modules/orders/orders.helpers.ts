@@ -14,6 +14,12 @@ export interface QuoteSpecifications {
   colorOption: 'color' | 'bw';
   finishing: string[];
   totalPages?: number;
+  // Binding-specific attributes — drive the page/binding split pricing.
+  pageCornerSize?: string;
+  coverType?: string;
+  spiralType?: string;
+  coverColor?: string;
+  coverDesignType?: string;
 }
 
 export interface QuoteInput {
@@ -35,6 +41,10 @@ export interface QuoteResult {
   /** Platform commission: subtotal * Seller.commissionRate. */
   commissionAmount: number;
   total: number;
+  /** Binding services only — page printing component (pageRate × pages × copies). */
+  pageCost?: number;
+  /** Binding services only — binding/cover component (bindingRate × copies). */
+  bindingCost?: number;
 }
 
 // ── Pricing constants ──────────────────────────────────────────────────────
@@ -99,6 +109,17 @@ export function round2(value: number): number {
 /** Quote timestamp + speed → estimated delivery instant. */
 export function estimatedDeliveryFor(speed: DeliverySpeed, from = new Date()): Date {
   return new Date(from.getTime() + ESTIMATED_DELIVERY_HOURS[speed] * 60 * 60 * 1000);
+}
+
+/**
+ * Binding services (spiral, hard, perfect) use the split page+binding pricing
+ * model. Detected by the service's category (seeded as "binding") or its
+ * serviceId prefix ("bind-") so it also works for historical rows.
+ */
+export function isBindingService(categoryId?: string | null, serviceId?: string | null): boolean {
+  if (categoryId === 'binding') return true;
+  if (serviceId && serviceId.startsWith('bind-')) return true;
+  return false;
 }
 
 /** Validate finishing selections — unknown types make quotes non-deterministic. */
@@ -190,6 +211,8 @@ export async function validateCoupon(
 export interface QuoteComputationInput {
   basePrice: number; // SellerService.basePrice
   unit: string;
+  categoryId?: string; // SellerService.categoryId — routes the pricing model
+  serviceId?: string; // SellerService.serviceId — fallback signal for binding
   quantity: number;
   specifications: QuoteSpecifications;
   deliverySpeed: DeliverySpeed;
@@ -201,29 +224,64 @@ export interface QuoteComputationInput {
 /** Pure, deterministic quote math — fully unit-testable offline. */
 export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const { specifications, sellerMetadata, unit } = input;
-  
+
   // Extract overrides from metadata if they exist
   let overrides: any = {};
   if (sellerMetadata && typeof sellerMetadata === 'object' && !Array.isArray(sellerMetadata)) {
     overrides = (sellerMetadata as any).pricingOverrides || {};
   }
 
-  const paperPrice = overrides.paperType?.[specifications.paperType] ?? 0;
-  const sizePrice = overrides.size?.[specifications.size] ?? 0;
-  const colorPrice = overrides.colorOption?.[specifications.colorOption] ?? 0;
-
   const finishingCharge = specifications.finishing.reduce(
     (sum, type) => sum + (FINISHING_UPCHARGES[type] ?? 0),
     0,
   );
 
-  const totalPages = specifications.totalPages || 1;
-  const isPerPage = unit.toLowerCase().includes('page');
-  const unitFactor = isPerPage ? totalPages : 1;
+  const totalPages = Math.max(1, specifications.totalPages || 1);
+  const quantity = input.quantity;
 
-  const subtotal = round2(
-    (input.basePrice + paperPrice + sizePrice + colorPrice) * unitFactor * input.quantity + (finishingCharge * input.quantity)
-  );
+  let subtotal: number;
+  let pageCost: number | undefined;
+  let bindingCost: number | undefined;
+
+  if (isBindingService(input.categoryId, input.serviceId)) {
+    // ── Binding services: split pricing ──────────────────────────────────
+    // Pages (printing) and binding (cover) are priced independently, both from
+    // seller-set additive ₹ components stored in Seller.metadata.pricingOverrides.
+    //   pages    = (paperType + pageCornerSize + colorOption) ₹/page × P × N
+    //   binding  = (coverType + coilType + coverColor)        ₹/binding × N
+    const pageRate =
+      (overrides.paperType?.[specifications.paperType] ?? 0) +
+      (overrides.pageCornerSize?.[specifications.pageCornerSize] ?? 0) +
+      (overrides.colorOption?.[specifications.colorOption] ?? 0);
+
+    let bindingRate =
+      (overrides.coverType?.[specifications.coverType] ?? 0) +
+      (overrides.coilType?.[specifications.spiralType] ?? 0) +
+      (overrides.coverColor?.[specifications.coverColor] ?? 0);
+
+    // Legacy fallback: a seller who never configured cover add-ons keeps their
+    // original per-document base price as the binding rate (never a free bind).
+    if (bindingRate === 0 && input.basePrice > 0) {
+      bindingRate = input.basePrice;
+    }
+
+    pageCost = round2(pageRate * totalPages * quantity);
+    bindingCost = round2(bindingRate * quantity);
+    subtotal = round2(pageCost + bindingCost + finishingCharge * quantity);
+  } else {
+    // ── Everything else: existing single-rate model ─────────────────────
+    const paperPrice = overrides.paperType?.[specifications.paperType] ?? 0;
+    const sizePrice = overrides.size?.[specifications.size] ?? 0;
+    const colorPrice = overrides.colorOption?.[specifications.colorOption] ?? 0;
+    const isPerPage = unit.toLowerCase().includes('page');
+    const unitFactor = isPerPage ? totalPages : 1;
+
+    subtotal = round2(
+      (input.basePrice + paperPrice + sizePrice + colorPrice) * unitFactor * quantity +
+        finishingCharge * quantity,
+    );
+  }
+
   const rushFee = RUSH_FEES[input.deliverySpeed];
   const deliveryFee = DELIVERY_FEES[input.deliverySpeed];
   const tax = round2(subtotal * GST_RATE);
@@ -238,5 +296,7 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     discount: round2(input.discount),
     commissionAmount,
     total,
+    ...(pageCost !== undefined ? { pageCost } : {}),
+    ...(bindingCost !== undefined ? { bindingCost } : {}),
   };
 }

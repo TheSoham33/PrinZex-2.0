@@ -7,7 +7,15 @@ import {
   type BulkTier,
   type SellerPricingEntry,
 } from '@/lib/mock-data/seller-inventory';
-import { PAPER_TYPES, PAPER_SIZES } from '@/lib/mock-data/stores';
+import {
+  PAPER_TYPES,
+  PAPER_SIZES,
+  BINDING_CORNER_SIZES,
+  COVER_COLORS,
+  COVER_TYPES,
+  SPIRAL_COIL_TYPES,
+  SPIRAL_COVER_TYPES,
+} from '@/lib/mock-data/stores';
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
@@ -26,6 +34,10 @@ export default function SellerPricingPage() {
   const [paperPrices, setPaperPrices] = useState<Record<string, string>>({});
   const [sizePrices, setSizePrices] = useState<Record<string, string>>({});
   const [colorPrices, setColorPrices] = useState<Record<string, string>>({ bw: '0', color: '0' });
+  const [cornerPrices, setCornerPrices] = useState<Record<string, string>>({});
+  const [coverTypePrices, setCoverTypePrices] = useState<Record<string, string>>({});
+  const [coilPrices, setCoilPrices] = useState<Record<string, string>>({});
+  const [coverColorPrices, setCoverColorPrices] = useState<Record<string, string>>({});
 
   const [editingTier, setEditingTier] = useState<number | null>(null);
   const [tierDraft, setTierDraft] = useState('');
@@ -50,6 +62,22 @@ export default function SellerPricingPage() {
         bw: String(overrides.colorOption?.bw || '0'),
         color: String(overrides.colorOption?.color || '0')
       });
+
+      const cp: Record<string, string> = {};
+      BINDING_CORNER_SIZES.forEach(c => cp[c.value] = String(overrides.pageCornerSize?.[c.value] || '0'));
+      setCornerPrices(cp);
+
+      const ct: Record<string, string> = {};
+      [...SPIRAL_COVER_TYPES, ...COVER_TYPES].forEach(c => ct[c.value] = String(overrides.coverType?.[c.value] || '0'));
+      setCoverTypePrices(ct);
+
+      const cl: Record<string, string> = {};
+      SPIRAL_COIL_TYPES.forEach(c => cl[c.value] = String(overrides.coilType?.[c.value] || '0'));
+      setCoilPrices(cl);
+
+      const cc: Record<string, string> = {};
+      COVER_COLORS.forEach(c => cc[c.value] = String(overrides.coverColor?.[c.value] || '0'));
+      setCoverColorPrices(cc);
     }
   }, [data]);
 
@@ -107,7 +135,27 @@ export default function SellerPricingPage() {
       color: Number(colorPrices.color)
     };
 
-    updateOverridesMutation.mutate({ paperType, size, colorOption });
+    const pageCornerSize: Record<string, number> = {};
+    Object.entries(cornerPrices).forEach(([k, v]) => pageCornerSize[k] = Number(v));
+
+    const coverType: Record<string, number> = {};
+    Object.entries(coverTypePrices).forEach(([k, v]) => coverType[k] = Number(v));
+
+    const coilType: Record<string, number> = {};
+    Object.entries(coilPrices).forEach(([k, v]) => coilType[k] = Number(v));
+
+    const coverColor: Record<string, number> = {};
+    Object.entries(coverColorPrices).forEach(([k, v]) => coverColor[k] = Number(v));
+
+    updateOverridesMutation.mutate({
+      paperType,
+      size,
+      colorOption,
+      pageCornerSize,
+      coverType,
+      coilType,
+      coverColor,
+    });
   };
 
   if (isError) {
@@ -161,7 +209,7 @@ export default function SellerPricingPage() {
       {/* Specification Overrides */}
       <section className="card mt-6 overflow-hidden">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">Paper, Size & Color Add-ons</h2>
+          <h2 className="text-sm font-bold text-slate-900">Specification & Binding Add-ons</h2>
           <button 
             onClick={handleSaveOverrides}
             disabled={updateOverridesMutation.isPending}
@@ -230,6 +278,82 @@ export default function SellerPricingPage() {
                   className="input w-24 py-1 text-right text-sm"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Binding pages — page corner size (₹/page) */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Page Corner Size Extra (₹/page)</h3>
+            <p className="text-xs text-slate-400 mb-3">Binding services only — added to the per-page price.</p>
+            <div className="grid grid-cols-2 gap-4">
+              {BINDING_CORNER_SIZES.map(corner => (
+                <div key={corner.value} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-600">{corner.label}</span>
+                  <input 
+                    type="number" 
+                    value={cornerPrices[corner.value] || '0'} 
+                    onChange={(e) => setCornerPrices(p => ({ ...p, [corner.value]: e.target.value }))}
+                    className="input w-24 py-1 text-right text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Binding — cover type (₹/binding) */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover Type Extra (₹/binding)</h3>
+            <p className="text-xs text-slate-400 mb-3">Binding services only — added per binding.</p>
+            <div className="grid grid-cols-2 gap-4">
+              {[...SPIRAL_COVER_TYPES, ...COVER_TYPES].map(cover => (
+                <div key={cover.value} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-600">{cover.label}</span>
+                  <input 
+                    type="number" 
+                    value={coverTypePrices[cover.value] || '0'} 
+                    onChange={(e) => setCoverTypePrices(p => ({ ...p, [cover.value]: e.target.value }))}
+                    className="input w-24 py-1 text-right text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Binding — coil type (₹/binding) */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Coil Type Extra (₹/binding)</h3>
+            <p className="text-xs text-slate-400 mb-3">Spiral binding — added per binding.</p>
+            <div className="grid grid-cols-2 gap-4">
+              {SPIRAL_COIL_TYPES.map(coil => (
+                <div key={coil.value} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-600">{coil.label}</span>
+                  <input 
+                    type="number" 
+                    value={coilPrices[coil.value] || '0'} 
+                    onChange={(e) => setCoilPrices(p => ({ ...p, [coil.value]: e.target.value }))}
+                    className="input w-24 py-1 text-right text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Binding — cover colour (₹/binding) */}
+          <div className="border-t border-slate-100 pt-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover Colour Extra (₹/binding)</h3>
+            <p className="text-xs text-slate-400 mb-3">Binding services only — added per binding.</p>
+            <div className="grid grid-cols-2 gap-4">
+              {COVER_COLORS.map(color => (
+                <div key={color.value} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-slate-600">{color.label}</span>
+                  <input 
+                    type="number" 
+                    value={coverColorPrices[color.value] || '0'} 
+                    onChange={(e) => setCoverColorPrices(p => ({ ...p, [color.value]: e.target.value }))}
+                    className="input w-24 py-1 text-right text-sm"
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>

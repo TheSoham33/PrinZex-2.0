@@ -71,6 +71,13 @@ export interface SellerMetadata {
     paperType?: Record<string, number>;
     size?: Record<string, number>;
     colorOption?: Record<string, number>;
+    // Binding services: additive ₹ components set by the seller.
+    // Pages (₹/page): pageCornerSize adds to paperType + colorOption.
+    pageCornerSize?: Record<string, number>;
+    // Binding (₹/binding): coverType + coilType + coverColor.
+    coverType?: Record<string, number>;
+    coilType?: Record<string, number>;
+    coverColor?: Record<string, number>;
   };
 }
 

@@ -148,22 +148,49 @@ export function computeCost(
   const size = PAPER_SIZES.find((entry) => entry.value === specs.size)?.multiplier ?? 1;
   const colour = specs.colorOption === 'color' ? 2 : 1;
   const quantity = Math.max(1, specs.quantity || 1);
-  const totalPages = specs.totalPages || 1;
+  const totalPages = Math.max(1, specs.totalPages || 1);
 
   const finishingPerUnit = specs.finishing.reduce((sum, key) => {
     const option = FINISHING_OPTIONS.find((entry) => entry.value === key);
     return sum + (option?.price ?? 0);
   }, 0);
 
-  // If unit is "per page", multiply by totalPages
-  const isPerPage = service?.unit.toLowerCase().includes('page');
-  const unitFactor = isPerPage ? totalPages : 1;
+  const isBinding = Boolean(service?.id?.startsWith('bind-'));
 
-  const subtotal = Math.round(base * unitFactor * paper * size * colour * quantity + finishingPerUnit * quantity);
+  let subtotal: number;
+  let pageCost: number | undefined;
+  let bindingCost: number | undefined;
+
+  if (isBinding) {
+    // Rough pre-login estimate only — the signed-in quote replaces this with
+    // the seller's actual component rates. Pages ≈ paper × colour; binding ≈
+    // the service's starting price (its per-binding rate when no cover add-ons
+    // are configured).
+    const pageRate = base * paper * colour;
+    const bindingRate = base;
+    pageCost = Math.round(pageRate * totalPages * quantity);
+    bindingCost = Math.round(bindingRate * quantity);
+    subtotal = Math.round(pageCost + bindingCost + finishingPerUnit * quantity);
+  } else {
+    // If unit is "per page", multiply by totalPages
+    const isPerPage = service?.unit.toLowerCase().includes('page');
+    const unitFactor = isPerPage ? totalPages : 1;
+    subtotal = Math.round(base * unitFactor * paper * size * colour * quantity + finishingPerUnit * quantity);
+  }
+
   const rushFee = 0;
   const tax = Math.round((subtotal + deliveryFee) * TAX_RATE);
 
-  const cost: CostBreakdown = { subtotal, rushFee, deliveryFee, tax, discount, total: 0 };
+  const cost: CostBreakdown = {
+    subtotal,
+    rushFee,
+    deliveryFee,
+    tax,
+    discount,
+    total: 0,
+    ...(pageCost !== undefined ? { pageCost } : {}),
+    ...(bindingCost !== undefined ? { bindingCost } : {}),
+  };
   cost.total = recalcTotal(cost);
   return cost;
 }
