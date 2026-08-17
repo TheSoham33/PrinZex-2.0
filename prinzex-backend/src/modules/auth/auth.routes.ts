@@ -5,12 +5,14 @@ import { validate } from '../../middlewares/validate';
 import * as authController from './auth.controller';
 import {
   forgotPasswordBody,
+  googleLoginBody,
   loginBody,
   logoutBody,
   refreshBody,
   registerBody,
   resendOtpBody,
   resetPasswordBody,
+  sendSignupOtpBody,
   verifyEmailBody,
 } from './auth.schema';
 
@@ -19,7 +21,11 @@ export const customerAuthRouter = Router();
 
 customerAuthRouter.post('/register', validate({ body: registerBody }), authController.register);
 
+customerAuthRouter.post('/send-signup-otp', validate({ body: sendSignupOtpBody }), authController.sendSignupOtp);
+
 customerAuthRouter.post('/login', loginLimiter, validate({ body: loginBody }), authController.login);
+
+customerAuthRouter.post('/send-login-otp', otpSendLimiter, authController.sendLoginOtp);
 
 customerAuthRouter.post('/logout', authenticate, validate({ body: logoutBody }), authController.logout);
 

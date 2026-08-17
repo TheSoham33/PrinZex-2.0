@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { passwordField, phoneField } from '../auth/auth.schema';
+import { emailField, passwordField, phoneField } from '../auth/auth.schema';
 
 /**
  * Customer module request schemas (profile, addresses, wallet, notifications).
@@ -10,9 +10,17 @@ import { passwordField, phoneField } from '../auth/auth.schema';
 export const updateProfileBody = z
   .object({
     name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80).optional(),
-    avatarUrl: z.string().trim().url('avatarUrl must be a valid URL').optional(),
+    email: emailField.optional(),
+    phone: phoneField.optional(),
+    avatarUrl: z
+      .string()
+      .trim()
+      .refine((val) => val.startsWith('/') || z.string().url().safeParse(val).success, {
+        message: 'avatarUrl must be a valid URL or a relative path starting with /',
+      })
+      .optional(),
   })
-  .refine((value) => value.name !== undefined || value.avatarUrl !== undefined, {
+  .refine((value) => Object.values(value).some((v) => v !== undefined), {
     message: 'Provide at least one field to update',
   });
 

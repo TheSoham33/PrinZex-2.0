@@ -66,6 +66,12 @@ export interface StoreHoursEntry {
 export interface SellerMetadata {
   bulkDiscountTiers?: BulkDiscountTier[];
   hours?: StoreHoursEntry[];
+  notifications?: Record<string, boolean>;
+  pricingOverrides?: {
+    paperType?: Record<string, number>;
+    size?: Record<string, number>;
+    colorOption?: Record<string, number>;
+  };
 }
 
 export function readSellerMetadata(json: Prisma.JsonValue | null): SellerMetadata {
@@ -228,7 +234,7 @@ export interface StoreInfo {
 async function findSellerOrThrow(sellerId: string) {
   const seller = await prisma.seller.findUnique({
     where: { id: sellerId },
-    include: { services: true, documents: true, bankDetails: true },
+    include: { services: true, documents: true, bankDetails: true, pincodes: true },
   });
   if (!seller) {
     throw ApiError.notFound('Store not found');
@@ -239,6 +245,7 @@ async function findSellerOrThrow(sellerId: string) {
 function toStoreInfo(
   seller: Seller & {
     services: SellerService[];
+    pincodes: Array<{ pincode: string; isExcluded: boolean }>;
     documents: Array<{
       id: string;
       docType: string;
@@ -288,6 +295,7 @@ function toStoreInfo(
     createdAt: seller.createdAt,
     updatedAt: seller.updatedAt,
     services: seller.services,
+    pincodes: seller.pincodes,
     documents: seller.documents.map((doc) => ({
       id: doc.id,
       docType: doc.docType,
@@ -317,8 +325,16 @@ export async function updateStore(sellerId: string, input: UpdateStoreInput): Pr
 
   const data: Prisma.SellerUpdateInput = {};
   if (input.storeName !== undefined) data.storeName = input.storeName;
+  if (input.ownerName !== undefined) data.ownerName = input.ownerName;
+  if (input.email !== undefined) data.email = input.email;
+  if (input.phone !== undefined) data.phone = input.phone;
+  if (input.businessType !== undefined) data.businessType = input.businessType;
+  if (input.gstNumber !== undefined) data.gstNumber = input.gstNumber;
   if (input.description !== undefined) data.description = input.description;
   if (input.storeAddress !== undefined) data.storeAddress = input.storeAddress;
+  if (input.city !== undefined) data.city = input.city;
+  if (input.state !== undefined) data.state = input.state;
+  if (input.pincode !== undefined) data.pincode = input.pincode;
   if (input.openingTime !== undefined) data.openingTime = input.openingTime;
   if (input.closingTime !== undefined) data.closingTime = input.closingTime;
   if (input.logoUrl !== undefined) data.logoUrl = input.logoUrl;
@@ -440,6 +456,7 @@ export async function deleteService(
 export interface PricingInfo {
   services: SellerService[];
   bulkDiscountTiers: BulkDiscountTier[];
+  pricingOverrides: SellerMetadata['pricingOverrides'];
 }
 
 export async function getPricing(sellerId: string): Promise<PricingInfo> {
@@ -451,7 +468,11 @@ export async function getPricing(sellerId: string): Promise<PricingInfo> {
     prisma.seller.findUnique({ where: { id: sellerId }, select: { metadata: true } }),
   ]);
   const metadata = readSellerMetadata(seller?.metadata ?? null);
-  return { services, bulkDiscountTiers: metadata.bulkDiscountTiers ?? [] };
+  return { 
+    services, 
+    bulkDiscountTiers: metadata.bulkDiscountTiers ?? [],
+    pricingOverrides: metadata.pricingOverrides ?? {}
+  };
 }
 
 export async function bulkUpdatePrices(
@@ -1347,11 +1368,71 @@ export async function updateStoreHours(
     ...readSellerMetadata(seller.metadata),
     hours: input.hours,
   };
+
+  // Sync root opening/closing fields with Monday's hours for basic DB filtering/sorting
+  const monday = input.hours.find(h => h.day.toLowerCase() === 'monday');
+  const updateData: Prisma.SellerUpdateInput = {
+    metadata: metadata as Prisma.InputJsonValue
+  };
+
+  if (monday && !monday.closed) {
+    updateData.openingTime = monday.open;
+    updateData.closingTime = monday.close;
+  }
+
   await prisma.seller.update({
     where: { id: sellerId },
-    data: { metadata: metadata as Prisma.InputJsonValue },
+    data: updateData,
   });
   await invalidateStoreCaches(sellerId);
 
   return { hours: input.hours };
+}
+
+export async function updateNotificationSettings(
+  sellerId: string,
+  preferences: Record<string, boolean>,
+): Promise<Record<string, boolean>> {
+  const seller = await prisma.seller.findUnique({
+    where: { id: sellerId },
+    select: { metadata: true },
+  });
+  if (!seller) {
+    throw ApiError.notFound('Store not found');
+  }
+
+  const metadata: SellerMetadata = {
+    ...readSellerMetadata(seller.metadata),
+    notifications: preferences,
+  };
+  await prisma.seller.update({
+    where: { id: sellerId },
+    data: { metadata: metadata as Prisma.InputJsonValue },
+  });
+
+  return preferences;
+}
+
+export async function updatePricingOverrides(
+  sellerId: string,
+  overrides: SellerMetadata['pricingOverrides'],
+): Promise<SellerMetadata['pricingOverrides']> {
+  const seller = await prisma.seller.findUnique({
+    where: { id: sellerId },
+    select: { metadata: true },
+  });
+  if (!seller) {
+    throw ApiError.notFound('Store not found');
+  }
+
+  const metadata: SellerMetadata = {
+    ...readSellerMetadata(seller.metadata),
+    pricingOverrides: overrides,
+  };
+  await prisma.seller.update({
+    where: { id: sellerId },
+    data: { metadata: metadata as Prisma.InputJsonValue },
+  });
+
+  return overrides;
 }

@@ -16,6 +16,17 @@ export const uploadDesign = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, result, 'Design file uploaded'));
 });
 
+export const uploadAvatar = asyncHandler(async (req, res) => {
+  if (!req.user || !('userId' in req.user)) {
+    throw ApiError.unauthorized();
+  }
+  if (!req.file) {
+    throw ApiError.badRequest('No file uploaded');
+  }
+  const result = await uploadService.registerAvatarUpload(req.user.userId, req.file);
+  res.status(201).json(new ApiResponse(201, result, 'Profile photo uploaded'));
+});
+
 export const deleteDesign = asyncHandler(async (req, res) => {
   if (!req.user || !('userId' in req.user)) {
     throw ApiError.unauthorized();

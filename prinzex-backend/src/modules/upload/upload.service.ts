@@ -50,6 +50,19 @@ export async function registerDesignUpload(
   };
 }
 
+export async function registerAvatarUpload(
+  userId: string,
+  file: Express.Multer.File,
+): Promise<{ fileUrl: string }> {
+  // We only allow images for avatars, but the magic-byte signatures
+  // are already configured for PNG/JPG in verifyMagicBytes.
+  await verifyMagicBytes(file.path);
+
+  return {
+    fileUrl: `/uploads/avatars/${file.filename}`,
+  };
+}
+
 export async function deleteDesignUpload(userId: string, filename: string): Promise<{ deleted: true }> {
   // Filenames are validated upstream (no path separators), but never trust.
   if (filename !== path.basename(filename)) {

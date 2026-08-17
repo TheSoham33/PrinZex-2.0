@@ -1,8 +1,8 @@
 node_modules/
-dist/
+/dist/
 coverage/
 *.log
-logs/
+/logs/
 .env
 .env.local
 .env.*.local

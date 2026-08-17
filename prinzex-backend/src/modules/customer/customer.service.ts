@@ -50,7 +50,12 @@ export async function getProfile(userId: string): Promise<CustomerProfile> {
 export async function updateProfile(userId: string, input: UpdateProfileInput): Promise<CustomerProfile> {
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { name: input.name, avatarUrl: input.avatarUrl },
+    data: {
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      avatarUrl: input.avatarUrl,
+    },
     include: { wallet: true },
   });
   return toProfile(user);

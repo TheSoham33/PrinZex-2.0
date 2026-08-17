@@ -121,7 +121,10 @@ async function runPostCommitSideEffects(label: string, effects: Array<() => Prom
 
 async function loadOrderableService(sellerId: string, sellerServiceId: string) {
   const service = await prisma.sellerService.findFirst({
-    where: { id: sellerServiceId, sellerId },
+    where: {
+      sellerId,
+      OR: [{ id: sellerServiceId }, { serviceId: sellerServiceId }],
+    },
   });
   if (!service) {
     throw ApiError.notFound('Service not found for this store');
@@ -170,12 +173,13 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
   }
 
   const quote = computeQuote({
-    basePrice: Number(service.basePrice),
+    basePrice: Number(service.basePrice), unit: service.unit,
     quantity: input.quantity,
-    finishing: input.specifications.finishing,
+    specifications: input.specifications,
     deliverySpeed: input.deliverySpeed,
     commissionRate: Number(seller.commissionRate),
     discount,
+    sellerMetadata: seller.metadata,
   });
 
   const timestamp = Date.now();
@@ -247,12 +251,13 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
   }
 
   const quote = computeQuote({
-    basePrice: Number(service.basePrice),
+    basePrice: Number(service.basePrice), unit: service.unit,
     quantity: input.quantity,
-    finishing: input.specifications.finishing,
+    specifications: input.specifications,
     deliverySpeed: input.deliverySpeed,
     commissionRate: Number(seller.commissionRate),
     discount,
+    sellerMetadata: seller.metadata,
   });
 
   const paysByWallet = input.paymentMethod === 'wallet';
@@ -594,8 +599,11 @@ export async function createReview(customerId: string, orderId: string, input: C
   if (!order) {
     throw ApiError.notFound('Order not found');
   }
-  if (order.status !== 'delivered') {
-    throw ApiError.badRequest('You can review an order only after it is delivered');
+  
+  // Allow reviews after order is placed/uploaded, not just after delivery
+  const allowReviewStatuses = ['placed', 'confirmed', 'processing', 'ready_for_pickup', 'out_for_delivery', 'delivered'];
+  if (!allowReviewStatuses.includes(order.status)) {
+    throw ApiError.badRequest('You can review an order once it has been placed');
   }
   const existing = await prisma.review.findUnique({ where: { orderId: order.id } });
   if (existing) {
@@ -656,6 +664,7 @@ export interface AdminOrderListItem {
   status: string;
   customerName: string;
   sellerName: string;
+  serviceName: string; // Added this
   deliveryBoyName: string | null;
   total: number;
   isRush: boolean;
@@ -691,6 +700,7 @@ export async function adminListOrders(
       include: {
         customer: { select: { name: true } },
         seller: { select: { storeName: true } },
+        items: { select: { serviceName: true }, take: 1 }, // Added this
         delivery: { include: { deliveryBoy: { select: { name: true } } } },
       },
     }),
@@ -702,6 +712,7 @@ export async function adminListOrders(
       status: order.status,
       customerName: order.customer.name,
       sellerName: order.seller.storeName,
+      serviceName: order.items[0]?.serviceName ?? '—', // Added this
       deliveryBoyName: order.delivery?.deliveryBoy?.name ?? null,
       total: Number(order.total),
       isRush: order.isRush,

@@ -31,18 +31,23 @@ export const identifierField = z
 export const registerBody = z
   .object({
     name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80),
-    email: emailField.optional(),
-    phone: phoneField.optional(),
+    email: emailField,
+    phone: phoneField,
     password: passwordField,
-  })
-  .refine((value) => value.email !== undefined || value.phone !== undefined, {
-    message: 'Either email or phone is required',
-    path: ['email'],
+    otp: otpField.optional(),
   });
 
 export const loginBody = z.object({
   identifier: identifierField,
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(1, 'Password is required').optional(),
+  otp: otpField.optional(),
+}).refine(data => data.password || data.otp, {
+  message: "Either password or OTP is required",
+  path: ["password"]
+});
+
+export const sendSignupOtpBody = z.object({
+  phone: phoneField,
 });
 
 export const refreshBody = z.object({
@@ -84,3 +89,4 @@ export type VerifyEmailInput = z.infer<typeof verifyEmailBody>;
 export type ResendOtpInput = z.infer<typeof resendOtpBody>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordBody>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordBody>;
+export type SendSignupOtpInput = z.infer<typeof sendSignupOtpBody>;

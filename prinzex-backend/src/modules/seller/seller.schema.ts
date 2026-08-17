@@ -21,8 +21,16 @@ const positiveMoney = z
 export const updateStoreBody = z
   .object({
     storeName: z.string().trim().min(2).max(200).optional(),
+    ownerName: z.string().trim().min(2).max(100).optional(),
+    email: z.string().trim().email().optional(),
+    phone: z.string().trim().regex(/^\d{10}$/, 'Phone must be exactly 10 digits').optional(),
+    businessType: z.string().optional(),
+    gstNumber: z.string().trim().max(15).optional(),
     description: z.string().trim().max(2000).nullable().optional(),
     storeAddress: z.string().trim().min(10).max(300).optional(),
+    city: z.string().trim().optional(),
+    state: z.string().trim().optional(),
+    pincode: z.string().trim().regex(/^\d{6}$/, 'Pincode must be exactly 6 digits').optional(),
     openingTime: timeField.optional(),
     closingTime: timeField.optional(),
     logoUrl: z.string().trim().min(1).max(2048).nullable().optional(),
@@ -213,6 +221,10 @@ export const hoursSettingsBody = z.object({
     .max(7),
 });
 
+export const notificationSettingsBody = z.object({
+  preferences: z.record(z.boolean()),
+});
+
 // ── Inferred DTO types ─────────────────────────────────────────────────────
 
 export type UpdateStoreInput = z.infer<typeof updateStoreBody>;
@@ -233,4 +245,5 @@ export type RejectOrderInput = z.infer<typeof rejectOrderBody>;
 export type PayoutsQuery = z.infer<typeof payoutsQuery>;
 export type DeliverySettingsInput = z.infer<typeof deliverySettingsBody>;
 export type HoursSettingsInput = z.infer<typeof hoursSettingsBody>;
+export type NotificationSettingsInput = z.infer<typeof notificationSettingsBody>;
 export type WeekDay = (typeof WEEK_DAYS)[number];

@@ -17,6 +17,7 @@ import { ApiError } from './ApiError';
 
 export const UPLOAD_ROOT = path.join(process.cwd(), 'uploads');
 export const DESIGN_DIR = path.join(UPLOAD_ROOT, 'designs');
+export const AVATAR_DIR = path.join(UPLOAD_ROOT, 'avatars');
 
 const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.ai', '.psd'] as const;
 export type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number];
@@ -124,6 +125,26 @@ const documentUploader = multer({
 export const uploadSellerDocumentsMiddleware = documentUploader.fields(
   SELLER_DOCUMENT_TYPES.map((name) => ({ name, maxCount: 1 })),
 );
+
+// ── User profile avatars ───────────────────────────────────────────────────
+
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, callback) => {
+    ensureDir(AVATAR_DIR, callback);
+  },
+  filename: (_req, file, callback) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    callback(null, `avatar-${randomUUID()}${ext}`);
+  },
+});
+
+const avatarUploader = multer({
+  storage: avatarStorage,
+  fileFilter: documentFileFilter, // PDF/JPG/PNG, 5MB is fine for avatars
+  limits: { fileSize: MAX_DOCUMENT_SIZE_BYTES, files: 1 },
+});
+
+export const uploadAvatarMiddleware = avatarUploader.single('file');
 
 export const DELIVERY_DOCUMENT_TYPES = [
   'id_proof',

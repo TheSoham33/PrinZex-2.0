@@ -67,6 +67,20 @@ adminContentRouter.post('/faqs', requirePermission('content.manage'), validate({
 adminContentRouter.patch('/faqs/:id', requirePermission('content.manage'), validate({ params: mongoIdParams, body: faqUpdateBody }), adminContentController.updateFaq);
 adminContentRouter.delete('/faqs/:id', requirePermission('content.manage'), validate({ params: mongoIdParams }), adminContentController.deleteFaq);
 
+// Categories
+adminContentRouter.get('/categories', requirePermission('content.view'), adminContentController.listCategories);
+adminContentRouter.patch('/categories/:id', requirePermission('content.manage'), adminContentController.updateCategory);
+
+// Templates
+adminContentRouter.get('/templates', requirePermission('content.view'), adminContentController.listTemplates);
+adminContentRouter.post('/templates', requirePermission('content.manage'), adminContentController.createTemplate);
+adminContentRouter.patch('/templates/:id', requirePermission('content.manage'), adminContentController.updateTemplate);
+adminContentRouter.delete('/templates/:id', requirePermission('content.manage'), adminContentController.deleteTemplate);
+
+// Settings
+adminContentRouter.get('/settings', requirePermission('content.view'), adminContentController.getSettings);
+adminContentRouter.patch('/settings', requirePermission('content.manage'), adminContentController.updateSettings);
+
 /**
  * PUBLIC content — mounted at /api/content with NO auth middleware
  * (homepage banners, FAQ page).

@@ -39,6 +39,7 @@ export type ResolveBody = z.infer<typeof resolveBody>;
 
 export const adminSupportRouter = Router();
 
+adminSupportRouter.get('/', requirePermission('support.view'), validate({ query: ticketsQuery }), adminSupportController.listTickets);
 adminSupportRouter.get('/tickets', requirePermission('support.view'), validate({ query: ticketsQuery }), adminSupportController.listTickets);
 adminSupportRouter.get('/stats', requirePermission('support.view'), adminSupportController.getSupportStats);
 adminSupportRouter.get('/tickets/:ticketId', requirePermission('support.view'), validate({ params: ticketParams }), adminSupportController.getTicketDetail);
