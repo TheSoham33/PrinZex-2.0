@@ -15,6 +15,9 @@ export const specificationsSchema = z.object({
   size: z.string().trim().min(1),
   colorOption: z.enum(['color', 'bw']),
   finishing: z.array(z.string()),
+  // Page count auto-detected from the uploaded PDF. Drives per-page pricing
+  // and must flow through so removing/replacing the file updates the quote.
+  totalPages: z.number().int().min(0).optional(),
 });
 
 // ── POST /api/orders/quote ────────────────────────────────────────────────
@@ -39,6 +42,7 @@ export const createOrderBody = z.object({
     size: z.string(),
     colorOption: z.enum(['color', 'bw']),
     finishing: z.array(z.string()),
+    totalPages: z.number().int().min(0).optional(),
   }),
   fileUrl: z.string().optional(),
   specialInstructions: z.string().max(500).optional(),
