@@ -20,7 +20,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 
-const ACCEPTED = '.pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
+const ACCEPTED = '.pdf';
 const MAX_BYTES = 25 * 1024 * 1024;
 
 interface SpecificationsStepProps {
@@ -47,140 +47,43 @@ export default function SpecificationsStep({
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [showWarning, setShowWarning] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const acceptFile = async (selected: File | undefined) => {
     if (!selected) return;
+
+    if (selected.type !== 'application/pdf') {
+      setLocalError('Currently only PDF file accept. Please convert the file into PDF then send it.');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
     if (selected.size > MAX_BYTES) {
       setLocalError('That file is larger than 25 MB. Please compress it and try again.');
       return;
     }
+
     setLocalError(null);
-
-    if (selected.type !== 'application/pdf') {
-      setPendingFile(selected);
-      setShowWarning(true);
-      return;
-    }
-
-    await processFile(selected);
-  };
-
-  const processFile = async (selected: File) => {
     setProcessing(true);
-    setShowWarning(false);
-    setPendingFile(null);
-
-    let totalPages = 1;
-    let finalFile = selected;
 
     try {
-      const pdfDoc = await PDFDocument.create();
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const arrayBuffer = await selected.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+      const totalPages = pdfDoc.getPageCount();
+      const previewUrl = URL.createObjectURL(selected);
 
-      if (selected.type === 'application/pdf') {
-        const arrayBuffer = await selected.arrayBuffer();
-        const loadedPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-        totalPages = loadedPdf.getPageCount();
-      } else {
-        // Simulation of PDF conversion delay
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        
-        // Deterministic page count based on file properties
-        const hash = selected.name.length + selected.size;
-        totalPages = (hash % 4) + 1; // 1 to 4 pages
-
-        if (selected.type.startsWith('image/')) {
-          try {
-            const imageBytes = await selected.arrayBuffer();
-            let image;
-            if (selected.type === 'image/jpeg' || selected.type === 'image/jpg') {
-              image = await pdfDoc.embedJpg(imageBytes);
-            } else {
-              image = await pdfDoc.embedPng(imageBytes);
-            }
-            
-            const pageWidth = 595;
-            const pageHeight = 842;
-            const page = pdfDoc.addPage([pageWidth, pageHeight]);
-            const scale = Math.min(pageWidth / image.width, pageHeight / image.height);
-            const drawWidth = image.width * scale;
-            const drawHeight = image.height * scale;
-
-            page.drawImage(image, {
-              x: (pageWidth - drawWidth) / 2,
-              y: (pageHeight - drawHeight) / 2,
-              width: drawWidth,
-              height: drawHeight,
-            });
-            totalPages = 1;
-          } catch (e) {
-            const page = pdfDoc.addPage([600, 400]);
-            page.drawText('Image Processed (Preview)', { x: 50, y: 350, size: 20, font: boldFont });
-            page.drawText(`File: ${selected.name}`, { x: 50, y: 320, size: 12, font });
-          }
-        } else if (selected.name.endsWith('.docx')) {
-          try {
-            const arrayBuffer = await selected.arrayBuffer();
-            const result = await mammoth.extractRawText({ arrayBuffer });
-            const text = result.value;
-            
-            const page = pdfDoc.addPage([595, 842]);
-            page.drawText('DOCX Content Extraction (Preview)', { x: 50, y: 800, size: 16, font: boldFont, color: rgb(0, 0.4, 0.8) });
-            
-            const lines = text.slice(0, 2000).split('\n').filter(l => l.trim());
-            let y = 760;
-            for (const line of lines.slice(0, 40)) {
-              if (y < 50) break;
-              page.drawText(line.slice(0, 100), { x: 50, y, size: 10, font });
-              y -= 15;
-            }
-            totalPages = Math.ceil(text.length / 2500) || 1;
-          } catch (e) {
-            const page = pdfDoc.addPage([595, 842]);
-            page.drawText('DOCX Processing Summary', { x: 50, y: 800, size: 14, font: boldFont });
-            page.drawText(`File: ${selected.name}`, { x: 50, y: 760, size: 12, font });
-          }
-        } else if (selected.name.endsWith('.xlsx')) {
-          try {
-            const arrayBuffer = await selected.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer);
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-            
-            const page = pdfDoc.addPage([595, 842]);
-            page.drawText(`Excel Content: ${firstSheetName} (Preview)`, { x: 50, y: 800, size: 16, font: boldFont, color: rgb(0.1, 0.6, 0.1) });
-            
-            let y = 760;
-            for (const row of data.slice(0, 30)) {
-              if (y < 50) break;
-              const rowText = row.slice(0, 8).map(cell => String(cell || '')).join(' | ');
-              page.drawText(rowText.slice(0, 120), { x: 50, y, size: 9, font });
-              y -= 18;
-            }
-            totalPages = workbook.SheetNames.length;
-          } catch (e) {
-            const page = pdfDoc.addPage([595, 842]);
-            page.drawText('Excel Processing Summary', { x: 50, y: 800, size: 14, font: boldFont });
-          }
-        } else {
-          const page = pdfDoc.addPage([600, 800]);
-          page.drawText('PrinZex Document Processing', { x: 50, y: 750, size: 22, font: boldFont, color: rgb(0.14, 0.38, 0.92) });
-          page.drawText(`Filename: ${selected.name}`, { x: 50, y: 680, size: 12, font });
-          page.drawText(`Final Page Count: ${totalPages}`, { x: 50, y: 550, size: 12, font });
-        }
-
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        finalFile = new File([blob], selected.name.replace(/\.[^/.]+$/, "") + ".pdf", {
-          type: 'application/pdf',
-          lastModified: Date.now(),
-        });
-      }
+      dispatch({
+        type: 'SET_FILE',
+        payload: { name: selected.name, size: selected.size, type: selected.type, previewUrl },
+      });
+      dispatch({ type: 'SET_SPEC', payload: { totalPages } });
+    } catch (e) {
+      console.error('Error processing PDF:', e);
+      setLocalError('Failed to process PDF. Please ensure it is not password protected.');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
       const previewUrl = URL.createObjectURL(finalFile);
 
