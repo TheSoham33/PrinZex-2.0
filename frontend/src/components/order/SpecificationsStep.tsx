@@ -17,8 +17,15 @@ import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useRef, useState, type DragEvent } from 'react';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+<<<<<<< HEAD
 
 const ACCEPTED = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
+=======
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
+
+const ACCEPTED = '.pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
+>>>>>>> a6e96382c60fd44c3ac89b86ce12c66c1206ea0b
 const MAX_BYTES = 25 * 1024 * 1024;
 
 interface SpecificationsStepProps {
@@ -101,15 +108,34 @@ export default function SpecificationsStep({
               image = await pdfDoc.embedPng(imageBytes);
             }
             
+<<<<<<< HEAD
             const page = pdfDoc.addPage([image.width, image.height]);
             page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
             totalPages = 1;
           } catch (e) {
             console.error('Image embedding failed, falling back to info page', e);
+=======
+            const pageWidth = 595;
+            const pageHeight = 842;
+            const page = pdfDoc.addPage([pageWidth, pageHeight]);
+            const scale = Math.min(pageWidth / image.width, pageHeight / image.height);
+            const drawWidth = image.width * scale;
+            const drawHeight = image.height * scale;
+
+            page.drawImage(image, {
+              x: (pageWidth - drawWidth) / 2,
+              y: (pageHeight - drawHeight) / 2,
+              width: drawWidth,
+              height: drawHeight,
+            });
+            totalPages = 1;
+          } catch (e) {
+>>>>>>> a6e96382c60fd44c3ac89b86ce12c66c1206ea0b
             const page = pdfDoc.addPage([600, 400]);
             page.drawText('Image Processed', { x: 50, y: 350, size: 20, font: boldFont });
             page.drawText(`File: ${selected.name}`, { x: 50, y: 320, size: 12, font });
           }
+<<<<<<< HEAD
         } else {
           // For Word/Excel, we show a professional processing summary
           const page = pdfDoc.addPage([600, 800]);
@@ -133,6 +159,62 @@ export default function SpecificationsStep({
           for (let i = 1; i < totalPages; i++) {
             pdfDoc.addPage([600, 800]);
           }
+=======
+        } else if (selected.name.endsWith('.docx')) {
+          try {
+            const arrayBuffer = await selected.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            const text = result.value;
+            
+            const page = pdfDoc.addPage([595, 842]);
+            page.drawText('DOCX Content Extraction (Preview)', { x: 50, y: 800, size: 16, font: boldFont, color: rgb(0, 0.4, 0.8) });
+            
+            // Draw first 1000 characters
+            const lines = text.slice(0, 2000).split('\n').filter(l => l.trim());
+            let y = 760;
+            for (const line of lines.slice(0, 40)) {
+              if (y < 50) break;
+              page.drawText(line.slice(0, 100), { x: 50, y, size: 10, font });
+              y -= 15;
+            }
+            totalPages = Math.ceil(text.length / 2500) || 1;
+          } catch (e) {
+            console.error('DOCX parsing failed', e);
+            const page = pdfDoc.addPage([595, 842]);
+            page.drawText('Document processing summary...', { x: 50, y: 800, size: 14, font: boldFont });
+          }
+        } else if (selected.name.endsWith('.xlsx')) {
+          try {
+            const arrayBuffer = await selected.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer);
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+            
+            const page = pdfDoc.addPage([595, 842]);
+            page.drawText(`Excel Content: ${firstSheetName} (Preview)`, { x: 50, y: 800, size: 16, font: boldFont, color: rgb(0.1, 0.6, 0.1) });
+            
+            let y = 760;
+            for (const row of data.slice(0, 30)) {
+              if (y < 50) break;
+              const rowText = row.slice(0, 8).map(cell => String(cell || '')).join(' | ');
+              page.drawText(rowText.slice(0, 120), { x: 50, y, size: 9, font });
+              y -= 18;
+            }
+            totalPages = workbook.SheetNames.length;
+          } catch (e) {
+            console.error('XLSX parsing failed', e);
+            const page = pdfDoc.addPage([595, 842]);
+            page.drawText('Spreadsheet processing summary...', { x: 50, y: 800, size: 14, font: boldFont });
+          }
+        } else {
+          // Generic Professional Summary
+          const page = pdfDoc.addPage([600, 800]);
+          page.drawText('PrinZex Document Processing', { x: 50, y: 750, size: 22, font: boldFont, color: rgb(0.14, 0.38, 0.92) });
+          page.drawText(`Filename: ${selected.name}`, { x: 50, y: 680, size: 12, font });
+          page.drawText(`Final Page Count: ${totalPages}`, { x: 50, y: 550, size: 12, font });
+          for (let i = 1; i < totalPages; i++) { pdfDoc.addPage([600, 800]); }
+>>>>>>> a6e96382c60fd44c3ac89b86ce12c66c1206ea0b
         }
 
         const pdfBytes = await pdfDoc.save();
