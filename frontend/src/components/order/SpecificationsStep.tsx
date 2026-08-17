@@ -17,6 +17,8 @@ import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useRef, useState, type DragEvent, useEffect } from 'react';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 
 const ACCEPTED = '.pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png,.ai,.psd,.cdr';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -84,7 +86,7 @@ export default function SpecificationsStep({
         const loadedPdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
         totalPages = loadedPdf.getPageCount();
       } else {
-        // Simulation of PDF conversion
+        // Simulation of PDF conversion delay
         await new Promise((resolve) => setTimeout(resolve, 2000));
         
         // Deterministic page count based on file properties
@@ -101,12 +103,9 @@ export default function SpecificationsStep({
               image = await pdfDoc.embedPng(imageBytes);
             }
             
-            // Standard A4 size in points (595 x 842)
             const pageWidth = 595;
             const pageHeight = 842;
             const page = pdfDoc.addPage([pageWidth, pageHeight]);
-
-            // Calculate scaling to fit image on page while preserving aspect ratio
             const scale = Math.min(pageWidth / image.width, pageHeight / image.height);
             const drawWidth = image.width * scale;
             const drawHeight = image.height * scale;
@@ -123,34 +122,60 @@ export default function SpecificationsStep({
             page.drawText('Image Processed (Preview)', { x: 50, y: 350, size: 20, font: boldFont });
             page.drawText(`File: ${selected.name}`, { x: 50, y: 320, size: 12, font });
           }
+        } else if (selected.name.endsWith('.docx')) {
+          try {
+            const arrayBuffer = await selected.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            const text = result.value;
+            
+            const page = pdfDoc.addPage([595, 842]);
+            page.drawText('DOCX Content Extraction (Preview)', { x: 50, y: 800, size: 16, font: boldFont, color: rgb(0, 0.4, 0.8) });
+            
+            const lines = text.slice(0, 2000).split('\n').filter(l => l.trim());
+            let y = 760;
+            for (const line of lines.slice(0, 40)) {
+              if (y < 50) break;
+              page.drawText(line.slice(0, 100), { x: 50, y, size: 10, font });
+              y -= 15;
+            }
+            totalPages = Math.ceil(text.length / 2500) || 1;
+          } catch (e) {
+            const page = pdfDoc.addPage([595, 842]);
+            page.drawText('DOCX Processing Summary', { x: 50, y: 800, size: 14, font: boldFont });
+            page.drawText(`File: ${selected.name}`, { x: 50, y: 760, size: 12, font });
+          }
+        } else if (selected.name.endsWith('.xlsx')) {
+          try {
+            const arrayBuffer = await selected.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer);
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+            
+            const page = pdfDoc.addPage([595, 842]);
+            page.drawText(`Excel Content: ${firstSheetName} (Preview)`, { x: 50, y: 800, size: 16, font: boldFont, color: rgb(0.1, 0.6, 0.1) });
+            
+            let y = 760;
+            for (const row of data.slice(0, 30)) {
+              if (y < 50) break;
+              const rowText = row.slice(0, 8).map(cell => String(cell || '')).join(' | ');
+              page.drawText(rowText.slice(0, 120), { x: 50, y, size: 9, font });
+              y -= 18;
+            }
+            totalPages = workbook.SheetNames.length;
+          } catch (e) {
+            const page = pdfDoc.addPage([595, 842]);
+            page.drawText('Excel Processing Summary', { x: 50, y: 800, size: 14, font: boldFont });
+          }
         } else {
-          // For Word/Excel, we show a professional processing summary
           const page = pdfDoc.addPage([600, 800]);
           page.drawText('PrinZex Document Processing', { x: 50, y: 750, size: 22, font: boldFont, color: rgb(0.14, 0.38, 0.92) });
-          
-          page.drawText('File Information:', { x: 50, y: 700, size: 14, font: boldFont });
           page.drawText(`Filename: ${selected.name}`, { x: 50, y: 680, size: 12, font });
-          page.drawText(`Original Type: ${selected.type || 'Office Document'}`, { x: 50, y: 660, size: 12, font });
-          page.drawText(`File Size: ${(selected.size / 1024).toFixed(1)} KB`, { x: 50, y: 640, size: 12, font });
-          
-          page.drawText('Conversion Status:', { x: 50, y: 590, size: 14, font: boldFont });
-          page.drawText('Successfully parsed and optimized for printing.', { x: 50, y: 570, size: 12, font });
           page.drawText(`Final Page Count: ${totalPages}`, { x: 50, y: 550, size: 12, font });
-          
-          page.drawText('Note to Customer:', { x: 50, y: 500, size: 12, font: boldFont });
-          page.drawText('This preview confirms that our system has correctly identified the document', { x: 50, y: 480, size: 10, font });
-          page.drawText('structure. The actual content will be rendered using high-fidelity office', { x: 50, y: 465, size: 10, font });
-          page.drawText('engines at the print shop to ensure 100% accuracy.', { x: 50, y: 450, size: 10, font });
-
-          // Add empty pages if more than 1
-          for (let i = 1; i < totalPages; i++) {
-            pdfDoc.addPage([600, 800]);
-          }
         }
 
         const pdfBytes = await pdfDoc.save();
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        
         finalFile = new File([blob], selected.name.replace(/\.[^/.]+$/, "") + ".pdf", {
           type: 'application/pdf',
           lastModified: Date.now(),
@@ -161,12 +186,7 @@ export default function SpecificationsStep({
 
       dispatch({
         type: 'SET_FILE',
-        payload: { 
-          name: finalFile.name, 
-          size: finalFile.size, 
-          type: finalFile.type, 
-          previewUrl 
-        },
+        payload: { name: finalFile.name, size: finalFile.size, type: finalFile.type, previewUrl },
       });
       dispatch({ type: 'SET_SPEC', payload: { totalPages } });
     } catch (e) {
@@ -202,7 +222,6 @@ export default function SpecificationsStep({
         const currentUrls = [...(specs.coverFileUrls || [])];
         while (currentUrls.length < specs.quantity) currentUrls.push('');
         currentUrls[index] = previewUrl;
-        // In a real app, filenames would be in a separate array or part of the object
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrls: currentUrls } });
       } else {
         dispatch({ type: 'SET_SPEC', payload: { coverFileUrl: previewUrl, coverFileName: file.name } });
