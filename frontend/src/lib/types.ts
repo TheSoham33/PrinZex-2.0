@@ -107,6 +107,10 @@ export interface CostBreakdown {
   tax: number;
   discount: number;
   total: number;
+  /** Binding services only — page printing component (₹). */
+  pageCost?: number;
+  /** Binding services only — binding/cover component (₹). */
+  bindingCost?: number;
 }
 
 export interface Order {

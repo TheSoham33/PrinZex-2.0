@@ -18,6 +18,12 @@ export const specificationsSchema = z.object({
   // Page count auto-detected from the uploaded PDF. Drives per-page pricing
   // and must flow through so removing/replacing the file updates the quote.
   totalPages: z.number().int().min(0).optional(),
+  // Binding-specific attributes — drive the split page/binding pricing.
+  pageCornerSize: z.string().optional(),
+  coverType: z.string().optional(),
+  spiralType: z.string().optional(),
+  coverColor: z.string().optional(),
+  coverDesignType: z.string().optional(),
 });
 
 // ── POST /api/orders/quote ────────────────────────────────────────────────
@@ -43,6 +49,11 @@ export const createOrderBody = z.object({
     colorOption: z.enum(['color', 'bw']),
     finishing: z.array(z.string()),
     totalPages: z.number().int().min(0).optional(),
+    pageCornerSize: z.string().optional(),
+    coverType: z.string().optional(),
+    spiralType: z.string().optional(),
+    coverColor: z.string().optional(),
+    coverDesignType: z.string().optional(),
   }),
   fileUrl: z.string().optional(),
   specialInstructions: z.string().max(500).optional(),

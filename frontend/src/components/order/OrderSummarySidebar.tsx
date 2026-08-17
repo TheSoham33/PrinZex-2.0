@@ -59,6 +59,12 @@ export default function OrderSummarySidebar({
                 {specs.paperType && <p>Paper: <span className="capitalize">{specs.paperType}</span></p>}
                 {specs.size && <p>Size: {specs.size}</p>}
                 {specs.pageCornerSize && <p>Corners: <span className="capitalize">{specs.pageCornerSize}</span></p>}
+                {typeof cost.pageCost === 'number' && (
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700">
+                    <span>Pages {formatCurrency(cost.pageCost)}</span>
+                    <span>Binding {formatCurrency(cost.bindingCost ?? 0)}</span>
+                  </div>
+                )}
                 {specs.colorPages && <p className="line-clamp-1">Color Pages: {specs.colorPages}</p>}
                 {specs.coverType && (
                   <div className="mt-2 rounded bg-slate-100 p-1.5 text-slate-700">
