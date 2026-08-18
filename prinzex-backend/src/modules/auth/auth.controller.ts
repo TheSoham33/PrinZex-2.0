@@ -11,6 +11,7 @@ import type {
   RegisterInput,
   ResendOtpInput,
   ResetPasswordInput,
+  SendSignupOtpInput,
   VerifyEmailInput,
 } from './auth.schema';
 
@@ -25,7 +26,7 @@ export const register: RequestHandler = asyncHandler(async (req, res) => {
 });
 
 export const sendSignupOtp: RequestHandler = asyncHandler(async (req, res) => {
-  const result = await authService.sendSignupOtp(req.body as authService.SendSignupOtpInput);
+  const result = await authService.sendSignupOtp(req.body as SendSignupOtpInput);
   res.status(200).json(new ApiResponse(200, result, 'OTP sent'));
 });
 

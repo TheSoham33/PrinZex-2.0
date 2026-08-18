@@ -235,6 +235,7 @@ export interface StoreInfo {
   services: SellerService[];
   documents: StoreDocumentInfo[];
   bankDetails: StoreBankInfo | null;
+  pincodes: Array<{ pincode: string; isExcluded: boolean }>;
 }
 
 async function findSellerOrThrow(sellerId: string) {
