@@ -18,6 +18,7 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:mongo": "tsx mongo-seed/seed.ts",
+    "db:merge-print": "tsx prisma/merge-print-services.ts",
     "db:reset": "prisma migrate reset --force && npm run db:seed && npm run db:seed:mongo",
     "lint": "eslint src --ext .ts",
     "lint:all": "eslint . --ext .ts",
