@@ -47,17 +47,21 @@ export function mapBackendReviewToFrontend(r: any): Review {
   };
 }
 
-const DEFAULT_HOURS = [
-  { day: 'Monday', open: '09:00', close: '21:00' },
-  { day: 'Tuesday', open: '09:00', close: '21:00' },
-  { day: 'Wednesday', open: '09:00', close: '21:00' },
-  { day: 'Thursday', open: '09:00', close: '21:00' },
-  { day: 'Friday', open: '09:00', close: '21:00' },
-  { day: 'Saturday', open: '10:00', close: '18:00' },
-  { day: 'Sunday', closed: true },
-];
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+
+/**
+ * When a seller hasn't configured per-day hours (metadata.hours), derive a
+ * uniform 7-day schedule from their opening/closing times so the detail page
+ * never shows a hardcoded default that disagrees with the store listing.
+ */
+function synthesizeHours(openingTime?: string, closingTime?: string) {
+  if (!openingTime || !closingTime) return null;
+  return DAY_NAMES.map((day) => ({ day, open: openingTime, close: closingTime }));
+}
 
 export function mapBackendStoreDetailToFrontend(b: any, reviews: any[] = []): StoreDetail {
+  const openingTime = b.openingTime;
+  const closingTime = b.closingTime;
   return {
     ...mapBackendStoreToFrontend(b),
     description: b.description || '',
@@ -65,7 +69,9 @@ export function mapBackendStoreDetailToFrontend(b: any, reviews: any[] = []): St
     phone: b.phone || '',
     email: b.email || '',
     responseTime: 'Replies in ~15 min',
-    hours: b.metadata?.hours || DEFAULT_HOURS,
+    openingTime: openingTime || '09:00',
+    closingTime: closingTime || '21:00',
+    hours: b.metadata?.hours || synthesizeHours(openingTime, closingTime) || [],
     services: b.services?.map(mapBackendServiceToFrontend) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),
     ratingBreakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }, // Calculate if needed

@@ -1,43 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { StoreDetail, StoreHours } from '@/lib/mock-data/stores';
+import type { StoreDetail } from '@/lib/mock-data/stores';
+import { isStoreOpen } from '@/lib/api/mappers';
 import { IconClock, IconMessageSquare, IconTruck, IconWallet } from '@/components/icons';
-
-/** True when the current local time falls inside today's opening window. */
-function computeIsOpen(hours: StoreHours[]): boolean {
-  const now = new Date();
-  const dayName = now.toLocaleDateString('en-US', { weekday: 'long' });
-  const today = hours.find((entry) => entry.day === dayName);
-  if (!today || today.closed || !today.open || !today.close) return false;
-
-  const [openH, openM] = today.open.split(':').map(Number);
-  const [closeH, closeM] = today.close.split(':').map(Number);
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  return minutes >= openH * 60 + openM && minutes < closeH * 60 + closeM;
-}
-
-const DEFAULT_HOURS: StoreHours[] = [
-  { day: 'Monday', open: '09:00', close: '21:00' },
-  { day: 'Tuesday', open: '09:00', close: '21:00' },
-  { day: 'Wednesday', open: '09:00', close: '21:00' },
-  { day: 'Thursday', open: '09:00', close: '21:00' },
-  { day: 'Friday', open: '09:00', close: '21:00' },
-  { day: 'Saturday', open: '10:00', close: '18:00' },
-  { day: 'Sunday', closed: true },
-];
 
 export default function StoreInfoBar({ store }: { store: StoreDetail }) {
   // Rendered on the client only, so server/client markup can't disagree.
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const hours = store.hours && store.hours.length > 0 ? store.hours : DEFAULT_HOURS;
-    const update = () => setIsOpen(computeIsOpen(hours));
+    // Same source of truth as the store listing and the detail header.
+    const update = () =>
+      setIsOpen(isStoreOpen(store.openingTime, store.closingTime, { hours: store.hours }));
     update();
     const timer = setInterval(update, 60_000);
     return () => clearInterval(timer);
-  }, [store.hours]);
+  }, [store.hours, store.openingTime, store.closingTime]);
 
   const items = [
     {

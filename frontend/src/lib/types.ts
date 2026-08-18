@@ -51,6 +51,9 @@ export interface StoreDetail extends Store {
   phone: string;
   email: string;
   responseTime: string;
+  /** Daily open/close window (used when no per-day metadata hours exist). */
+  openingTime: string;
+  closingTime: string;
   hours: StoreHours[];
   services: ServiceOffering[];
   reviews: Review[];
