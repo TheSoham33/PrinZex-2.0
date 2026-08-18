@@ -75,7 +75,8 @@ export function timeAgo(iso: string): string {
 }
 
 /** Mask all but the last 4 digits of a phone number. */
-export function maskPhone(phone: string): string {
+export function maskPhone(phone: string | null | undefined): string {
+  if (!phone) return 'Not shared yet';
   const digits = phone.replace(/\D/g, '');
   if (digits.length < 4) return '●●●●';
   return `●●●●● ●${digits.slice(-4)}`;

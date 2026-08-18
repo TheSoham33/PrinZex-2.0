@@ -32,9 +32,32 @@ export const fetchOrders = async (): Promise<DashboardOrder[]> => {
   }));
 };
 
-/** Returns one order detail. */
+/**
+ * Normalize the backend order detail into the shape the customer order page
+ * renders. The API returns `seller: { storeName }`, `items[]`, `createdAt`
+ * and `sellerId` — different field names than the page consumes.
+ */
+function mapCustomerOrderDetail(raw: any) {
+  const firstItem = raw?.items?.[0];
+  return {
+    ...raw,
+    id: raw?.id,
+    status: raw?.status,
+    total: Number(raw?.total ?? 0),
+    serviceName: firstItem?.serviceName ?? 'Printing Service',
+    storeName: raw?.seller?.storeName ?? '',
+    storeId: raw?.sellerId ?? raw?.seller?.id ?? '',
+    quantity: firstItem?.quantity ?? 1,
+    placedAt: raw?.placedAt ?? raw?.createdAt,
+    estimatedDelivery: raw?.estimatedDelivery,
+    timeline: raw?.timeline ?? [],
+  };
+}
+
+/** Returns one order detail, normalized for the customer order page. */
 export const fetchOrderById = async (orderId: string): Promise<any> => {
-  return apiRequest<any>(`/orders/${orderId}`);
+  const data = await apiRequest<any>(`/orders/${orderId}`);
+  return mapCustomerOrderDetail(data);
 };
 
 /** Place a new order. */
