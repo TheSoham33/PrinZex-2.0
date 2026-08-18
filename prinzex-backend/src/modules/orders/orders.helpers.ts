@@ -15,7 +15,6 @@ export interface QuoteSpecifications {
   finishing: string[];
   totalPages?: number;
   // Binding-specific attributes — drive the page/binding split pricing.
-  pageCornerSize?: string;
   coverType?: string;
   spiralType?: string;
   coverColor?: string;
@@ -247,11 +246,10 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     // ── Binding services: split pricing ──────────────────────────────────
     // Pages (printing) and binding (cover) are priced independently, both from
     // seller-set additive ₹ components stored in Seller.metadata.pricingOverrides.
-    //   pages    = (paperType + pageCornerSize + colorOption) ₹/page × P × N
-    //   binding  = (coverType + coilType + coverColor)        ₹/binding × N
+    //   pages    = (paperType + colorOption) ₹/page × P × N
+    //   binding  = (coverType + coilType + coverColor) ₹/binding × N
     const pageRate =
       (overrides.paperType?.[specifications.paperType] ?? 0) +
-      (overrides.pageCornerSize?.[specifications.pageCornerSize] ?? 0) +
       (overrides.colorOption?.[specifications.colorOption] ?? 0);
 
     let bindingRate =

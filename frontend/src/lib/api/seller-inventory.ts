@@ -36,7 +36,6 @@ export const updatePricingOverrides = async (overrides: {
   paperType?: Record<string, number>;
   size?: Record<string, number>;
   colorOption?: Record<string, number>;
-  pageCornerSize?: Record<string, number>;
   coverType?: Record<string, number>;
   coilType?: Record<string, number>;
   coverColor?: Record<string, number>;

@@ -65,7 +65,6 @@ export interface OrderSpecifications {
   colorOption: 'color' | 'bw';
   finishing: string[];
   // New fields for Hard Binding
-  pageCornerSize?: string;
   colorPages?: string; // Particular pages color (e.g. "5, 10-12")
   coverColor?: string;
   coverTextColor?: string;

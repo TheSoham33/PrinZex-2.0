@@ -10,7 +10,6 @@ import {
 import {
   PAPER_TYPES,
   PAPER_SIZES,
-  BINDING_CORNER_SIZES,
   COVER_COLORS,
   COVER_TYPES,
   SPIRAL_COIL_TYPES,
@@ -34,7 +33,6 @@ export default function SellerPricingPage() {
   const [paperPrices, setPaperPrices] = useState<Record<string, string>>({});
   const [sizePrices, setSizePrices] = useState<Record<string, string>>({});
   const [colorPrices, setColorPrices] = useState<Record<string, string>>({ bw: '0', color: '0' });
-  const [cornerPrices, setCornerPrices] = useState<Record<string, string>>({});
   const [coverTypePrices, setCoverTypePrices] = useState<Record<string, string>>({});
   const [coilPrices, setCoilPrices] = useState<Record<string, string>>({});
   const [coverColorPrices, setCoverColorPrices] = useState<Record<string, string>>({});
@@ -62,10 +60,6 @@ export default function SellerPricingPage() {
         bw: String(overrides.colorOption?.bw || '0'),
         color: String(overrides.colorOption?.color || '0')
       });
-
-      const cp: Record<string, string> = {};
-      BINDING_CORNER_SIZES.forEach(c => cp[c.value] = String(overrides.pageCornerSize?.[c.value] || '0'));
-      setCornerPrices(cp);
 
       const ct: Record<string, string> = {};
       [...SPIRAL_COVER_TYPES, ...COVER_TYPES].forEach(c => ct[c.value] = String(overrides.coverType?.[c.value] || '0'));
@@ -135,9 +129,6 @@ export default function SellerPricingPage() {
       color: Number(colorPrices.color)
     };
 
-    const pageCornerSize: Record<string, number> = {};
-    Object.entries(cornerPrices).forEach(([k, v]) => pageCornerSize[k] = Number(v));
-
     const coverType: Record<string, number> = {};
     Object.entries(coverTypePrices).forEach(([k, v]) => coverType[k] = Number(v));
 
@@ -151,7 +142,6 @@ export default function SellerPricingPage() {
       paperType,
       size,
       colorOption,
-      pageCornerSize,
       coverType,
       coilType,
       coverColor,
@@ -278,25 +268,6 @@ export default function SellerPricingPage() {
                   className="input w-24 py-1 text-right text-sm"
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Binding pages — page corner size (₹/page) */}
-          <div className="border-t border-slate-100 pt-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Page Corner Size Extra (₹/page)</h3>
-            <p className="text-xs text-slate-400 mb-3">Binding services only — added to the per-page price.</p>
-            <div className="grid grid-cols-2 gap-4">
-              {BINDING_CORNER_SIZES.map(corner => (
-                <div key={corner.value} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-600">{corner.label}</span>
-                  <input 
-                    type="number" 
-                    value={cornerPrices[corner.value] || '0'} 
-                    onChange={(e) => setCornerPrices(p => ({ ...p, [corner.value]: e.target.value }))}
-                    className="input w-24 py-1 text-right text-sm"
-                  />
-                </div>
-              ))}
             </div>
           </div>
 
