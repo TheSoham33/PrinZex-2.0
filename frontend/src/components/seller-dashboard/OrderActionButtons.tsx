@@ -37,11 +37,27 @@ export default function OrderActionButtons({ order, onAnnounce }: OrderActionBut
 
   /** Optimistically write a status into every cached view of this order. */
   const patchCachedOrder = (next: string) => {
-    const apply = (orders: SellerOrder[] | undefined) =>
-      (orders ?? []).map((entry) => (entry.id === order.id ? { ...entry, status: next } : entry));
+    // The `['seller-orders']` cache holds the paginated envelope
+    // `{ data: [...], pagination }` (not a bare array), so handle both shapes.
+    const apply = (cached: unknown): unknown => {
+      if (Array.isArray(cached)) {
+        return cached.map((entry: SellerOrder) =>
+          entry.id === order.id ? { ...entry, status: next } : entry,
+        );
+      }
+      if (cached && typeof cached === 'object' && Array.isArray((cached as any).data)) {
+        return {
+          ...(cached as object),
+          data: (cached as any).data.map((entry: SellerOrder) =>
+            entry.id === order.id ? { ...entry, status: next } : entry,
+          ),
+        };
+      }
+      return cached;
+    };
 
-    queryClient.setQueryData<SellerOrder[]>(['seller-orders'], apply);
-    queryClient.setQueryData<SellerOrder | null>(['seller-order', order.id], (current) =>
+    queryClient.setQueryData(['seller-orders'], apply);
+    queryClient.setQueryData(['seller-order', order.id], (current: SellerOrder | null) =>
       current ? { ...current, status: next } : current,
     );
   };
@@ -54,6 +70,8 @@ export default function OrderActionButtons({ order, onAnnounce }: OrderActionBut
     try {
       await updateOrderStatus(order.id, next);
       showToast(`Order ${order.id} ${SELLER_STATUS_LABELS[next] ?? next}`);
+      queryClient.invalidateQueries({ queryKey: ['seller-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-order', order.id] });
     } catch (err: any) {
       patchCachedOrder(previous); // roll back the optimistic update
       showToast(err?.message || 'Failed to update order');
@@ -75,6 +93,8 @@ export default function OrderActionButtons({ order, onAnnounce }: OrderActionBut
     try {
       await rejectOrder(order.id, finalReason);
       showToast('Order rejected and cancelled');
+      queryClient.invalidateQueries({ queryKey: ['seller-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-order', order.id] });
     } catch (err: any) {
       patchCachedOrder(previous); // roll back the optimistic update
       showToast(err?.message || 'Failed to reject order');

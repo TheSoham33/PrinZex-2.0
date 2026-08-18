@@ -15,7 +15,7 @@ export type SellerOrderStatus =
 
 export interface SellerOrder {
   id: string;
-  status: SellerOrderStatus | string;
+  status: SellerOrderStatus;
   customerName: string;
   customerPhone?: string;
   serviceName: string;
