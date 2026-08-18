@@ -914,6 +914,9 @@ export interface SellerOrderListItem {
   customerName: string; // first name only
   services: string[];
   specsSummary: string;
+  serviceName: string;
+  quantity: number;
+  specialInstructions: string | null;
 }
 
 export function summarizeSpecifications(specs: Prisma.JsonValue): string {
@@ -969,6 +972,9 @@ export async function listOrders(
     customerName: firstName(order.customer.name),
     services: order.items.map((item) => `${item.serviceName} ×${item.quantity}`),
     specsSummary: summarizeSpecifications(order.items[0]?.specifications ?? null),
+    serviceName: order.items[0]?.serviceName ?? 'Printing Service',
+    quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+    specialInstructions: order.specialInstructions,
   }));
 
   return buildPaginatedResponse(data, total, { page: query.page, limit: query.limit });
