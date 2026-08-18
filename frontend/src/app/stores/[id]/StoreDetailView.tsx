@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { StoreDetail } from '@/lib/mock-data/stores';
 import StoreHeader from '@/components/store-detail/StoreHeader';
@@ -8,23 +8,36 @@ import StoreTabs from '@/components/store-detail/StoreTabs';
 import StickyOrderBar from '@/components/store-detail/StickyOrderBar';
 import { isStoreOpen } from '@/lib/api/mappers';
 
+/**
+ * Stable, primitive key for the weekly hours. Using this (instead of the
+ * `hours` array itself) keeps the effect's dependency array fixed-length and
+ * composed only of strings, so it can never change size between renders.
+ */
+function getHoursKey(hours: StoreDetail['hours']): string {
+  return (hours ?? [])
+    .map((entry) => `${entry.day}|${entry.closed ? 'closed' : `${entry.open}-${entry.close}`}`)
+    .join(',');
+}
+
 export default function StoreDetailView({ store }: { store: StoreDetail }) {
   const searchParams = useSearchParams();
   const serviceIdParam = searchParams.get('service');
-  
+
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(store.isOpen);
-  
-  useEffect(() => {
-    // Recalculate on client to ensure timezone correctness. Use the same
-    // inputs as the store listing so "outside" and "inside" never disagree:
-    // per-day metadata hours when present, otherwise openingTime/closingTime.
-    setIsOpen(isStoreOpen(store.openingTime, store.closingTime, { hours: store.hours }));
 
+  // Recalculate on client to ensure timezone correctness. Same inputs as the
+  // store listing so "outside" and "inside" never disagree.
+  useEffect(() => {
+    setIsOpen(isStoreOpen(store.openingTime, store.closingTime, { hours: store.hours }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.openingTime, store.closingTime, getHoursKey(store.hours)]);
+
+  useEffect(() => {
     if (serviceIdParam) {
       setSelectedServiceId(serviceIdParam);
     }
-  }, [serviceIdParam, store.hours, store.openingTime, store.closingTime]);
+  }, [serviceIdParam]);
 
   const selectedService =
     store.services.find((service) => service.id === selectedServiceId) ?? null;
