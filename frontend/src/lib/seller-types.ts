@@ -100,15 +100,14 @@ export const REQUIRED_DOCUMENTS: UploadedDoc[] = [
   { type: 'address_proof', label: 'Address Proof', file: null, fileName: null },
 ];
 
-/** 6 categories / 20 services offered during seller onboarding. */
+/** 6 categories / 19 services offered during seller onboarding. */
 export const SERVICE_CATEGORIES: ServiceCategory[] = [
   {
     id: 'documents',
     name: 'Documents',
     description: 'Everyday printing and photocopying',
     services: [
-      { id: 'doc-bw-print', name: 'B&W Printing' },
-      { id: 'doc-color-print', name: 'Colour Printing' },
+      { id: 'doc-print', name: 'Printing' },
       { id: 'doc-xerox', name: 'Photocopy / Xerox' },
     ],
   },

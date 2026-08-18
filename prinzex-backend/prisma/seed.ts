@@ -318,8 +318,7 @@ const SELLERS: Array<{
     onTimeRate: 96.2,
     servedPincodes: ['560034', '560095', '560030'],
     services: [
-      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-bw-print', serviceName: 'B&W Printing', basePrice: 2.0, unit: 'per page' },
-      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-color-print', serviceName: 'Colour Printing', basePrice: 10.0, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Printing', basePrice: 2.0, unit: 'per page' },
       { categoryId: 'specialty', categoryName: 'Specialty Printing', serviceId: 'spec-photo-prints', serviceName: 'Photo Print', basePrice: 99.0, unit: 'per set' },
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
@@ -347,8 +346,7 @@ const SELLERS: Array<{
     onTimeRate: 94.8,
     servedPincodes: ['560038', '560008', '560066'],
     services: [
-      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-bw-print', serviceName: 'B&W Printing', basePrice: 1.5, unit: 'per page' },
-      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-color-print', serviceName: 'Colour Printing', basePrice: 9.0, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Printing', basePrice: 1.5, unit: 'per page' },
       { categoryId: 'binding', categoryName: 'Book binding & finishing', serviceId: 'bind-spiral', serviceName: 'Spiral Binding', basePrice: 60.0, unit: 'per document' },
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
@@ -404,7 +402,7 @@ const SELLERS: Array<{
     onTimeRate: 0,
     servedPincodes: ['560029', '560030'],
     services: [
-      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-bw-print', serviceName: 'B&W Printing', basePrice: 1.0, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Printing', basePrice: 1.0, unit: 'per page' },
     ],
     documents: [], // pending seller — no documents uploaded yet
     account: { holder: 'Mohan Lal', number: '50400567890123', ifsc: 'UTIB0003456', pan: 'PQRST3456Q' },
@@ -643,7 +641,7 @@ const ORDER_SEEDS: OrderSeed[] = [
   {
     status: 'delivered', placedHoursAgo: 192, customerIndex: 0, sellerIndex: 0,
     items: [
-      { serviceKey: 'doc-color-print', quantity: 10, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/brochure.pdf' },
+      { serviceKey: 'doc-print', quantity: 10, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/brochure.pdf' },
       { serviceKey: 'spec-photo-prints', quantity: 1, specs: { paperType: 'Matte 300gsm', finish: 'matte_lamination', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/card_design.ai' },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'paid',
@@ -651,7 +649,7 @@ const ORDER_SEEDS: OrderSeed[] = [
   {
     status: 'delivered', placedHoursAgo: 120, customerIndex: 1, sellerIndex: 1,
     items: [
-      { serviceKey: 'doc-bw-print', quantity: 100, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/thesis.pdf' },
+      { serviceKey: 'doc-print', quantity: 100, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/thesis.pdf' },
       { serviceKey: 'bind-spiral', quantity: 2, specs: { bindingColor: 'black', cover: 'transparent' } },
     ],
     deliverySpeed: 'EXPRESS', isRush: true, paymentMethod: 'wallet', paymentStatus: 'paid', couponCode: 'WELCOME10', discount: 25,
@@ -660,7 +658,7 @@ const ORDER_SEEDS: OrderSeed[] = [
     status: 'out_for_delivery', placedHoursAgo: 3, customerIndex: 2, sellerIndex: 0,
     items: [
       { serviceKey: 'spec-photo-prints', quantity: 2, specs: { background: 'white', size: '35x45mm' }, fileUrl: 'https://cdn.prinzex.com/uploads/face.jpg' },
-      { serviceKey: 'doc-bw-print', quantity: 20, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/forms.pdf' },
+      { serviceKey: 'doc-print', quantity: 20, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/forms.pdf' },
     ],
     deliverySpeed: 'SAME_DAY', isRush: true, paymentMethod: 'razorpay', paymentStatus: 'paid',
     specialInstructions: 'Call on arrival — gate security will hold the package.',
@@ -676,7 +674,7 @@ const ORDER_SEEDS: OrderSeed[] = [
   {
     status: 'ready_for_pickup', placedHoursAgo: 4, customerIndex: 4, sellerIndex: 1,
     items: [
-      { serviceKey: 'doc-bw-print', quantity: 10, specs: { size: 'A4', thickness: '125micron' } },
+      { serviceKey: 'doc-print', quantity: 10, specs: { size: 'A4', thickness: '125micron' } },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'paid',
   },
@@ -690,14 +688,14 @@ const ORDER_SEEDS: OrderSeed[] = [
   {
     status: 'confirmed', placedHoursAgo: 24, customerIndex: 1, sellerIndex: 0,
     items: [
-      { serviceKey: 'doc-bw-print', quantity: 30, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/notes.pdf' },
+      { serviceKey: 'doc-print', quantity: 30, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/notes.pdf' },
     ],
     deliverySpeed: 'PICKUP', paymentMethod: 'cod', paymentStatus: 'pending',
   },
   {
     status: 'placed', placedHoursAgo: 1, customerIndex: 2, sellerIndex: 1,
     items: [
-      { serviceKey: 'doc-color-print', quantity: 5, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' } },
+      { serviceKey: 'doc-print', quantity: 5, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' } },
     ],
     deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'pending',
   },

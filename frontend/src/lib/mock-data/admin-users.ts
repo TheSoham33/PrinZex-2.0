@@ -66,7 +66,7 @@ export const MOCK_PLATFORM_USERS: PlatformUser[] = [
       addr('a2', 'Office', 'Tech Park, Sector V, Salt Lake, Kolkata 700091'),
     ],
     recentOrders: [
-      { id: 'ORD-7721', storeName: 'Print Master Pro', serviceName: 'Colour Print', total: 500, status: 'out_for_delivery', placedAt: '2026-07-26T09:15:00+05:30' },
+      { id: 'ORD-7721', storeName: 'Print Master Pro', serviceName: 'Printing', total: 500, status: 'out_for_delivery', placedAt: '2026-07-26T09:15:00+05:30' },
       { id: 'ORD-1122', storeName: 'Print Master Pro', serviceName: 'Vinyl Banners', total: 300, status: 'delivered', placedAt: '2026-07-18T12:40:00+05:30' },
       { id: 'ORD-5566', storeName: 'Elite Press Studio', serviceName: 'Fine Art Prints', total: 1000, status: 'delivered', placedAt: '2026-06-28T11:00:00+05:30' },
     ],

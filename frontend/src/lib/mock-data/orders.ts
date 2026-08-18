@@ -209,7 +209,7 @@ export const MOCK_ORDERS: DashboardOrder[] = [
     id: 'ORD-0011',
     storeName: 'Quick Copy Hub',
     storeId: '2',
-    serviceName: 'B&W Print',
+    serviceName: 'Printing',
     quantity: 20,
     total: 20,
     status: 'cancelled',

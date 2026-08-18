@@ -202,8 +202,7 @@ export interface SellerPricingEntry {
 }
 
 export const MOCK_SELLER_PRICING: SellerPricingEntry[] = [
-  { serviceId: 'doc-bw-print', serviceName: 'B&W Printing', basePrice: 1.5, unit: 'per page' },
-  { serviceId: 'doc-color-print', serviceName: 'Colour Printing', basePrice: 8, unit: 'per page' },
+  { serviceId: 'doc-print', serviceName: 'Printing', basePrice: 1.5, unit: 'per page' },
   { serviceId: 'doc-xerox', serviceName: 'Photocopy / Xerox', basePrice: 1, unit: 'per page' },
   {
     serviceId: 'stat-visiting-cards',

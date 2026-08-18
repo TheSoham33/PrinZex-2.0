@@ -5,10 +5,9 @@ import { useRef } from 'react';
 import { IconArrowLeft, IconArrowRight } from '@/components/icons';
 import { SERVICE_CATEGORIES } from '@/lib/seller-types';
 
-// Image mapping for the 20 services
+// Image mapping for the service catalogue
 const IMAGE_MAP: Record<string, string> = {
-  'doc-bw-print': '/images/services/xerox.jpg',
-  'doc-color-print': '/images/services/color-print.jpg',
+  'doc-print': '/images/services/color-print.jpg',
   'doc-xerox': '/images/services/photocopy.jpg',
   'bulk-booklets': '/images/services/booklets.jpg',
   'bulk-brochures': '/images/services/brochures.jpg',

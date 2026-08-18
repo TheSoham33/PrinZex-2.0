@@ -97,7 +97,7 @@ export const MOCK_SELLER_ANALYTICS: SellerAnalytics = {
   revenueByDay: SERIES,
   ordersByDay: SERIES,
   serviceBreakdown: [
-    { service: 'Colour Printing', count: 184, revenue: 96400 },
+    { service: 'Printing', count: 184, revenue: 96400 },
     { service: 'B&W Xerox', count: 240, revenue: 38200 },
     { service: 'Business Cards', count: 96, revenue: 61800 },
     { service: 'Banners', count: 52, revenue: 74300 },
