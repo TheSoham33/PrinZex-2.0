@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  BINDING_CORNER_SIZES,
   COVER_COLORS,
   COVER_TEXT_COLORS,
   COVER_TYPES,
@@ -309,29 +308,6 @@ export default function SpecificationsStep({
           </div>
         </section>
       </div>
-
-      {isCustomizableBinding && (
-        <section className="animate-fade-in">
-          <p className="label">Page corner size <span className="text-red-500">*</span></p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {BINDING_CORNER_SIZES.map((corner) => (
-              <button
-                key={corner.value}
-                type="button"
-                onClick={() => dispatch({ type: 'SET_SPEC', payload: { pageCornerSize: corner.value } })}
-                className={`rounded-xl border p-3.5 text-left transition-all ${
-                  specs.pageCornerSize === corner.value
-                    ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
-                    : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
-                }`}
-              >
-                <span className="block text-sm font-semibold text-slate-900">{corner.label}</span>
-                <span className="mt-0.5 block text-xs text-slate-500">{corner.hint}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
 
       <div className="grid gap-6 sm:grid-cols-2">
         <section>

@@ -19,7 +19,6 @@ export const specificationsSchema = z.object({
   // and must flow through so removing/replacing the file updates the quote.
   totalPages: z.number().int().min(0).optional(),
   // Binding-specific attributes — drive the split page/binding pricing.
-  pageCornerSize: z.string().optional(),
   coverType: z.string().optional(),
   spiralType: z.string().optional(),
   coverColor: z.string().optional(),
@@ -49,7 +48,6 @@ export const createOrderBody = z.object({
     colorOption: z.enum(['color', 'bw']),
     finishing: z.array(z.string()),
     totalPages: z.number().int().min(0).optional(),
-    pageCornerSize: z.string().optional(),
     coverType: z.string().optional(),
     spiralType: z.string().optional(),
     coverColor: z.string().optional(),
