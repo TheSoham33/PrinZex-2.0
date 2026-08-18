@@ -68,11 +68,12 @@ export interface SellerMetadata {
   hours?: StoreHoursEntry[];
   notifications?: Record<string, boolean>;
   pricingOverrides?: {
-    paperType?: Record<string, number>;
-    size?: Record<string, number>;
-    colorOption?: Record<string, number>;
+    /** Seller-wide per-page rates, common across all page services. */
+    pageRate?: {
+      bw: number; // ₹ per B&W page
+      color: number; // ₹ per colour page
+    };
     // Binding services: additive ₹ components set by the seller.
-    // Pages (₹/page): paperType + colorOption.
     // Binding (₹/binding): coverType + coilType + coverColor.
     coverType?: Record<string, number>;
     coilType?: Record<string, number>;

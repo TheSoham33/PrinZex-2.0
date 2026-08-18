@@ -284,26 +284,25 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const totalPages = Math.max(1, specifications.totalPages || 1);
   const quantity = input.quantity;
 
-  const bwExtra = overrides.colorOption?.bw ?? 0;
-  const colorExtra = overrides.colorOption?.color ?? 0;
+  // Seller-set per-page rates, common across all page services. A page is
+  // either B&W or colour; every colour option is priced from these two rates.
+  // Fallbacks keep pre-configured sellers working: legacy colorOption add-ons,
+  // then the service's own base price (colour ≈ 2× B&W).
+  const bwRate = overrides.pageRate?.bw ?? overrides.colorOption?.bw ?? input.basePrice;
+  const colorRate =
+    overrides.pageRate?.color ?? overrides.colorOption?.color ?? input.basePrice * 2;
+
+  const split = colorPageSplit(specifications.colorOption, specifications.colorPages, totalPages);
 
   let subtotal: number;
   let pageCost: number | undefined;
   let bindingCost: number | undefined;
 
   if (isBindingService(input.categoryId, input.serviceId)) {
-    // ── Binding services: split pricing ──────────────────────────────────
-    // Pages (printing) and binding (cover) are priced independently, both from
-    // seller-set additive ₹ components stored in Seller.metadata.pricingOverrides.
-    //   pages    = paperType + (bw|color per page)  × P × N
+    // ── Binding services: pages + binding priced separately ──────────────
+    //   pages    = (bwRate × B&W pages + colorRate × colour pages) × N
     //   binding  = (coverType + coilType + coverColor) ₹/binding × N
-    const split = colorPageSplit(specifications.colorOption, specifications.colorPages, totalPages);
-    const paperExtra = overrides.paperType?.[specifications.paperType] ?? 0;
-
-    pageCost = round2(
-      ((paperExtra + bwExtra) * split.bwPages + (paperExtra + colorExtra) * split.colorPages) *
-        quantity,
-    );
+    pageCost = round2((bwRate * split.bwPages + colorRate * split.colorPages) * quantity);
 
     let bindingRate =
       (overrides.coverType?.[specifications.coverType ?? ''] ?? 0) +
@@ -318,27 +317,15 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
 
     bindingCost = round2(bindingRate * quantity);
     subtotal = round2(pageCost + bindingCost + finishingCharge * quantity);
+  } else if (unit.toLowerCase().includes('page')) {
+    // ── Per-page services: B&W/colour page rates are the whole price ─────
+    subtotal = round2(
+      (bwRate * split.bwPages + colorRate * split.colorPages) * quantity +
+        finishingCharge * quantity,
+    );
   } else {
-    // ── Everything else: existing single-rate model ─────────────────────
-    const paperPrice = overrides.paperType?.[specifications.paperType] ?? 0;
-    const sizePrice = overrides.size?.[specifications.size] ?? 0;
-    const isPerPage = unit.toLowerCase().includes('page');
-
-    if (isPerPage) {
-      const split = colorPageSplit(specifications.colorOption, specifications.colorPages, totalPages);
-      subtotal = round2(
-        (input.basePrice + paperPrice + sizePrice) * totalPages * quantity +
-          bwExtra * split.bwPages * quantity +
-          colorExtra * split.colorPages * quantity +
-          finishingCharge * quantity,
-      );
-    } else {
-      const colorPrice = specifications.colorOption === 'bw' ? bwExtra : colorExtra;
-      subtotal = round2(
-        (input.basePrice + paperPrice + sizePrice + colorPrice) * quantity +
-          finishingCharge * quantity,
-      );
-    }
+    // ── Per-piece / per-set / per-sqft services: single base rate ────────
+    subtotal = round2(input.basePrice * quantity + finishingCharge * quantity);
   }
 
   const rushFee = RUSH_FEES[input.deliverySpeed];

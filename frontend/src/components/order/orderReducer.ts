@@ -1,9 +1,4 @@
-import {
-  FINISHING_OPTIONS,
-  PAPER_SIZES,
-  PAPER_TYPES,
-  TAX_RATE,
-} from '@/lib/domain/stores';
+import { FINISHING_OPTIONS, TAX_RATE } from '@/lib/domain/stores';
 import { countColorPages } from '@/lib/utils';
 import type {
   CostBreakdown,
@@ -135,8 +130,9 @@ export function recalcTotal(cost: CostBreakdown): number {
 }
 
 /**
- * Price a job from its specifications. Paper type and size act as multipliers on
- * the service's base rate; colour doubles it; finishing is charged per unit.
+ * Rough client-side estimate for signed-out visitors (the signed-in quote
+ * replaces it with the seller's real per-page rates). B&W pages use the
+ * service's base rate; colour pages ≈ 2× that.
  */
 export function computeCost(
   specs: OrderSpecifications,
@@ -145,13 +141,12 @@ export function computeCost(
   discount: number,
 ): CostBreakdown {
   const base = service?.startingPrice ?? 0;
-  const paper = PAPER_TYPES.find((type) => type.value === specs.paperType)?.multiplier ?? 1;
-  const size = PAPER_SIZES.find((entry) => entry.value === specs.size)?.multiplier ?? 1;
   const quantity = Math.max(1, specs.quantity || 1);
   const totalPages = Math.max(1, specs.totalPages || 1);
 
-  // B&W pages print at 1× colour; colour pages at 2× (rough local estimate —
-  // the signed-in quote uses the seller's exact per-page rates instead).
+  const bwPageRate = base;
+  const colorPageRate = base * 2;
+
   const colorPageCount =
     specs.colorOption === 'color'
       ? totalPages
@@ -172,28 +167,17 @@ export function computeCost(
   let bindingCost: number | undefined;
 
   if (isBinding) {
-    // Rough pre-login estimate only — the signed-in quote replaces this with
-    // the seller's actual component rates. Pages ≈ paper × colour; binding ≈
-    // the service's starting price (its per-binding rate when no cover add-ons
-    // are configured).
-    const bwPageRate = base * paper;
-    const colorPageRate = base * paper * 2;
-    const bindingRate = base;
     pageCost = Math.round((bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity);
+    const bindingRate = base;
     bindingCost = Math.round(bindingRate * quantity);
     subtotal = Math.round(pageCost + bindingCost + finishingPerUnit * quantity);
+  } else if (service?.unit.toLowerCase().includes('page')) {
+    subtotal = Math.round(
+      (bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity +
+        finishingPerUnit * quantity,
+    );
   } else {
-    // If unit is "per page", multiply by totalPages
-    const isPerPage = service?.unit.toLowerCase().includes('page');
-    if (isPerPage) {
-      subtotal = Math.round(
-        base * paper * size * (bwPageCount + colorPageCount * 2) * quantity +
-          finishingPerUnit * quantity,
-      );
-    } else {
-      const colour = specs.colorOption === 'bw' ? 1 : 2;
-      subtotal = Math.round(base * paper * size * colour * quantity + finishingPerUnit * quantity);
-    }
+    subtotal = Math.round(base * quantity + finishingPerUnit * quantity);
   }
 
   const rushFee = 0;

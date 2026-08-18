@@ -8,8 +8,6 @@ import {
   type SellerPricingEntry,
 } from '@/lib/domain/seller-inventory';
 import {
-  PAPER_TYPES,
-  PAPER_SIZES,
   COVER_COLORS,
   COVER_TYPES,
   SPIRAL_COIL_TYPES,
@@ -30,9 +28,7 @@ export default function SellerPricingPage() {
 
   const [pricing, setPricing] = useState<any[]>([]);
   const [tiers, setTiers] = useState<any[]>([]);
-  const [paperPrices, setPaperPrices] = useState<Record<string, string>>({});
-  const [sizePrices, setSizePrices] = useState<Record<string, string>>({});
-  const [colorPrices, setColorPrices] = useState<Record<string, string>>({ bw: '0', color: '0' });
+  const [pageRate, setPageRate] = useState<{ bw: string; color: string }>({ bw: '', color: '' });
   const [coverTypePrices, setCoverTypePrices] = useState<Record<string, string>>({});
   const [coilPrices, setCoilPrices] = useState<Record<string, string>>({});
   const [coverColorPrices, setCoverColorPrices] = useState<Record<string, string>>({});
@@ -48,17 +44,10 @@ export default function SellerPricingPage() {
       setTiers(data.bulkDiscountTiers || []);
       
       const overrides = (data as any).pricingOverrides || {};
-      const pp: Record<string, string> = {};
-      PAPER_TYPES.forEach(t => pp[t.value] = String(overrides.paperType?.[t.value] || '0'));
-      setPaperPrices(pp);
 
-      const sp: Record<string, string> = {};
-      PAPER_SIZES.forEach(s => sp[s.value] = String(overrides.size?.[s.value] || '0'));
-      setSizePrices(sp);
-
-      setColorPrices({
-        bw: String(overrides.colorOption?.bw || '0'),
-        color: String(overrides.colorOption?.color || '0')
+      setPageRate({
+        bw: String(overrides.pageRate?.bw ?? ''),
+        color: String(overrides.pageRate?.color ?? ''),
       });
 
       const ct: Record<string, string> = {};
@@ -118,15 +107,9 @@ export default function SellerPricingPage() {
   };
 
   const handleSaveOverrides = () => {
-    const paperType: Record<string, number> = {};
-    Object.entries(paperPrices).forEach(([k, v]) => paperType[k] = Number(v));
-
-    const size: Record<string, number> = {};
-    Object.entries(sizePrices).forEach(([k, v]) => size[k] = Number(v));
-
-    const colorOption = {
-      bw: Number(colorPrices.bw),
-      color: Number(colorPrices.color)
+    const pageRatePayload = {
+      bw: Number(pageRate.bw) || 0,
+      color: Number(pageRate.color) || 0,
     };
 
     const coverType: Record<string, number> = {};
@@ -139,9 +122,7 @@ export default function SellerPricingPage() {
     Object.entries(coverColorPrices).forEach(([k, v]) => coverColor[k] = Number(v));
 
     updateOverridesMutation.mutate({
-      paperType,
-      size,
-      colorOption,
+      pageRate: pageRatePayload,
       coverType,
       coilType,
       coverColor,
@@ -199,7 +180,7 @@ export default function SellerPricingPage() {
       {/* Specification Overrides */}
       <section className="card mt-6 overflow-hidden">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">Specification & Binding Add-ons</h2>
+          <h2 className="text-sm font-bold text-slate-900">Page rates & binding add-ons</h2>
           <button 
             onClick={handleSaveOverrides}
             disabled={updateOverridesMutation.isPending}
@@ -210,61 +191,32 @@ export default function SellerPricingPage() {
         </div>
         
         <div className="p-4 space-y-6">
-          {/* Paper Types */}
+          {/* Page rates — B&W / Colour, common across all page services */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Paper Type Extra (₹)</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {PAPER_TYPES.map(type => (
-                <div key={type.value} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-600">{type.label}</span>
-                  <input 
-                    type="number" 
-                    value={paperPrices[type.value] || '0'} 
-                    onChange={(e) => setPaperPrices(p => ({ ...p, [type.value]: e.target.value }))}
-                    className="input w-24 py-1 text-right text-sm"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Sizes */}
-          <div className="border-t border-slate-100 pt-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Size Extra (₹)</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {PAPER_SIZES.map(size => (
-                <div key={size.value} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-600">{size.label}</span>
-                  <input 
-                    type="number" 
-                    value={sizePrices[size.value] || '0'} 
-                    onChange={(e) => setSizePrices(p => ({ ...p, [size.value]: e.target.value }))}
-                    className="input w-24 py-1 text-right text-sm"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Color */}
-          <div className="border-t border-slate-100 pt-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Color Option Extra (₹)</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Page rates (₹/page)</h3>
+            <p className="text-xs text-slate-400 mb-3">
+              Applies to every page-based service. Each page is B&W or colour — priced from these two rates.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-slate-600">B&W</span>
+                <span className="text-sm text-slate-600">B&W page</span>
                 <input 
                   type="number" 
-                  value={colorPrices.bw} 
-                  onChange={(e) => setColorPrices(p => ({ ...p, bw: e.target.value }))}
+                  min="0"
+                  step="0.5"
+                  value={pageRate.bw} 
+                  onChange={(e) => setPageRate(p => ({ ...p, bw: e.target.value }))}
                   className="input w-24 py-1 text-right text-sm"
                 />
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-slate-600">Colour</span>
+                <span className="text-sm text-slate-600">Colour page</span>
                 <input 
                   type="number" 
-                  value={colorPrices.color} 
-                  onChange={(e) => setColorPrices(p => ({ ...p, color: e.target.value }))}
+                  min="0"
+                  step="0.5"
+                  value={pageRate.color} 
+                  onChange={(e) => setPageRate(p => ({ ...p, color: e.target.value }))}
                   className="input w-24 py-1 text-right text-sm"
                 />
               </div>
