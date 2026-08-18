@@ -387,7 +387,7 @@ export default function AdminSellerDetailPage({
         onCancel={() => setRemoveReview(null)}
         onConfirm={() => {
           // TODO: Implement real review removal API
-          showToast('Review removal API not implemented yet', 'warn');
+          showToast('Review removal API not implemented yet');
           setRemoveReview(null);
         }}
       />

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { adminLogout } from '@/store/slices/adminAuthSlice';
-import { useSidebar } from '@/app/admin/layout';
+import { useSidebar } from '@/app/admin/admin-context';
 import { ADMIN_NAV } from './adminNav';
 import { IconChevronsLeft, IconChevronsRight, IconLogOut } from '@/components/icons';
 

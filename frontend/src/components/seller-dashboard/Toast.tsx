@@ -4,13 +4,16 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 import { AnimatePresence, motion } from 'framer-motion';
 import { IconCheckCircle, IconX } from '@/components/icons';
 
+type ToastVariant = 'success' | 'error';
+
 interface ToastMessage {
   id: number;
   text: string;
+  variant: ToastVariant;
 }
 
 interface ToastContextValue {
-  showToast: (text: string) => void;
+  showToast: (text: string, variant?: ToastVariant) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -25,9 +28,9 @@ export function useToast(): ToastContextValue {
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<ToastMessage[]>([]);
 
-  const showToast = useCallback((text: string) => {
+  const showToast = useCallback((text: string, variant: ToastVariant = 'success') => {
     const id = Date.now() + Math.random();
-    setMessages((previous) => [...previous, { id, text }]);
+    setMessages((previous) => [...previous, { id, text, variant }]);
     setTimeout(() => {
       setMessages((previous) => previous.filter((message) => message.id !== id));
     }, 3200);
@@ -53,9 +56,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.97 }}
               transition={{ duration: 0.18 }}
-              className="pointer-events-auto flex max-w-sm items-start gap-2.5 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-xl"
+              className={`pointer-events-auto flex max-w-sm items-start gap-2.5 rounded-xl px-4 py-3 text-sm text-white shadow-xl ${
+                message.variant === 'error' ? 'bg-red-600' : 'bg-slate-900'
+              }`}
             >
-              <IconCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-400" />
+              {message.variant === 'error' ? (
+                <IconX className="mt-0.5 h-4 w-4 shrink-0 text-white" />
+              ) : (
+                <IconCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-400" />
+              )}
               <span className="flex-1">{message.text}</span>
               <button
                 type="button"

@@ -123,16 +123,8 @@ export const SPIRAL_COVER_TYPES = [
 ];
 
 /* ------------------------------------------------------------------ */
-/* Mock data (REMOVED)                                                 */
+/* Helpers                                                             */
 /* ------------------------------------------------------------------ */
-
-export const MOCK_STORES: T.Store[] = [];
-export const MOCK_STORE_DETAILS: T.StoreDetail[] = [];
-export const MOCK_ADDRESSES: T.DeliveryAddress[] = [];
-
-export function getStoreById(id: string): T.StoreDetail | undefined {
-  return undefined;
-}
 
 export function storeGradient(id: string): string {
   const gradients = [

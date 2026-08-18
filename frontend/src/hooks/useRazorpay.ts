@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback } from 'react';
-import { env } from 'next-runtime-env'; // Wait, let's use a standard way to get env
 
 interface RazorpayOptions {
   key: string;

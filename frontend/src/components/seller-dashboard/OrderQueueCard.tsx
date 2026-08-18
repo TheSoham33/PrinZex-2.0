@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { SellerOrder } from '@/lib/mock-data/seller-orders';
+import type { SellerOrder } from '@/lib/domain/seller-orders';
 import {
   SELLER_STATUS_DOT,
   SELLER_STATUS_LABELS,
   SELLER_STATUS_STYLES,
-} from '@/lib/mock-data/seller-orders';
+} from '@/lib/domain/seller-orders';
 import { formatCurrency, timeAgo } from '@/lib/utils';
 import OrderActionButtons from './OrderActionButtons';
 import { IconChevronRight, IconZap } from '@/components/icons';

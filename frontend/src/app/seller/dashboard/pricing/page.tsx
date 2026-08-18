@@ -6,7 +6,7 @@ import { fetchSellerPricing, updateBulkPrices, updateBulkDiscounts, updatePricin
 import {
   type BulkTier,
   type SellerPricingEntry,
-} from '@/lib/mock-data/seller-inventory';
+} from '@/lib/domain/seller-inventory';
 import {
   PAPER_TYPES,
   PAPER_SIZES,
@@ -14,7 +14,7 @@ import {
   COVER_TYPES,
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
-} from '@/lib/mock-data/stores';
+} from '@/lib/domain/stores';
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';

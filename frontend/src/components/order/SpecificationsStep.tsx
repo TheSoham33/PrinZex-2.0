@@ -9,7 +9,7 @@ import {
   FINISHING_OPTIONS,
   PAPER_SIZES,
   PAPER_TYPES,
-} from '@/lib/mock-data/stores';
+} from '@/lib/domain/stores';
 import type { OrderSpecifications, ServiceOffering, UploadedFile } from '@/lib/types';
 import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';

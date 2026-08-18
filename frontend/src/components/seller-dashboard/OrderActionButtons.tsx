@@ -6,7 +6,7 @@ import {
   REJECTION_REASONS,
   SELLER_STATUS_LABELS,
   type SellerOrder,
-} from '@/lib/mock-data/seller-orders';
+} from '@/lib/domain/seller-orders';
 import { updateOrderStatus, rejectOrder } from '@/lib/api/seller-orders';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconCheckCircle, IconX } from '@/components/icons';

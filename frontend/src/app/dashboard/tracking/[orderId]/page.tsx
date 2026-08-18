@@ -103,7 +103,7 @@ export default function TrackingPage({ params }: { params: Promise<{ orderId: st
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-base font-bold text-slate-600">
               {courier.name
                 .split(' ')
-                .map((part) => part[0])
+                .map((part: string) => part[0])
                 .slice(0, 2)
                 .join('')}
             </span>

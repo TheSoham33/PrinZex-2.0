@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import type { CostBreakdown, PaymentMethod } from '@/lib/mock-data/stores';
+import type { CostBreakdown, PaymentMethod } from '@/lib/domain/stores';
 import { formatCurrency } from '@/lib/utils';
-import { applyCoupon, type OrderAction } from './orderReducer';
+import type { OrderAction } from './orderReducer';
 import {
   IconAlertCircle,
   IconCheckCircle,
@@ -16,7 +16,7 @@ import {
 const METHODS: { value: PaymentMethod; label: string; hint: string; icon: typeof IconWallet }[] = [
   { value: 'upi', label: 'UPI', hint: 'GPay, PhonePe, Paytm', icon: IconWallet },
   { value: 'card', label: 'Card', hint: 'Credit or debit card', icon: IconCreditCard },
-  { value: 'wallet', label: 'PrinZex Wallet', hint: 'Balance ₹240', icon: IconWallet },
+  { value: 'wallet', label: 'PrinZex Wallet', hint: 'Pay from balance', icon: IconWallet },
   { value: 'cod', label: 'Cash on Delivery', hint: 'Pay when it arrives', icon: IconTruck },
 ];
 
@@ -27,6 +27,11 @@ interface PaymentStepProps {
   agreed: boolean;
   onAgreedChange: (value: boolean) => void;
   error: string | null;
+  /** Coupon code validated server-side against the Coupon table. */
+  couponCode: string;
+  onCouponCodeChange: (code: string) => void;
+  couponError: string | null;
+  couponLoading: boolean;
 }
 
 export default function PaymentStep({
@@ -36,28 +41,21 @@ export default function PaymentStep({
   agreed,
   onAgreedChange,
   error,
+  couponCode,
+  onCouponCodeChange,
+  couponError,
+  couponLoading,
 }: PaymentStepProps) {
-  const [code, setCode] = useState('');
-  const [couponMessage, setCouponMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [code, setCode] = useState(couponCode);
+  const couponApplied = !!couponCode && cost.discount > 0;
 
   const handleApply = () => {
-    const result = applyCoupon(code, cost.subtotal);
-    if (result.error) {
-      setCouponMessage({ text: result.error, ok: false });
-      dispatch({ type: 'SET_COST', payload: { field: 'discount', value: 0 } });
-      return;
-    }
-    dispatch({ type: 'SET_COST', payload: { field: 'discount', value: result.discount } });
-    setCouponMessage({
-      text: `${code.trim().toUpperCase()} applied — you saved ${formatCurrency(result.discount)}`,
-      ok: true,
-    });
+    onCouponCodeChange(code.trim().toUpperCase());
   };
 
   const handleRemoveCoupon = () => {
     setCode('');
-    setCouponMessage(null);
-    dispatch({ type: 'SET_COST', payload: { field: 'discount', value: 0 } });
+    onCouponCodeChange('');
   };
 
   return (
@@ -121,34 +119,33 @@ export default function PaymentStep({
               className="input pl-9 uppercase"
             />
           </div>
-          {cost.discount > 0 ? (
+          {couponApplied ? (
             <button type="button" onClick={handleRemoveCoupon} className="btn-secondary shrink-0">
               Remove
             </button>
           ) : (
-            <button type="button" onClick={handleApply} className="btn-secondary shrink-0">
-              Apply
+            <button
+              type="button"
+              onClick={handleApply}
+              disabled={!code.trim() || couponLoading}
+              className="btn-secondary shrink-0 disabled:opacity-50"
+            >
+              {couponLoading ? 'Checking…' : 'Apply'}
             </button>
           )}
         </div>
 
-        {couponMessage && (
-          <p
-            className={`field-error mt-2 ${couponMessage.ok ? 'text-green-600' : 'text-red-600'}`}
-          >
-            {couponMessage.ok ? (
-              <IconCheckCircle className="h-3.5 w-3.5" />
-            ) : (
-              <IconAlertCircle className="h-3.5 w-3.5" />
-            )}
-            {couponMessage.text}
+        {couponError && (
+          <p className="field-error mt-2 text-red-600">
+            <IconAlertCircle className="h-3.5 w-3.5" /> {couponError}
           </p>
         )}
-
-        <p className="mt-2 text-xs text-slate-500">
-          Try <span className="font-semibold text-slate-700">WELCOME10</span> or{' '}
-          <span className="font-semibold text-slate-700">FIRSTORDER</span>
-        </p>
+        {couponApplied && !couponError && (
+          <p className="field-error mt-2 text-green-600">
+            <IconCheckCircle className="h-3.5 w-3.5" /> {couponCode} applied — you saved{' '}
+            {formatCurrency(cost.discount)}
+          </p>
+        )}
       </section>
 
       <section className="rounded-xl bg-slate-50 p-5">

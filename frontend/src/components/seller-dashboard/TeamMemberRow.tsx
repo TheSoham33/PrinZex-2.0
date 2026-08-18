@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TEAM_ROLE_STYLES, type TeamMember } from '@/lib/mock-data/seller-inventory';
+import { TEAM_ROLE_STYLES, type TeamMember } from '@/lib/domain/seller-inventory';
 import { formatDate } from '@/lib/utils';
 import ToggleSwitch from './ToggleSwitch';
 import { IconTrash } from '@/components/icons';

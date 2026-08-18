@@ -9,6 +9,16 @@ export interface WalletTransaction {
   status: 'COMPLETED' | 'PENDING' | 'FAILED';
 }
 
+/** A wallet ledger entry as returned by /customer/wallet/transactions. */
+export interface Transaction {
+  id: string;
+  type: 'DEBIT' | 'CREDIT';
+  reason: string;
+  amount: number;
+  description: string | null;
+  createdAt: string;
+}
+
 export interface WalletInfo {
   balance: number;
   loyaltyPoints: number;
@@ -39,17 +49,12 @@ export const requestPayout = async (): Promise<any> => {
 };
 
 /** Get all wallet transactions with pagination. */
-export const fetchWalletTransactions = async (page = 1, limit = 10): Promise<any[]> => {
+export const fetchWalletTransactions = async (page = 1, limit = 10): Promise<Transaction[]> => {
   const res = await apiRequest<any>('/customer/wallet/transactions', {
     params: { page, limit },
   });
   return res.data || res;
 };
-
-export const MOCK_COUPONS = [
-  { code: 'WELCOME10', title: '10% OFF', description: 'Get 10% off on your first order up to ₹100.', expiresOn: '2026-12-31' },
-  { code: 'FLAT50', title: '₹50 OFF', description: 'Flat ₹50 discount on orders above ₹299.', expiresOn: '2026-11-15' },
-];
 
 /** Add money to wallet (initiate). */
 export const initiateTopup = async (amount: number): Promise<any> => {

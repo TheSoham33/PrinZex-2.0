@@ -3,7 +3,7 @@ import {
   PAPER_SIZES,
   PAPER_TYPES,
   TAX_RATE,
-} from '@/lib/mock-data/stores';
+} from '@/lib/domain/stores';
 import { countColorPages } from '@/lib/utils';
 import type {
   CostBreakdown,
@@ -211,19 +211,4 @@ export function computeCost(
   };
   cost.total = recalcTotal(cost);
   return cost;
-}
-
-/** Coupon codes accepted at checkout (mock). */
-export function applyCoupon(code: string, subtotal: number): { discount: number; error?: string } {
-  const normalised = code.trim().toUpperCase();
-  if (!normalised) return { discount: 0, error: 'Enter a coupon code' };
-
-  if (normalised === 'WELCOME10') {
-    if (subtotal < 200) return { discount: 0, error: 'Valid on orders above ₹200' };
-    return { discount: Math.min(Math.round(subtotal * 0.1), 100) };
-  }
-  if (normalised === 'FIRSTORDER') {
-    return { discount: 50 };
-  }
-  return { discount: 0, error: 'That code isn’t valid' };
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { REJECTION_REASONS } from '@/lib/mock-data/admin-sellers';
+import { REJECTION_REASONS } from '@/lib/domain/admin-sellers';
 import { IconAlertTriangle, IconCheckCircle, IconX } from '@/components/icons';
 
 const FOCUSABLE =
@@ -13,8 +13,9 @@ interface VerificationModalProps {
   open: boolean;
   mode: VerificationMode;
   storeName: string;
+  loading?: boolean;
   onCancel: () => void;
-  onConfirm: (payload: { reason?: string; note: string }) => void;
+  onConfirm: (payload: { reason?: string; note?: string }) => void;
 }
 
 /** Approve / reject dialog for seller applications. */
@@ -22,6 +23,7 @@ export default function VerificationModal({
   open,
   mode,
   storeName,
+  loading = false,
   onCancel,
   onConfirm,
 }: VerificationModalProps) {
@@ -157,14 +159,15 @@ export default function VerificationModal({
           </button>
           <button
             type="button"
+            disabled={loading}
             onClick={() => onConfirm({ reason: isReject ? reason : undefined, note })}
             className={
               isReject
-                ? 'btn flex-1 bg-red-600 text-white hover:bg-red-700'
-                : 'btn flex-1 bg-green-600 text-white hover:bg-green-700'
+                ? 'btn flex-1 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
+                : 'btn flex-1 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50'
             }
           >
-            {isReject ? 'Reject application' : 'Approve store'}
+            {loading ? 'Working…' : isReject ? 'Reject application' : 'Approve store'}
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { apiRequest } from './client';
-import type { SellerOrder } from '@/lib/mock-data/seller-orders';
+import type { SellerOrder } from '@/lib/domain/seller-orders';
 
 /** Get all orders for the authenticated seller. */
 export const fetchSellerOrders = async (params: {

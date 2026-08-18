@@ -4,7 +4,7 @@ import { useEffect, useMemo, useReducer, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   type StoreDetail,
 } from '@/lib/types';
@@ -34,6 +34,7 @@ const TOTAL_STEPS = 3;
 export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const router = useRouter();
   const { showToast } = useToast();
+  const reduxDispatch = useAppDispatch();
 
   // Redirect or show error if store is closed
   useEffect(() => {
@@ -60,13 +61,14 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const [agreed, setAgreed] = useState(false);
   const [maxReached, setMaxReached] = useState(1);
   const [placing, setPlacing] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
 
   const specs = state.order.specifications as any;
   const service = store.services.find((entry) => entry.id === specs.serviceId);
 
   // Real Quote Fetching
-  const { data: quoteData } = useQuery({
-    queryKey: ['order-quote', store.id, specs, state.order.deliverySpeed],
+  const { data: quoteData, isFetching: quoteLoading } = useQuery({
+    queryKey: ['order-quote', store.id, specs, state.order.deliverySpeed, couponCode],
     queryFn: () => getOrderQuote({
       sellerId: store.id,
       sellerServiceId: specs.serviceId,
@@ -83,11 +85,18 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         coverColor: specs.coverColor,
         coverDesignType: specs.coverDesignType,
       },
-      deliverySpeed: (state.order.deliverySpeed || 'standard').toUpperCase()
+      deliverySpeed: (state.order.deliverySpeed || 'standard').toUpperCase(),
+      couponCode: couponCode || undefined,
     }),
     enabled: !!token && !!specs.serviceId && !!specs.paperType && !!specs.size,
     retry: false
   });
+
+  // Backend-validated coupon feedback (quote returns coupon.valid / coupon.error).
+  const couponError =
+    couponCode && quoteData?.coupon && !quoteData.coupon.valid
+      ? quoteData.coupon.error ?? 'Coupon is not valid'
+      : null;
 
   // Calculate local cost for non-logged in users or while loading
   const cost = useMemo(() => {
@@ -178,9 +187,10 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           coverDesignType: specs.coverDesignType,
         },
         deliveryAddressId: (state.order.address as any)?.id,
-        deliverySpeed: state.order.deliverySpeed.toUpperCase(),
+        deliverySpeed: (state.order.deliverySpeed || 'standard').toUpperCase(),
         paymentMethod: state.order.paymentMethod,
         specialInstructions: state.order.specialInstructions,
+        couponCode: couponCode || undefined,
         // fileUrl would be real here after upload
         fileUrl: "/uploads/designs/demo.pdf" 
       });
@@ -247,7 +257,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       return;
     }
 
-    dispatch(addToCart({
+    reduxDispatch(addToCart({
       id: `cart-${Date.now()}`,
       storeId: store.id,
       storeName: store.name,
@@ -312,6 +322,10 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               agreed={agreed}
               onAgreedChange={setAgreed}
               error={state.error}
+              couponCode={couponCode}
+              onCouponCodeChange={setCouponCode}
+              couponError={couponError}
+              couponLoading={quoteLoading}
             />
           )}
 

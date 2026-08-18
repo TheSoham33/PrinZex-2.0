@@ -17,6 +17,7 @@ interface ConfirmModalProps {
   /** Optional extra controls (reason select, refund amount input…). */
   children?: React.ReactNode;
   confirmDisabled?: boolean;
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -30,6 +31,7 @@ export default function ConfirmModal({
   destructive = false,
   children,
   confirmDisabled = false,
+  loading = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -139,14 +141,14 @@ export default function ConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={confirmDisabled}
+            disabled={confirmDisabled || loading}
             className={
               destructive
                 ? 'btn flex-1 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
                 : 'btn-primary flex-1'
             }
           >
-            {confirmLabel}
+            {loading ? 'Working…' : confirmLabel}
           </button>
         </div>
       </div>

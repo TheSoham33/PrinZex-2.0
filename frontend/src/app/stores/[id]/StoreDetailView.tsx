@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { StoreDetail } from '@/lib/mock-data/stores';
+import type { StoreDetail } from '@/lib/domain/stores';
 import StoreHeader from '@/components/store-detail/StoreHeader';
 import StoreTabs from '@/components/store-detail/StoreTabs';
 import StickyOrderBar from '@/components/store-detail/StickyOrderBar';

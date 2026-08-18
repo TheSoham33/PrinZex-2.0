@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   fetchDeliveryBoys, 
   updateDeliveryBoyStatus,
-  fetchDeliveryBoyById
+  fetchDeliveryBoyById,
+  verifyDeliveryBoyDocument,
 } from '@/lib/api/admin-delivery';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';

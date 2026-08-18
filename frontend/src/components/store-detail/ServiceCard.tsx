@@ -1,6 +1,6 @@
 'use client';
 
-import type { ServiceOffering } from '@/lib/mock-data/stores';
+import type { ServiceOffering } from '@/lib/domain/stores';
 import { formatCurrency } from '@/lib/utils';
 import {
   IconBadgeCheck,

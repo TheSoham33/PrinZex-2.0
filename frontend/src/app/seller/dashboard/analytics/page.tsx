@@ -10,7 +10,7 @@ import {
 import {
   DATE_RANGE_OPTIONS,
   type DateRangeKey,
-} from '@/lib/mock-data/seller-analytics';
+} from '@/lib/domain/seller-analytics';
 import StatCard from '@/components/seller-dashboard/StatCard';
 import RevenueChart from '@/components/seller-dashboard/RevenueChart';
 import OrderVolumeChart from '@/components/seller-dashboard/OrderVolumeChart';

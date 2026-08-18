@@ -1,34 +1,25 @@
 import { apiRequest } from './client';
-
-export interface DashboardOrder {
-  id: string;
-  storeName: string;
-  serviceName: string;
-  quantity: number;
-  total: number;
-  status: any;
-  placedAt: string;
-  estimatedDelivery: string;
-}
+import type { DashboardOrder, OrderStatus } from '@/lib/domain/orders';
 
 /** Returns every order for the signed-in customer. */
 export const fetchOrders = async (): Promise<DashboardOrder[]> => {
   const res = await apiRequest<any>('/orders');
-  
+
   // The backend returns { data: [...], pagination: { ... } }
   // apiRequest already returns the 'data' field of the ApiResponse envelope.
-  // So 'res' is { data: [...], pagination: { ... } }
   const items = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
 
   return items.map((order: any) => ({
     id: order.id,
     storeName: order.storeName,
-    serviceName: order.services?.[0] || 'Printing Service',
-    quantity: 1, 
+    storeId: order.sellerId ?? '',
+    serviceName: order.services?.[0]?.split(' ×')[0] ?? 'Printing Service',
+    quantity: 1,
     total: order.total,
-    status: order.status,
+    status: order.status as OrderStatus,
     placedAt: order.createdAt,
     estimatedDelivery: order.estimatedDelivery,
+    timeline: [],
   }));
 };
 

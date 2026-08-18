@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { DeliveryBoy } from '@/lib/mock-data/orders';
+import type { DeliveryBoy } from '@/lib/domain/orders';
 import { IconMapPin, IconStore, IconTruck } from '@/components/icons';
 
 /**
@@ -11,7 +11,7 @@ import { IconMapPin, IconStore, IconTruck } from '@/components/icons';
 export default function TrackingMap({ deliveryBoy }: { deliveryBoy?: DeliveryBoy }) {
   const [progress, setProgress] = useState(0.35);
 
-  // Nudge the courier marker along the route so the mock feels alive.
+  // Nudge the courier marker along the route until real GPS pings arrive.
   useEffect(() => {
     const timer = setInterval(() => {
       setProgress((value) => (value >= 0.85 ? 0.35 : value + 0.02));

@@ -16,7 +16,7 @@ import {
   ROLE_BADGE_STYLES,
   ROLE_LABELS,
 } from '@/store/slices/adminAuthSlice';
-import { usePermission } from '../layout';
+import { usePermission } from '../admin-context';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import Modal from '@/components/seller-dashboard/Modal';

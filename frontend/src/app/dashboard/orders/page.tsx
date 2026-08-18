@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOrders } from '@/lib/api/orders';
-import { isActiveOrder } from '@/lib/mock-data/orders';
+import { isActiveOrder } from '@/lib/domain/orders';
 import OrderCard from '@/components/dashboard/OrderCard';
 import { IconAlertCircle, IconPackageOpen, IconRefreshCw } from '@/components/icons';
 
