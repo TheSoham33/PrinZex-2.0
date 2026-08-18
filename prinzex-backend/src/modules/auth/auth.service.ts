@@ -7,6 +7,7 @@ import { hashPassword, comparePassword } from '../../utils/hash';
 import { generateOtp, storeOtp, verifyOtp, purposeForIdentifier } from '../../utils/otp';
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail, sendOtpSms } from '../../utils/email';
 import type { CustomerTokenPayload } from '../../utils/jwt';
+import type { SendSignupOtpInput } from './auth.schema';
 import {
   assertNotLockedOut,
   bumpLoginAttempts,

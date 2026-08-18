@@ -72,18 +72,22 @@ export const SELLER_STATUS_DOT: Record<string, string> = {
   returned: 'bg-slate-500',
 };
 
-/** The forward-only progression a seller drives an order through. */
+/**
+ * The forward-only progression a seller drives an order through. Matches the
+ * backend state machine: placed → confirmed → processing → ready_for_pickup
+ * (delivery takes over from there).
+ */
 export const SELLER_STATUS_FLOW: SellerOrderStatus[] = [
-  'new',
-  'accepted',
+  'placed',
+  'confirmed',
   'processing',
   'ready_for_pickup',
-  'dispatched',
+  'out_for_delivery',
   'delivered',
 ];
 
 export const ACTIVE_STATUSES: SellerOrderStatus[] = [
-  'accepted',
+  'confirmed',
   'processing',
   'ready_for_pickup',
 ];

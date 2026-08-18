@@ -306,9 +306,9 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     );
 
     let bindingRate =
-      (overrides.coverType?.[specifications.coverType] ?? 0) +
-      (overrides.coilType?.[specifications.spiralType] ?? 0) +
-      (overrides.coverColor?.[specifications.coverColor] ?? 0);
+      (overrides.coverType?.[specifications.coverType ?? ''] ?? 0) +
+      (overrides.coilType?.[specifications.spiralType ?? ''] ?? 0) +
+      (overrides.coverColor?.[specifications.coverColor ?? ''] ?? 0);
 
     // Legacy fallback: a seller who never configured cover add-ons keeps their
     // original per-document base price as the binding rate (never a free bind).

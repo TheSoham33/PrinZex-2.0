@@ -182,7 +182,9 @@ export async function logout(
   }
 }
 
-export async function refresh(presentedToken: string): Promise<{ tokens: TokenPair }> {
+export async function refresh(
+  presentedToken: string,
+): Promise<{ tokens: TokenPair; admin: { permissions: Record<string, boolean> } }> {
   const payload = verifyRefreshToken(presentedToken);
   if (payload.role !== 'ADMIN' || !('adminId' in payload)) {
     throw ApiError.unauthorized('Invalid token type for this endpoint');

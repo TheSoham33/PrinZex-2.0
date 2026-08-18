@@ -5,7 +5,6 @@ import { validate } from '../../middlewares/validate';
 import * as authController from './auth.controller';
 import {
   forgotPasswordBody,
-  googleLoginBody,
   loginBody,
   logoutBody,
   refreshBody,

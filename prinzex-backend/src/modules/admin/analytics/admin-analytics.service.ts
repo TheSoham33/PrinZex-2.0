@@ -161,7 +161,7 @@ export async function getRevenueAnalytics(query: AnalyticsQuery): Promise<Revenu
   // groupBy is zod-enum validated ('day'|'week'|'month') before this point.
   const rows = await prisma.$queryRaw<RevenueBucketRow[]>`
     SELECT
-      DATE_TRUNC(${Prisma.raw(`'${query.groupBy}'`)}, "createdAt") AS bucket,
+      DATE_TRUNC(${Prisma.sql`${query.groupBy}`}, "createdAt") AS bucket,
       COALESCE(SUM(total) FILTER (WHERE status = 'delivered'), 0)::float AS revenue,
       COUNT(*)::int AS orders,
       COALESCE(SUM("commissionAmount") FILTER (WHERE status = 'delivered'), 0)::float AS commission
@@ -198,7 +198,7 @@ export async function getOrderAnalytics(query: AnalyticsQuery): Promise<OrderAna
   // Volume + status distribution — grouped in SQL.
   const volumeRows = await prisma.$queryRaw<OrderVolumeRow[]>`
     SELECT
-      DATE_TRUNC(${Prisma.raw(`'${query.groupBy}'`)}, "createdAt") AS bucket,
+      DATE_TRUNC(${Prisma.sql`${query.groupBy}`}, "createdAt") AS bucket,
       status,
       COUNT(*)::int AS count
     FROM "Order"

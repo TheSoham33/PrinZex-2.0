@@ -14,6 +14,7 @@ import type {
   DeliverySettingsInput,
   HoursSettingsInput,
   InventoryQuery,
+  NotificationSettingsInput,
   OrdersQuery,
   PayoutsQuery,
   RejectOrderInput,
