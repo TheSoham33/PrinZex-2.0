@@ -21,7 +21,10 @@ interface OrderQueueCardProps {
 
 export default function OrderQueueCard({ order, onAnnounce }: OrderQueueCardProps) {
   const [showNotes, setShowNotes] = useState(false);
-  const hasLongNote = order.specialInstructions.length > NOTE_PREVIEW_LIMIT;
+  // The backend returns `specialInstructions: null` when a customer leaves no
+  // notes — normalize before measuring length.
+  const notes = order.specialInstructions ?? '';
+  const hasLongNote = notes.length > NOTE_PREVIEW_LIMIT;
 
   return (
     <article className="card p-4 transition-shadow hover:shadow-md sm:p-5">
@@ -77,15 +80,15 @@ export default function OrderQueueCard({ order, onAnnounce }: OrderQueueCardProp
         </div>
       </dl>
 
-      {order.specialInstructions && (
+      {notes && (
         <div className="mt-4 rounded-lg bg-slate-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
             Customer notes
           </p>
           <p className="mt-1 text-sm leading-relaxed text-slate-600">
             {hasLongNote && !showNotes
-              ? `${order.specialInstructions.slice(0, NOTE_PREVIEW_LIMIT)}…`
-              : order.specialInstructions}
+              ? `${notes.slice(0, NOTE_PREVIEW_LIMIT)}…`
+              : notes}
           </p>
           {hasLongNote && (
             <button

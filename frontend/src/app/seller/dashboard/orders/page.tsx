@@ -31,8 +31,24 @@ export default function SellerOrdersPage() {
     queryFn: () => fetchSellerOrders({}),
   });
 
-  const orders = data?.data || (Array.isArray(data) ? data : []);
-  const visible = orders.filter((order: any) => matchesTab(order, tab));
+  const rawOrders = data?.data || (Array.isArray(data) ? data : []);
+
+  // Normalize the backend list payload into the shape OrderQueueCard expects.
+  const orders: SellerOrder[] = rawOrders.map((o: any) => ({
+    id: o.id,
+    status: o.status,
+    isRush: o.isRush ?? false,
+    customerName: o.customerName ?? '',
+    serviceName: o.serviceName ?? o.services?.[0]?.replace(/ ×\d+$/, '') ?? 'Printing Service',
+    specifications: o.specsSummary ?? o.specifications ?? '',
+    quantity: o.quantity ?? 1,
+    total: o.total ?? 0,
+    deadline: o.deadline ?? o.estimatedDelivery,
+    placedAt: o.placedAt ?? o.createdAt,
+    specialInstructions: o.specialInstructions ?? null,
+  }));
+
+  const visible = orders.filter((order) => matchesTab(order, tab));
 
   return (
     <div className="mx-auto max-w-4xl">

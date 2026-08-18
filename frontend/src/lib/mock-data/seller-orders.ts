@@ -13,7 +13,22 @@ export type SellerOrderStatus =
   | 'cancelled'
   | 'returned';
 
-// ... (interface remains same)
+export interface SellerOrder {
+  id: string;
+  status: SellerOrderStatus | string;
+  customerName: string;
+  customerPhone?: string;
+  serviceName: string;
+  specifications: string;
+  fileUrl?: string | null;
+  fileName?: string;
+  quantity: number;
+  total: number;
+  deadline: string;
+  placedAt: string;
+  isRush: boolean;
+  specialInstructions: string | null;
+}
 
 export const SELLER_STATUS_LABELS: Record<string, string> = {
   new: 'New',

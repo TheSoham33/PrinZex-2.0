@@ -55,7 +55,7 @@ export default function OrderActionButtons({ order, onAnnounce }: OrderActionBut
     setOtherReason('');
   };
 
-  if (order.status === 'new') {
+  if (order.status === 'new' || order.status === 'placed') {
     if (rejecting) {
       return (
         <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
