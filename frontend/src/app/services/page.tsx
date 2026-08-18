@@ -8,8 +8,7 @@ import { IconChevronRight } from '@/components/icons';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
 
 const IMAGE_MAP: Record<string, string> = {
-  'doc-bw-print': '/images/services/xerox.jpg',
-  'doc-color-print': '/images/services/color-print.jpg',
+  'doc-print': '/images/services/color-print.jpg',
   'doc-xerox': '/images/services/photocopy.jpg',
   'bulk-booklets': '/images/services/booklets.jpg',
   'bulk-brochures': '/images/services/brochures.jpg',

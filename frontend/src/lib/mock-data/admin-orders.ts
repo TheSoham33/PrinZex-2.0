@@ -65,7 +65,7 @@ const tl = (
 export const MOCK_ADMIN_ORDERS: AdminOrder[] = [
   {
     id: 'ORD-4417', customerName: 'Ananya Sen', customerId: 'USR-1001',
-    storeName: 'Print Master Pro', storeId: 'SLR-201', serviceName: 'Colour Printing',
+    storeName: 'Print Master Pro', storeId: 'SLR-201', serviceName: 'Printing',
     specifications: 'A4 Colour, 120 pages, Premium paper, Spiral binding',
     fileName: 'thesis-final.pdf', quantity: 120, total: 1840, status: 'placed',
     placedAt: '2026-07-27T10:48:00+05:30', isRush: true,

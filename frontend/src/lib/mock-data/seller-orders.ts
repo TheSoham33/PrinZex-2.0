@@ -97,7 +97,7 @@ export const MOCK_SELLER_ORDERS: SellerOrder[] = [
     id: 'ORD-4417',
     customerName: 'Ananya Sen',
     customerPhone: '+91 98300 45612',
-    serviceName: 'Colour Printing',
+    serviceName: 'Printing',
     specifications: 'A4 Colour, 120 pages, Premium paper, Spiral binding',
     fileUrl: '/mock/thesis-final.pdf',
     fileName: 'thesis-final.pdf',
