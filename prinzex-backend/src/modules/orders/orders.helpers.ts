@@ -11,9 +11,11 @@ import { ApiError } from '../../utils/ApiError';
 export interface QuoteSpecifications {
   paperType: string;
   size: string;
-  colorOption: 'color' | 'bw';
+  colorOption: 'color' | 'bw' | 'mixed';
   finishing: string[];
   totalPages?: number;
+  // "1, 5, 10-15" — pages printed in colour when colorOption === 'mixed'.
+  colorPages?: string;
   // Binding-specific attributes — drive the page/binding split pricing.
   coverType?: string;
   spiralType?: string;
@@ -119,6 +121,50 @@ export function isBindingService(categoryId?: string | null, serviceId?: string 
   if (categoryId === 'binding') return true;
   if (serviceId && serviceId.startsWith('bind-')) return true;
   return false;
+}
+
+/**
+ * Parse a "particular pages in colour" spec such as "1, 5, 10-15" into the
+ * number of distinct pages that fall within [1, totalPages].
+ */
+export function countColorPages(spec: string | undefined, totalPages: number): number {
+  if (!spec) return 0;
+  const pages = new Set<number>();
+
+  for (const raw of spec.split(',')) {
+    const part = raw.trim();
+    if (!part) continue;
+
+    if (part.includes('-')) {
+      const [a, b] = part.split('-').map((n) => parseInt(n.trim(), 10));
+      if (!Number.isFinite(a)) continue;
+      const end = Number.isFinite(b) ? b : a;
+      const start = Math.min(a, end);
+      const stop = Math.max(a, end);
+      for (let p = start; p <= stop; p++) {
+        if (p >= 1 && p <= totalPages) pages.add(p);
+      }
+    } else {
+      const n = parseInt(part, 10);
+      if (Number.isFinite(n) && n >= 1 && n <= totalPages) pages.add(n);
+    }
+  }
+
+  return pages.size;
+}
+
+/** How many pages print B&W vs colour for the selected colour option. */
+export function colorPageSplit(
+  colorOption: string,
+  colorPagesSpec: string | undefined,
+  totalPages: number,
+): { bwPages: number; colorPages: number } {
+  if (colorOption === 'color') return { bwPages: 0, colorPages: totalPages };
+  if (colorOption === 'mixed') {
+    const colorPages = Math.min(countColorPages(colorPagesSpec, totalPages), totalPages);
+    return { bwPages: totalPages - colorPages, colorPages };
+  }
+  return { bwPages: totalPages, colorPages: 0 };
 }
 
 /** Validate finishing selections — unknown types make quotes non-deterministic. */
@@ -238,6 +284,9 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const totalPages = Math.max(1, specifications.totalPages || 1);
   const quantity = input.quantity;
 
+  const bwExtra = overrides.colorOption?.bw ?? 0;
+  const colorExtra = overrides.colorOption?.color ?? 0;
+
   let subtotal: number;
   let pageCost: number | undefined;
   let bindingCost: number | undefined;
@@ -246,11 +295,15 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     // ── Binding services: split pricing ──────────────────────────────────
     // Pages (printing) and binding (cover) are priced independently, both from
     // seller-set additive ₹ components stored in Seller.metadata.pricingOverrides.
-    //   pages    = (paperType + colorOption) ₹/page × P × N
+    //   pages    = paperType + (bw|color per page)  × P × N
     //   binding  = (coverType + coilType + coverColor) ₹/binding × N
-    const pageRate =
-      (overrides.paperType?.[specifications.paperType] ?? 0) +
-      (overrides.colorOption?.[specifications.colorOption] ?? 0);
+    const split = colorPageSplit(specifications.colorOption, specifications.colorPages, totalPages);
+    const paperExtra = overrides.paperType?.[specifications.paperType] ?? 0;
+
+    pageCost = round2(
+      ((paperExtra + bwExtra) * split.bwPages + (paperExtra + colorExtra) * split.colorPages) *
+        quantity,
+    );
 
     let bindingRate =
       (overrides.coverType?.[specifications.coverType] ?? 0) +
@@ -263,21 +316,29 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
       bindingRate = input.basePrice;
     }
 
-    pageCost = round2(pageRate * totalPages * quantity);
     bindingCost = round2(bindingRate * quantity);
     subtotal = round2(pageCost + bindingCost + finishingCharge * quantity);
   } else {
     // ── Everything else: existing single-rate model ─────────────────────
     const paperPrice = overrides.paperType?.[specifications.paperType] ?? 0;
     const sizePrice = overrides.size?.[specifications.size] ?? 0;
-    const colorPrice = overrides.colorOption?.[specifications.colorOption] ?? 0;
     const isPerPage = unit.toLowerCase().includes('page');
-    const unitFactor = isPerPage ? totalPages : 1;
 
-    subtotal = round2(
-      (input.basePrice + paperPrice + sizePrice + colorPrice) * unitFactor * quantity +
-        finishingCharge * quantity,
-    );
+    if (isPerPage) {
+      const split = colorPageSplit(specifications.colorOption, specifications.colorPages, totalPages);
+      subtotal = round2(
+        (input.basePrice + paperPrice + sizePrice) * totalPages * quantity +
+          bwExtra * split.bwPages * quantity +
+          colorExtra * split.colorPages * quantity +
+          finishingCharge * quantity,
+      );
+    } else {
+      const colorPrice = specifications.colorOption === 'bw' ? bwExtra : colorExtra;
+      subtotal = round2(
+        (input.basePrice + paperPrice + sizePrice + colorPrice) * quantity +
+          finishingCharge * quantity,
+      );
+    }
   }
 
   const rushFee = RUSH_FEES[input.deliverySpeed];

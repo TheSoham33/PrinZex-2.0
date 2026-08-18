@@ -11,7 +11,7 @@ import {
   PAPER_TYPES,
 } from '@/lib/mock-data/stores';
 import type { OrderSpecifications, ServiceOffering, UploadedFile } from '@/lib/types';
-import { formatCurrency, formatFileSize } from '@/lib/utils';
+import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useRef, useState, type DragEvent } from 'react';
@@ -116,6 +116,9 @@ export default function SpecificationsStep({
 
   const applyCoverToAll = specs.applyCoverToAll !== false;
   const shownError = localError ?? error;
+
+  const totalPages = specs.totalPages || 0;
+  const colorPageCount = countColorPages(specs.colorPages, totalPages);
 
   return (
     <div className="space-y-8">
@@ -360,6 +363,7 @@ export default function SpecificationsStep({
               [
                 { value: 'bw', label: 'Black & White', hint: 'Most economical' },
                 { value: 'color', label: 'Colour', hint: 'Full colour print' },
+                { value: 'mixed', label: 'Particular pages', hint: 'Choose pages to print in colour' },
               ] as const
             ).map((option) => (
               <button
@@ -382,19 +386,26 @@ export default function SpecificationsStep({
         </section>
       </div>
 
-      <section>
-        <label htmlFor="colorPages" className="label">
-          Particular pages colour (optional)
-        </label>
-        <textarea
-          id="colorPages"
-          rows={2}
-          value={specs.colorPages || ''}
-          onChange={(e) => dispatch({ type: 'SET_SPEC', payload: { colorPages: e.target.value } })}
-          placeholder="e.g. 1, 5, 10-15 (These pages will be printed in colour)"
-          className="input resize-none"
-        />
-      </section>
+      {specs.colorOption === 'mixed' && (
+        <section className="animate-fade-in">
+          <label htmlFor="colorPages" className="label">
+            Pages to print in colour <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            id="colorPages"
+            rows={2}
+            value={specs.colorPages || ''}
+            onChange={(e) => dispatch({ type: 'SET_SPEC', payload: { colorPages: e.target.value } })}
+            placeholder={`e.g. 1, 5, 10-15${totalPages ? ` (out of ${totalPages} pages)` : ''}`}
+            className="input resize-none"
+          />
+          <p className="mt-1.5 text-xs text-slate-500">
+            {colorPageCount > 0
+              ? `${colorPageCount} of ${totalPages} page${totalPages === 1 ? '' : 's'} will print in colour; the rest stay black & white.`
+              : 'List the page numbers (or ranges) you want in colour, e.g. 1, 5, 10-15.'}
+          </p>
+        </section>
+      )}
 
       {isCustomizableBinding && (
         <section className="animate-fade-in rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6">

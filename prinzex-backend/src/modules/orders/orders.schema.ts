@@ -13,11 +13,13 @@ const DELIVERY_SPEEDS = ['STANDARD', 'EXPRESS', 'SAME_DAY', 'PICKUP'] as const;
 export const specificationsSchema = z.object({
   paperType: z.string().trim().min(1),
   size: z.string().trim().min(1),
-  colorOption: z.enum(['color', 'bw']),
+  colorOption: z.enum(['color', 'bw', 'mixed']),
   finishing: z.array(z.string()),
   // Page count auto-detected from the uploaded PDF. Drives per-page pricing
   // and must flow through so removing/replacing the file updates the quote.
   totalPages: z.number().int().min(0).optional(),
+  // "1, 5, 10-15" — pages printed in colour when colorOption === 'mixed'.
+  colorPages: z.string().optional(),
   // Binding-specific attributes — drive the split page/binding pricing.
   coverType: z.string().optional(),
   spiralType: z.string().optional(),
@@ -45,9 +47,10 @@ export const createOrderBody = z.object({
   specifications: z.object({
     paperType: z.string(),
     size: z.string(),
-    colorOption: z.enum(['color', 'bw']),
+    colorOption: z.enum(['color', 'bw', 'mixed']),
     finishing: z.array(z.string()),
     totalPages: z.number().int().min(0).optional(),
+    colorPages: z.string().optional(),
     coverType: z.string().optional(),
     spiralType: z.string().optional(),
     coverColor: z.string().optional(),

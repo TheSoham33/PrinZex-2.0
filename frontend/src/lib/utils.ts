@@ -81,6 +81,36 @@ export function maskPhone(phone: string): string {
   return `●●●●● ●${digits.slice(-4)}`;
 }
 
+/**
+ * Parse a "particular pages in colour" spec such as "1, 5, 10-15" into the
+ * number of distinct pages that fall within [1, totalPages].
+ */
+export function countColorPages(spec: string | undefined | null, totalPages: number): number {
+  if (!spec) return 0;
+  const pages = new Set<number>();
+
+  for (const raw of spec.split(',')) {
+    const part = raw.trim();
+    if (!part) continue;
+
+    if (part.includes('-')) {
+      const [a, b] = part.split('-').map((n) => parseInt(n.trim(), 10));
+      if (!Number.isFinite(a)) continue;
+      const end = Number.isFinite(b) ? b : a;
+      const start = Math.min(a, end);
+      const stop = Math.max(a, end);
+      for (let p = start; p <= stop; p++) {
+        if (p >= 1 && p <= totalPages) pages.add(p);
+      }
+    } else {
+      const n = parseInt(part, 10);
+      if (Number.isFinite(n) && n >= 1 && n <= totalPages) pages.add(n);
+    }
+  }
+
+  return pages.size;
+}
+
 /** Build a full URL for media stored on the backend. */
 export function getMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;

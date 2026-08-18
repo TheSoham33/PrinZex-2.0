@@ -62,7 +62,7 @@ export interface OrderSpecifications {
   paperType: 'standard' | 'premium' | 'glossy' | 'matte' | '';
   size: 'A4' | 'A3' | 'A2' | 'custom' | '';
   quantity: number;
-  colorOption: 'color' | 'bw';
+  colorOption: 'color' | 'bw' | 'mixed';
   finishing: string[];
   // New fields for Hard Binding
   colorPages?: string; // Particular pages color (e.g. "5, 10-12")

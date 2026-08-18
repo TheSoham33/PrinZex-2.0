@@ -1,7 +1,7 @@
 'use client';
 
 import type { CostBreakdown, OrderSpecifications, ServiceOffering } from '@/lib/types';
-import { formatCurrency } from '@/lib/utils';
+import { countColorPages, formatCurrency } from '@/lib/utils';
 import { IconShieldCheck, IconLock } from '@/components/icons';
 
 interface OrderSummarySidebarProps {
@@ -64,7 +64,11 @@ export default function OrderSummarySidebar({
                     <span>Binding {formatCurrency(cost.bindingCost ?? 0)}</span>
                   </div>
                 )}
-                {specs.colorPages && <p className="line-clamp-1">Color Pages: {specs.colorPages}</p>}
+                {specs.colorOption === 'mixed' && specs.colorPages && (
+                  <p className="line-clamp-1">
+                    Colour pages: {countColorPages(specs.colorPages, specs.totalPages || 0)} of {specs.totalPages || 0}
+                  </p>
+                )}
                 {specs.coverType && (
                   <div className="mt-2 rounded bg-slate-100 p-1.5 text-slate-700">
                     <p className="font-bold text-[10px] uppercase text-slate-500">Cover</p>
