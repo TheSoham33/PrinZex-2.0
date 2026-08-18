@@ -6,8 +6,9 @@ import {
   REJECTION_REASONS,
   SELLER_STATUS_LABELS,
   type SellerOrder,
-  type SellerOrderStatus,
 } from '@/lib/mock-data/seller-orders';
+import { updateOrderStatus, rejectOrder } from '@/lib/api/seller-orders';
+import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconCheckCircle, IconX } from '@/components/icons';
 
 interface OrderActionButtonsProps {
@@ -16,25 +17,26 @@ interface OrderActionButtonsProps {
   onAnnounce: (message: string) => void;
 }
 
-/** The single forward transition available from each status. */
-const NEXT_ACTION: Partial<Record<SellerOrderStatus, { next: SellerOrderStatus; label: string }>> =
-  {
-    accepted: { next: 'processing', label: 'Start processing' },
-    processing: { next: 'ready_for_pickup', label: 'Mark ready for pickup' },
-    ready_for_pickup: { next: 'dispatched', label: 'Mark dispatched' },
-  };
+/**
+ * The single forward transition available from each seller-managed status.
+ * Mirrors the backend state machine: placed → confirmed → processing →
+ * ready_for_pickup (delivery takes over after that).
+ */
+const NEXT_ACTION: Record<string, { next: string; label: string }> = {
+  confirmed: { next: 'processing', label: 'Start processing' },
+  processing: { next: 'ready_for_pickup', label: 'Mark ready for pickup' },
+};
 
 export default function OrderActionButtons({ order, onAnnounce }: OrderActionButtonsProps) {
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState(REJECTION_REASONS[0]);
   const [otherReason, setOtherReason] = useState('');
+  const [pending, setPending] = useState(false);
 
-  /**
-   * Optimistic update: write straight into the TanStack Query cache so every
-   * subscriber (list, detail page, sidebar badge) re-renders immediately.
-   */
-  const setStatus = (next: SellerOrderStatus) => {
+  /** Optimistically write a status into every cached view of this order. */
+  const patchCachedOrder = (next: string) => {
     const apply = (orders: SellerOrder[] | undefined) =>
       (orders ?? []).map((entry) => (entry.id === order.id ? { ...entry, status: next } : entry));
 
@@ -42,20 +44,48 @@ export default function OrderActionButtons({ order, onAnnounce }: OrderActionBut
     queryClient.setQueryData<SellerOrder | null>(['seller-order', order.id], (current) =>
       current ? { ...current, status: next } : current,
     );
-
-    onAnnounce(`Order ${order.id} marked as ${SELLER_STATUS_LABELS[next]}`);
   };
 
-  const confirmReject = () => {
+  const setStatus = async (next: string) => {
+    const previous = order.status;
+    patchCachedOrder(next);
+    onAnnounce(`Order ${order.id} marked as ${SELLER_STATUS_LABELS[next] ?? next}`);
+    setPending(true);
+    try {
+      await updateOrderStatus(order.id, next);
+      showToast(`Order ${order.id} ${SELLER_STATUS_LABELS[next] ?? next}`);
+    } catch (err: any) {
+      patchCachedOrder(previous); // roll back the optimistic update
+      showToast(err?.message || 'Failed to update order');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const confirmReject = async () => {
     const finalReason = reason === 'Other' ? otherReason.trim() : reason;
     if (reason === 'Other' && !finalReason) return;
 
-    setStatus('cancelled');
+    const previous = order.status;
+    patchCachedOrder('cancelled');
+    onAnnounce(`Order ${order.id} cancelled`);
     setRejecting(false);
     setOtherReason('');
+    setPending(true);
+    try {
+      await rejectOrder(order.id, finalReason);
+      showToast('Order rejected and cancelled');
+    } catch (err: any) {
+      patchCachedOrder(previous); // roll back the optimistic update
+      showToast(err?.message || 'Failed to reject order');
+    } finally {
+      setPending(false);
+    }
   };
 
-  if (order.status === 'new' || order.status === 'placed') {
+  const isNew = order.status === 'new' || order.status === 'placed';
+
+  if (isNew) {
     if (rejecting) {
       return (
         <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
@@ -99,14 +129,15 @@ export default function OrderActionButtons({ order, onAnnounce }: OrderActionBut
             <button
               type="button"
               onClick={confirmReject}
-              disabled={reason === 'Other' && !otherReason.trim()}
+              disabled={pending || (reason === 'Other' && !otherReason.trim())}
               className="btn bg-red-600 text-sm text-white hover:bg-red-700 disabled:opacity-50"
             >
-              Confirm rejection
+              {pending ? 'Rejecting…' : 'Confirm rejection'}
             </button>
             <button
               type="button"
               onClick={() => setRejecting(false)}
+              disabled={pending}
               className="btn-secondary text-sm"
             >
               Cancel
@@ -120,15 +151,17 @@ export default function OrderActionButtons({ order, onAnnounce }: OrderActionBut
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => setStatus('accepted')}
-          className="btn bg-green-600 text-sm text-white hover:bg-green-700"
+          onClick={() => setStatus('confirmed')}
+          disabled={pending}
+          className="btn bg-green-600 text-sm text-white hover:bg-green-700 disabled:opacity-50"
         >
-          <IconCheckCircle className="h-4 w-4" /> Accept order
+          <IconCheckCircle className="h-4 w-4" /> {pending ? 'Accepting…' : 'Accept order'}
         </button>
         <button
           type="button"
           onClick={() => setRejecting(true)}
-          className="btn border border-red-300 bg-white text-sm text-red-600 hover:bg-red-50"
+          disabled={pending}
+          className="btn border border-red-300 bg-white text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
         >
           <IconX className="h-4 w-4" /> Reject
         </button>
@@ -150,9 +183,10 @@ export default function OrderActionButtons({ order, onAnnounce }: OrderActionBut
     <button
       type="button"
       onClick={() => setStatus(action.next)}
-      className="btn-primary text-sm"
+      disabled={pending}
+      className="btn-primary text-sm disabled:opacity-50"
     >
-      {action.label}
+      {pending ? 'Updating…' : action.label}
     </button>
   );
 }
