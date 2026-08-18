@@ -16,13 +16,15 @@ export default function StoreDetailView({ store }: { store: StoreDetail }) {
   const [isOpen, setIsOpen] = useState(store.isOpen);
   
   useEffect(() => {
-    // Recalculate on client to ensure timezone correctness
-    setIsOpen(isStoreOpen(undefined, undefined, { hours: store.hours }));
+    // Recalculate on client to ensure timezone correctness. Use the same
+    // inputs as the store listing so "outside" and "inside" never disagree:
+    // per-day metadata hours when present, otherwise openingTime/closingTime.
+    setIsOpen(isStoreOpen(store.openingTime, store.closingTime, { hours: store.hours }));
 
     if (serviceIdParam) {
       setSelectedServiceId(serviceIdParam);
     }
-  }, [serviceIdParam, store.hours]);
+  }, [serviceIdParam, store.hours, store.openingTime, store.closingTime]);
 
   const selectedService =
     store.services.find((service) => service.id === selectedServiceId) ?? null;
