@@ -124,7 +124,11 @@ export default function ConfirmationView({ orderId }: { orderId: string }) {
                     <dd className="font-medium text-slate-900">
                       {order.specifications.quantity} ×{' '}
                       {order.specifications.size || 'custom size'},{' '}
-                      {order.specifications.colorOption === 'color' ? 'colour' : 'B&W'}
+                      {order.specifications.colorOption === 'color'
+                        ? 'colour'
+                        : order.specifications.colorOption === 'mixed'
+                          ? 'B&W + colour pages'
+                          : 'B&W'}
                       {order.specifications.paperType ? `, ${order.specifications.paperType}` : ''}
                     </dd>
                     {order.file && (

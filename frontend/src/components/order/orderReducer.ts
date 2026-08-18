@@ -4,6 +4,7 @@ import {
   PAPER_TYPES,
   TAX_RATE,
 } from '@/lib/mock-data/stores';
+import { countColorPages } from '@/lib/utils';
 import type {
   CostBreakdown,
   DeliveryAddress,
@@ -146,9 +147,18 @@ export function computeCost(
   const base = service?.startingPrice ?? 0;
   const paper = PAPER_TYPES.find((type) => type.value === specs.paperType)?.multiplier ?? 1;
   const size = PAPER_SIZES.find((entry) => entry.value === specs.size)?.multiplier ?? 1;
-  const colour = specs.colorOption === 'color' ? 2 : 1;
   const quantity = Math.max(1, specs.quantity || 1);
   const totalPages = Math.max(1, specs.totalPages || 1);
+
+  // B&W pages print at 1× colour; colour pages at 2× (rough local estimate —
+  // the signed-in quote uses the seller's exact per-page rates instead).
+  const colorPageCount =
+    specs.colorOption === 'color'
+      ? totalPages
+      : specs.colorOption === 'mixed'
+        ? Math.min(countColorPages(specs.colorPages, totalPages), totalPages)
+        : 0;
+  const bwPageCount = totalPages - colorPageCount;
 
   const finishingPerUnit = specs.finishing.reduce((sum, key) => {
     const option = FINISHING_OPTIONS.find((entry) => entry.value === key);
@@ -166,16 +176,24 @@ export function computeCost(
     // the seller's actual component rates. Pages ≈ paper × colour; binding ≈
     // the service's starting price (its per-binding rate when no cover add-ons
     // are configured).
-    const pageRate = base * paper * colour;
+    const bwPageRate = base * paper;
+    const colorPageRate = base * paper * 2;
     const bindingRate = base;
-    pageCost = Math.round(pageRate * totalPages * quantity);
+    pageCost = Math.round((bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity);
     bindingCost = Math.round(bindingRate * quantity);
     subtotal = Math.round(pageCost + bindingCost + finishingPerUnit * quantity);
   } else {
     // If unit is "per page", multiply by totalPages
     const isPerPage = service?.unit.toLowerCase().includes('page');
-    const unitFactor = isPerPage ? totalPages : 1;
-    subtotal = Math.round(base * unitFactor * paper * size * colour * quantity + finishingPerUnit * quantity);
+    if (isPerPage) {
+      subtotal = Math.round(
+        base * paper * size * (bwPageCount + colorPageCount * 2) * quantity +
+          finishingPerUnit * quantity,
+      );
+    } else {
+      const colour = specs.colorOption === 'bw' ? 1 : 2;
+      subtotal = Math.round(base * paper * size * colour * quantity + finishingPerUnit * quantity);
+    }
   }
 
   const rushFee = 0;
