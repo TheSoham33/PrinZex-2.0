@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { toggleCart } from '@/store/slices/cartSlice';
 import { getMediaUrl } from '@/lib/utils';
 import {
   IconBell,

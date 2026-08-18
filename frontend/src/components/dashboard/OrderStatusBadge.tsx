@@ -3,7 +3,7 @@ import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_STYLES,
   type OrderStatus,
-} from '@/lib/mock-data/orders';
+} from '@/lib/domain/orders';
 
 interface OrderStatusBadgeProps {
   status: OrderStatus;

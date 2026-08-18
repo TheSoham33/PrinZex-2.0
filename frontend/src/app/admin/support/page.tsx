@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSupportTickets, fetchSupportTicketById, replyToSupportTicket } from '@/lib/api/admin-orders';
 import {
   TICKET_CATEGORY_LABELS,
-} from '@/lib/mock-data/admin-orders';
+} from '@/lib/domain/admin-orders';
 import { useAppSelector } from '@/store/hooks';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
@@ -67,7 +67,7 @@ function SupportInner() {
     { key: 'id', label: 'Ticket', sortable: true, render: (r) => <span className="font-mono font-medium text-slate-900 text-xs">{r.id}</span> },
     { key: 'customerName', label: 'Customer', sortable: true, render: (r) => r.customer?.name || '—' },
     { key: 'subject', label: 'Subject', render: (r) => <span className="text-slate-700 truncate block max-w-xs">{r.subject}</span> },
-    { key: 'category', label: 'Category', sortable: true, render: (r) => TICKET_CATEGORY_LABELS[r.category] || r.category },
+    { key: 'category', label: 'Category', sortable: true, render: (r) => (TICKET_CATEGORY_LABELS as Record<string, string>)[r.category] || r.category },
     { key: 'priority', label: 'Priority', sortable: true, render: (r) => <StatusBadge status={r.priority?.toLowerCase()} /> },
     { key: 'status', label: 'Status', sortable: true, render: (r) => <StatusBadge status={r.status?.toLowerCase()} /> },
     { key: 'createdAt', label: 'Created', sortable: true, render: (r) => formatDateTime(r.createdAt) },

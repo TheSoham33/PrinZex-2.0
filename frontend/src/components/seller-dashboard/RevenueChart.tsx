@@ -10,7 +10,7 @@ import {
   YAxis,
   type TooltipContentProps,
 } from 'recharts';
-import type { DailyRevenue } from '@/lib/mock-data/seller-analytics';
+import type { DailyRevenue } from '@/lib/domain/seller-analytics';
 import { formatCurrency } from '@/lib/utils';
 import ChartDataTable from './ChartDataTable';
 

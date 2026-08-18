@@ -91,7 +91,7 @@ export default function AdminDeliveryDetailPage({
         <section className="card p-5 sm:col-span-2">
           <h2 className="text-sm font-bold text-slate-900">Documents</h2>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {rider.documents.map((d) => (
+            {rider.documents.map((d: any) => (
               <div key={d.type} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900">{d.label}</p>
@@ -109,7 +109,7 @@ export default function AdminDeliveryDetailPage({
             {rider.recentDeliveries.length === 0 ? (
               <p className="py-3 text-sm text-slate-500">No recent deliveries.</p>
             ) : (
-              rider.recentDeliveries.map((d) => (
+              rider.recentDeliveries.map((d: any) => (
                 <div key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                   <Link href={`/admin/orders/${d.orderId}`} className="font-mono text-blue-600 hover:underline">{d.orderId}</Link>
                   <span className="text-slate-600">{d.customer}</span>

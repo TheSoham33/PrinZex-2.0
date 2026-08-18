@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { PlatformActivity } from '@/lib/mock-data/admin-analytics';
+import type { PlatformActivity } from '@/lib/domain/admin-analytics';
 import { timeAgo } from '@/lib/utils';
 import {
   IconHeadphones,

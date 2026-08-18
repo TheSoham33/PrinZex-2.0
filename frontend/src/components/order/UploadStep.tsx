@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, type DragEvent } from 'react';
-import type { UploadedFile } from '@/lib/mock-data/stores';
+import type { UploadedFile } from '@/lib/domain/stores';
 import { formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconFileText, IconTrash, IconUpload } from '@/components/icons';

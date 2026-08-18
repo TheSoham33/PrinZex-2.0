@@ -1,14 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchDeliveryPayouts, fetchSellerPayouts } from '@/lib/api/admin-payouts';
 import {
-  NEXT_SCHEDULED_PAYOUT,
   type DeliveryPayout,
   type PayoutBreakdownRow,
   type SellerPayout,
-} from '@/lib/mock-data/admin-payouts';
+} from '@/lib/domain/admin-payouts';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';
@@ -140,7 +139,7 @@ export default function AdminPayoutsPage() {
         </div>
         <div className="card flex items-center gap-3 p-4">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600"><IconWallet className="h-5 w-5" /></span>
-          <div><p className="text-xs text-slate-500">Next scheduled</p><p className="text-xl font-bold text-slate-900">{formatDate(NEXT_SCHEDULED_PAYOUT)}</p></div>
+          <div><p className="text-xs text-slate-500">Payouts</p><p className="text-xl font-bold text-slate-900">On request</p></div>
         </div>
       </div>
 

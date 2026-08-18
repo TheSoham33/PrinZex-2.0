@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAppSelector } from '@/store/hooks';
 import { fetchOrders } from '@/lib/api/orders';
 import { fetchWalletBalance } from '@/lib/api/wallet';
-import { isActiveOrder } from '@/lib/mock-data/orders';
+import { isActiveOrder } from '@/lib/domain/orders';
 import OrderCard from '@/components/dashboard/OrderCard';
 import { formatCurrency } from '@/lib/utils';
 import {

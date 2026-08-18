@@ -8,6 +8,7 @@ import { setStore } from '@/lib/api/client';
 import { restoreSession, type AuthState } from '@/store/slices/authSlice';
 import { restoreSellerSession, type SellerAuthState } from '@/store/slices/sellerAuthSlice';
 import { restoreAdminSession, type AdminAuthState } from '@/store/slices/adminAuthSlice';
+import { clearCart, addToCart } from '@/store/slices/cartSlice';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { ToastProvider } from '@/components/seller-dashboard/Toast';
 
@@ -57,7 +58,6 @@ function SessionBridge({ children }: { children: React.ReactNode }) {
       const raw = window.localStorage.getItem(CART_STORAGE_KEY);
       if (raw) {
         const { items } = JSON.parse(raw);
-        const { clearCart, addToCart } = require('@/store/slices/cartSlice');
         store.dispatch(clearCart());
         items.forEach((item: any) => store.dispatch(addToCart(item)));
       }

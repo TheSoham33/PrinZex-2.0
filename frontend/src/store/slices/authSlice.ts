@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string | null;
   phone: string | null;
   role: 'CUSTOMER';
+  avatarUrl?: string | null;
 }
 
 export interface AuthTokens {

@@ -1,9 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
-import type { AdminPermissions } from '@/store/slices/adminAuthSlice';
 import AdminTopbar from '@/components/admin/AdminTopbar';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminMobileNav from '@/components/admin/AdminMobileNav';
@@ -11,23 +10,7 @@ import DynamicBreadcrumbs from '@/components/common/DynamicBreadcrumbs';
 import { ToastProvider } from '@/components/seller-dashboard/Toast';
 import { SIDEBAR_STORAGE_KEY } from '@/components/admin/adminNav';
 import { IconPrinter } from '@/components/icons';
-
-interface SidebarContextValue {
-  collapsed: boolean;
-  toggle: () => void;
-}
-
-const SidebarContext = createContext<SidebarContextValue>({ collapsed: false, toggle: () => {} });
-export const useSidebar = () => useContext(SidebarContext);
-
-/**
- * Permission check for the signed-in admin. Used to gate nav items, page
- * actions, and whole pages.
- */
-export function usePermission(permission: keyof AdminPermissions): boolean {
-  const admin = useAppSelector((state) => state.adminAuth.admin);
-  return Boolean(admin?.permissions[permission]);
-}
+import { SidebarContext } from './admin-context';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();

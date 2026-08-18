@@ -6,7 +6,7 @@ import { fetchPendingPayoutBalance, requestPayout } from '@/lib/api/wallet';
 import { fetchStoreInfo } from '@/lib/api/seller-settings';
 import {
   PAYOUT_STATUS_STYLES,
-} from '@/lib/mock-data/seller-inventory';
+} from '@/lib/domain/seller-inventory';
 import PayoutCard from '@/components/seller-dashboard/PayoutCard';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';

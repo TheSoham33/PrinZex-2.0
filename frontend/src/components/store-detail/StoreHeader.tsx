@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import type { StoreDetail } from '@/lib/mock-data/stores';
-import { storeGradient } from '@/lib/mock-data/stores';
+import type { StoreDetail } from '@/lib/domain/stores';
+import { storeGradient } from '@/lib/domain/stores';
 import {
   IconBadgeCheck,
   IconChevronRight,

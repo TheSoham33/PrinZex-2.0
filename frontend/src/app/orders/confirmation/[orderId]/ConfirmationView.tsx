@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import type { Order } from '@/lib/mock-data/stores';
-import { DELIVERY_SPEEDS } from '@/lib/mock-data/stores';
+import type { Order } from '@/lib/domain/stores';
+import { DELIVERY_SPEEDS } from '@/lib/domain/stores';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import ReviewModal from '@/components/dashboard/ReviewModal';
 import {

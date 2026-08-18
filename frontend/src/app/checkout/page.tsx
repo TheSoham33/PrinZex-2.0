@@ -12,7 +12,7 @@ import Footer from '@/components/landing/Footer';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
 import { formatCurrency } from '@/lib/utils';
 import { IconMapPin, IconTruck, IconCreditCard, IconAlertCircle, IconCheckCircle } from '@/components/icons';
-import { DELIVERY_SPEEDS } from '@/lib/mock-data/stores';
+import { DELIVERY_SPEEDS } from '@/lib/domain/stores';
 
 export default function CheckoutPage() {
   const dispatch = useAppDispatch();

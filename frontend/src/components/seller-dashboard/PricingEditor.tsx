@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { PRICING_UNITS, type PricingUnit } from '@/lib/seller-types';
-import type { SellerPricingEntry } from '@/lib/mock-data/seller-inventory';
+import type { SellerPricingEntry } from '@/lib/domain/seller-inventory';
 import { formatCurrency } from '@/lib/utils';
 import { IconPencil } from '@/components/icons';
 

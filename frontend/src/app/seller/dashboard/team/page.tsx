@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTeam } from '@/lib/api/seller-inventory';
-import type { TeamMember, TeamRole } from '@/lib/mock-data/seller-inventory';
+import type { TeamMember, TeamRole } from '@/lib/domain/seller-inventory';
 import TeamMemberRow from '@/components/seller-dashboard/TeamMemberRow';
 import Modal from '@/components/seller-dashboard/Modal';
 import { useToast } from '@/components/seller-dashboard/Toast';

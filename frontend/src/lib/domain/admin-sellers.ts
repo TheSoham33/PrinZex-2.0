@@ -66,5 +66,3 @@ export const REJECTION_REASONS = [
   'Business address does not match records',
   'Duplicate application already on file',
 ];
-
-export const MOCK_ADMIN_SELLERS: AdminSeller[] = [];

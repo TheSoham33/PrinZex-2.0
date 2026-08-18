@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { StoreDetail } from '@/lib/mock-data/stores';
+import type { StoreDetail } from '@/lib/domain/stores';
 import { isStoreOpen } from '@/lib/api/mappers';
 import { IconClock, IconMessageSquare, IconTruck, IconWallet } from '@/components/icons';
 

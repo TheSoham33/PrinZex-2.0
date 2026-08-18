@@ -295,6 +295,13 @@ const SELLERS: Array<{
   }>;
   documents: string[];
   account: { holder: string; number: string; ifsc: string; pan: string };
+  /** Seller-set pricing overrides stored in Seller.metadata. */
+  pricingOverrides?: {
+    pageRate?: { bw: number; color: number };
+    coverType?: Record<string, number>;
+    coilType?: Record<string, number>;
+    coverColor?: Record<string, number>;
+  };
 }> = [
   {
     ownerName: 'Ramesh Gupta',
@@ -323,6 +330,7 @@ const SELLERS: Array<{
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
     account: { holder: 'Ramesh Gupta', number: '50100234567890', ifsc: 'HDFC0001234', pan: 'ABCDE1234F' },
+    pricingOverrides: { pageRate: { bw: 2, color: 10 } },
   },
   {
     ownerName: 'Anil Deshmukh',
@@ -351,6 +359,12 @@ const SELLERS: Array<{
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
     account: { holder: 'Anil Deshmukh', number: '50200345678901', ifsc: 'ICIC0005678', pan: 'FGHIJ5678K' },
+    pricingOverrides: {
+      pageRate: { bw: 1.5, color: 9 },
+      coverType: { clear: 10, frosted: 15, printed: 25, opaque: 20 },
+      coilType: { plastic: 15, 'wire-o': 30 },
+      coverColor: {},
+    },
   },
   {
     ownerName: 'Kavitha Rao',
@@ -406,6 +420,7 @@ const SELLERS: Array<{
     ],
     documents: [], // pending seller — no documents uploaded yet
     account: { holder: 'Mohan Lal', number: '50400567890123', ifsc: 'UTIB0003456', pan: 'PQRST3456Q' },
+    pricingOverrides: { pageRate: { bw: 1, color: 7 } },
   },
 ];
 
@@ -453,6 +468,7 @@ async function seedSellers(adminId: string) {
         totalOrders: s.totalOrders,
         completionRate: s.completionRate,
         onTimeRate: s.onTimeRate,
+        metadata: s.pricingOverrides ? { pricingOverrides: s.pricingOverrides } : undefined,
         services: { create: s.services },
         pincodes: { create: s.servedPincodes.map((pincode) => ({ pincode, isExcluded: false })) },
         bankDetails: {

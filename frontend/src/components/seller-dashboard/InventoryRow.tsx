@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { InventoryItem } from '@/lib/mock-data/seller-inventory';
+import type { InventoryItem } from '@/lib/domain/seller-inventory';
 import { formatDate } from '@/lib/utils';
 import { IconAlertTriangle, IconRefreshCw } from '@/components/icons';
 

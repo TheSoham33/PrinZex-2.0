@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { SellerReview } from '@/lib/mock-data/seller-inventory';
+import type { SellerReview } from '@/lib/domain/seller-inventory';
 import { formatDate } from '@/lib/utils';
 import { IconMessageSquare, IconSend, IconStar } from '@/components/icons';
 

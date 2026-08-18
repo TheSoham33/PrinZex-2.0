@@ -5,7 +5,7 @@ import {
   DELIVERY_SPEEDS,
   type DeliveryAddress,
   type DeliverySpeed,
-} from '@/lib/mock-data/stores';
+} from '@/lib/domain/stores';
 import { formatCurrency } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconMapPin, IconPlus, IconStore, IconTruck, IconX } from '@/components/icons';

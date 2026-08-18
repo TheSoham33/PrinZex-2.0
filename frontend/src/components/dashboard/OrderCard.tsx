@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useState } from 'react';
-import type { DashboardOrder } from '@/lib/mock-data/orders';
+import type { DashboardOrder } from '@/lib/domain/orders';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import OrderStatusBadge from './OrderStatusBadge';
 import ReviewModal from './ReviewModal';

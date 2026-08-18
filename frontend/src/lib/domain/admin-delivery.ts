@@ -43,5 +43,3 @@ export const DELIVERY_ZONES = [
   'HSR Layout',
   'Indiranagar',
 ];
-
-export const MOCK_DELIVERY_BOYS: DeliveryBoy[] = [];

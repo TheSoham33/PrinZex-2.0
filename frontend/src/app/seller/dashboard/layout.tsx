@@ -26,13 +26,13 @@ export default function SellerDashboardLayout({ children }: { children: React.Re
     if (!checked) return;
     if (!seller) {
       router.replace('/seller/login');
-    } else if (seller.status === 'pending') {
+    } else if (seller.status === 'PENDING') {
       router.replace('/seller/pending');
     }
   }, [checked, seller, router]);
 
   // Logged out or awaiting approval — show a placeholder while redirecting.
-  if (!seller || seller.status === 'pending') {
+  if (!seller || seller.status === 'PENDING') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">
@@ -47,7 +47,7 @@ export default function SellerDashboardLayout({ children }: { children: React.Re
     );
   }
 
-  const isSuspended = seller.status === 'suspended';
+  const isSuspended = seller.status === 'SUSPENDED';
 
   // Suspended sellers get a terminal message instead of any dashboard content.
   if (isSuspended) {
