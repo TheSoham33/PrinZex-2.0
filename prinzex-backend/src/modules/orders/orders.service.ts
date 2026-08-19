@@ -133,14 +133,24 @@ async function loadOrderableService(sellerId: string, sellerServiceId: string) {
     throw ApiError.badRequest('This service is currently not available at the store');
   }
 
-  const seller = await prisma.seller.findUnique({ where: { id: sellerId } });
+  const [seller, pageService] = await Promise.all([
+    prisma.seller.findUnique({ where: { id: sellerId } }),
+    prisma.sellerService.findFirst({
+      where: { sellerId, unit: { contains: 'page' } },
+      orderBy: { basePrice: 'asc' },
+    }),
+  ]);
   if (!seller) {
     throw ApiError.notFound('Store not found');
   }
   if (seller.status !== 'APPROVED') {
     throw ApiError.badRequest('This store is not accepting orders right now');
   }
-  return { service, seller };
+  return {
+    service,
+    seller,
+    pageRateFallback: pageService ? Number(pageService.basePrice) : undefined,
+  };
 }
 
 // ── POST /api/orders/quote ─────────────────────────────────────────────────
@@ -153,7 +163,10 @@ export interface QuoteResponse extends QuoteResult {
 
 export async function createQuote(customerId: string, input: QuoteBody): Promise<QuoteResponse> {
   assertKnownFinishing(input.specifications.finishing);
-  const { service, seller } = await loadOrderableService(input.sellerId, input.sellerServiceId);
+  const { service, seller, pageRateFallback } = await loadOrderableService(
+    input.sellerId,
+    input.sellerServiceId,
+  );
 
   // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
   // enforced for real at POST /orders (which has deliveryAddressId).
@@ -182,6 +195,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     commissionRate: Number(seller.commissionRate),
     discount,
     sellerMetadata: seller.metadata,
+    pageRateFallback,
   });
 
   const timestamp = Date.now();
@@ -221,7 +235,10 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
   }
 
   // 3. Server-side quote — client-sent prices are ignored entirely.
-  const { service, seller } = await loadOrderableService(input.sellerId, input.sellerServiceId);
+  const { service, seller, pageRateFallback } = await loadOrderableService(
+    input.sellerId,
+    input.sellerServiceId,
+  );
 
   // SAME_DAY only when the store actually delivers to the address pincode.
   if (input.deliverySpeed === 'SAME_DAY') {
@@ -262,6 +279,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     commissionRate: Number(seller.commissionRate),
     discount,
     sellerMetadata: seller.metadata,
+    pageRateFallback,
   });
 
   const paysByWallet = input.paymentMethod === 'wallet';

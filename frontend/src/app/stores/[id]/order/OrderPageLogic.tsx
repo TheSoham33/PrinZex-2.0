@@ -98,11 +98,20 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       ? quoteData.coupon.error ?? 'Coupon is not valid'
       : null;
 
+  // Seller's cheapest per-page rate — fallback for binding services.
+  const pageRateFallback = useMemo(() => {
+    const pageServices = store.services.filter((s) =>
+      s.unit?.toLowerCase().includes('page'),
+    );
+    if (pageServices.length === 0) return undefined;
+    return Math.min(...pageServices.map((s) => s.startingPrice));
+  }, [store.services]);
+
   // Calculate local cost for non-logged in users or while loading
   const cost = useMemo(() => {
     if (token && quoteData) return quoteData;
-    return computeCost(specs, service, 0, 0);
-  }, [token, quoteData, specs, service]);
+    return computeCost(specs, service, 0, 0, pageRateFallback);
+  }, [token, quoteData, specs, service, pageRateFallback]);
 
   useEffect(() => {
     if (quoteData) {
