@@ -10,12 +10,22 @@ import { formatCurrency } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconMapPin, IconPlus, IconStore, IconTruck, IconX } from '@/components/icons';
 
+export interface NewAddressInput {
+  label: string;
+  fullAddress: string;
+  phone: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
 interface DeliveryStepProps {
   addresses: DeliveryAddress[];
   selectedAddress: DeliveryAddress | null;
   speed: DeliverySpeed;
   dispatch: React.Dispatch<OrderAction>;
-  onAddAddress: (address: DeliveryAddress) => void;
+  /** Persist the address; resolves true on success so the modal closes. */
+  onAddAddress: (address: NewAddressInput) => Promise<boolean>;
   error: string | null;
 }
 
@@ -28,6 +38,7 @@ export default function DeliveryStep({
   error,
 }: DeliveryStepProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ 
     label: '', 
     fullAddress: '', 
@@ -45,7 +56,7 @@ export default function DeliveryStep({
     };
   }, [modalOpen]);
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.label.trim() || !form.fullAddress.trim() || !form.phone.trim() || !form.pincode.trim() || !form.city.trim() || !form.state.trim()) {
       setFormError('All fields are required');
@@ -60,25 +71,37 @@ export default function DeliveryStep({
       return;
     }
 
-    onAddAddress({
-      id: `addr-${Date.now()}`,
-      label: form.label.trim(),
-      fullAddress: form.fullAddress.trim(),
-      phone: form.phone.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      pincode: form.pincode.trim(),
-    } as any);
-    setForm({ 
-      label: '', 
-      fullAddress: '', 
-      phone: '', 
-      city: 'Kolkata', 
-      state: 'West Bengal', 
-      pincode: '' 
-    });
+    setSaving(true);
     setFormError(null);
-    setModalOpen(false);
+    try {
+      const saved = await onAddAddress({
+        label: form.label.trim(),
+        fullAddress: form.fullAddress.trim(),
+        phone: form.phone.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        pincode: form.pincode.trim(),
+      });
+
+      if (saved) {
+        setForm({
+          label: '',
+          fullAddress: '',
+          phone: '',
+          city: 'Kolkata',
+          state: 'West Bengal',
+          pincode: '',
+        });
+        setFormError(null);
+        setModalOpen(false);
+      } else {
+        setFormError('Could not save this address. Please try again.');
+      }
+    } catch {
+      setFormError('Could not save this address. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isPickup = speed === 'pickup';
@@ -310,12 +333,13 @@ export default function DeliveryStep({
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="btn-secondary flex-1"
+                  disabled={saving}
+                  className="btn-secondary flex-1 disabled:opacity-50"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary flex-1">
-                  Save address
+                <button type="submit" disabled={saving} className="btn-primary flex-1 disabled:opacity-50">
+                  {saving ? 'Saving…' : 'Save address'}
                 </button>
               </div>
             </form>
