@@ -361,8 +361,10 @@ const SELLERS: Array<{
     account: { holder: 'Anil Deshmukh', number: '50200345678901', ifsc: 'ICIC0005678', pan: 'FGHIJ5678K' },
     pricingOverrides: {
       pageRate: { bw: 1.5, color: 9 },
-      coverType: { clear: 10, frosted: 15, printed: 25, opaque: 20 },
-      coilType: { plastic: 15, 'wire-o': 30 },
+      // Extras are added ON TOP of the ₹60 base binding price. Standard
+      // options (clear cover, plastic coil) cost nothing extra.
+      coverType: { clear: 0, frosted: 5, printed: 15, opaque: 10 },
+      coilType: { plastic: 0, 'wire-o': 15 },
       coverColor: {},
     },
   },

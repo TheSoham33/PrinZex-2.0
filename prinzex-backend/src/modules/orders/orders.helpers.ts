@@ -318,16 +318,15 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     //   binding  = (coverType + coilType + coverColor) ₹/binding × N
     pageCost = round2((bwRate * split.bwPages + colorRate * split.colorPages) * quantity);
 
-    let bindingRate =
+    // Binding price = the service's per-document base price (e.g. ₹60/piece)
+    // PLUS any cover-customization extras (cover type, coil type, cover colour).
+    // The base is always included so a seller's set price is never replaced by
+    // the add-ons.
+    const bindingRate =
+      input.basePrice +
       (overrides.coverType?.[specifications.coverType ?? ''] ?? 0) +
       (overrides.coilType?.[specifications.spiralType ?? ''] ?? 0) +
       (overrides.coverColor?.[specifications.coverColor ?? ''] ?? 0);
-
-    // Legacy fallback: a seller who never configured cover add-ons keeps their
-    // original per-document base price as the binding rate (never a free bind).
-    if (bindingRate === 0 && input.basePrice > 0) {
-      bindingRate = input.basePrice;
-    }
 
     bindingCost = round2(bindingRate * quantity);
     subtotal = round2(pageCost + bindingCost + finishingCharge * quantity);
