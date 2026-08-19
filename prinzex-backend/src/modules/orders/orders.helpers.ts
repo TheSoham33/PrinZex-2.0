@@ -81,17 +81,20 @@ export const COLOR_OPTION_MULTIPLIERS: Record<string, number> = {
   color: 2.0,
 };
 
+// These are the ONLY customer-facing delivery charges and must match the
+// DELIVERY_SPEEDS costs shown on the store page and at checkout.
+// Standard and pickup are free; express/same-day carry a flat premium.
 export const RUSH_FEES: Record<DeliverySpeed, number> = {
   STANDARD: 0,
-  EXPRESS: 50,
-  SAME_DAY: 120,
+  EXPRESS: 0,
+  SAME_DAY: 0,
   PICKUP: 0,
 };
 
 export const DELIVERY_FEES: Record<DeliverySpeed, number> = {
-  STANDARD: 30,
-  EXPRESS: 60,
-  SAME_DAY: 100,
+  STANDARD: 0,
+  EXPRESS: 50,
+  SAME_DAY: 120,
   PICKUP: 0,
 };
 

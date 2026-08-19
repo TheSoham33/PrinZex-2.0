@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, toApiDeliverySpeed } from '@/lib/utils';
 import { IconMapPin, IconTruck, IconCreditCard, IconAlertCircle, IconCheckCircle } from '@/components/icons';
 import { DELIVERY_SPEEDS } from '@/lib/domain/stores';
 
@@ -60,7 +60,7 @@ export default function CheckoutPage() {
         quantity: item.specifications.quantity,
         specifications: item.specifications,
         deliveryAddressId: selectedAddressId,
-        deliverySpeed: deliverySpeed,
+        deliverySpeed: toApiDeliverySpeed(deliverySpeed),
         paymentMethod: paymentMethod,
         specialInstructions: item.specialInstructions,
         fileUrl: "/uploads/designs/demo.pdf" // In real app, would use the actual uploaded URL
