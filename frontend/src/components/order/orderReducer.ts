@@ -55,11 +55,15 @@ export function createInitialState(
       storeName,
       specifications: {
         serviceId,
-        paperType: '',
-        size: '',
+        paperType: 'standard',
+        size: 'A4',
         quantity: 1,
         colorOption: 'bw',
         finishing: [],
+        // Binding defaults — applied for every new job.
+        spiralType: 'plastic',
+        coverType: 'clear',
+        coverDesignType: 'default',
       },
       file: null,
       specialInstructions: '',
@@ -145,7 +149,8 @@ export function computeCost(
 ): CostBreakdown {
   const base = service?.startingPrice ?? 0;
   const quantity = Math.max(1, specs.quantity || 1);
-  const totalPages = Math.max(1, specs.totalPages || 1);
+  // No uploaded file ⇒ 0 pages ⇒ page cost ₹0 (mirrors the backend quote).
+  const totalPages = Math.max(0, specs.totalPages || 0);
 
   const isPerPage = service?.unit.toLowerCase().includes('page') ?? false;
   // A page service's base price IS the B&W page rate; a binding service's base
