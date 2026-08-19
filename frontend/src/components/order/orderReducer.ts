@@ -139,13 +139,20 @@ export function computeCost(
   service: ServiceOffering | undefined,
   deliveryFee: number,
   discount: number,
+  /** Seller's cheapest per-page rate — used for binding services, whose own
+   *  starting price is per-document (never a per-page rate). */
+  pageRateFallback?: number,
 ): CostBreakdown {
   const base = service?.startingPrice ?? 0;
   const quantity = Math.max(1, specs.quantity || 1);
   const totalPages = Math.max(1, specs.totalPages || 1);
 
-  const bwPageRate = base;
-  const colorPageRate = base * 2;
+  const isPerPage = service?.unit.toLowerCase().includes('page') ?? false;
+  // A page service's base price IS the B&W page rate; a binding service's base
+  // price is the per-document binding rate, so its pages use the seller's
+  // page-service rate instead (never the binding price).
+  const bwPageRate = isPerPage ? base : (pageRateFallback ?? 0);
+  const colorPageRate = bwPageRate * 2;
 
   const colorPageCount =
     specs.colorOption === 'color'

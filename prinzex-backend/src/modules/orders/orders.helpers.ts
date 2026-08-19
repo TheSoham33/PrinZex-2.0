@@ -264,6 +264,9 @@ export interface QuoteComputationInput {
   commissionRate: number; // Seller.commissionRate
   discount: number; // validated coupon discount (0 when none)
   sellerMetadata?: Prisma.JsonValue | null;
+  /** Seller's cheapest per-page rate — fallback for binding services, whose
+   *  own basePrice is per-document and must never be used as a page rate. */
+  pageRateFallback?: number;
 }
 
 /** Pure, deterministic quote math — fully unit-testable offline. */
@@ -284,13 +287,22 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const totalPages = Math.max(1, specifications.totalPages || 1);
   const quantity = input.quantity;
 
+  const isPerPage = unit.toLowerCase().includes('page');
+
   // Seller-set per-page rates, common across all page services. A page is
   // either B&W or colour; every colour option is priced from these two rates.
-  // Fallbacks keep pre-configured sellers working: legacy colorOption add-ons,
-  // then the service's own base price (colour ≈ 2× B&W).
-  const bwRate = overrides.pageRate?.bw ?? overrides.colorOption?.bw ?? input.basePrice;
+  // Fallbacks: legacy colorOption add-ons, then the service's own base price
+  // (per-page services) or the seller's cheapest page-service rate (binding
+  // services). A binding service's basePrice is per-document and must never
+  // be used as a per-page rate.
+  const bwRate =
+    overrides.pageRate?.bw ??
+    overrides.colorOption?.bw ??
+    (isPerPage ? input.basePrice : input.pageRateFallback ?? 0);
   const colorRate =
-    overrides.pageRate?.color ?? overrides.colorOption?.color ?? input.basePrice * 2;
+    overrides.pageRate?.color ??
+    overrides.colorOption?.color ??
+    bwRate * 2;
 
   const split = colorPageSplit(specifications.colorOption, specifications.colorPages, totalPages);
 
