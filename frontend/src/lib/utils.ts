@@ -53,6 +53,21 @@ export function formatFileSize(bytes: number): string {
 /** Simulated latency used by UI flows that emulate a network step. */
 export const fakeDelay = (ms = 600) => new Promise<void>((res) => setTimeout(res, ms));
 
+/**
+ * Normalize the frontend delivery-speed value to the API enum. The frontend
+ * uses a hyphen ('same-day') while the backend enum is 'SAME_DAY'; `.toUpperCase()`
+ * alone would produce the invalid 'SAME-DAY'.
+ */
+export function toApiDeliverySpeed(
+  speed: string | undefined | null,
+): 'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP' {
+  const value = (speed || 'standard').toLowerCase();
+  if (value === 'same-day' || value === 'same_day') return 'SAME_DAY';
+  if (value === 'express') return 'EXPRESS';
+  if (value === 'pickup') return 'PICKUP';
+  return 'STANDARD';
+}
+
 /** Compact relative time, e.g. "32 min ago", "3 hr ago", "2 days ago". */
 export function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();

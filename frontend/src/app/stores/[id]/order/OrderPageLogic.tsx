@@ -14,7 +14,7 @@ import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, toApiDeliverySpeed } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -124,7 +124,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         coverColor: specs.coverColor,
         coverDesignType: specs.coverDesignType,
       },
-      deliverySpeed: (state.order.deliverySpeed || 'standard').toUpperCase(),
+      deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
       couponCode: couponCode || undefined,
     }),
     enabled: !!token && !!specs.serviceId && !!specs.paperType && !!specs.size,
@@ -237,7 +237,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           coverDesignType: specs.coverDesignType,
         },
         deliveryAddressId: (state.order.address as any)?.id,
-        deliverySpeed: (state.order.deliverySpeed || 'standard').toUpperCase(),
+        deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
         paymentMethod: state.order.paymentMethod,
         specialInstructions: state.order.specialInstructions,
         couponCode: couponCode || undefined,
