@@ -58,10 +58,19 @@ export default function OrderSummarySidebar({
               <div className="space-y-1 text-[11px] text-slate-500">
                 {specs.paperType && <p>Paper: <span className="capitalize">{specs.paperType}</span></p>}
                 {specs.size && <p>Size: {specs.size}</p>}
-                {typeof cost.pageCost === 'number' && (
-                  <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700">
-                    <span>Pages {formatCurrency(cost.pageCost)}</span>
-                    <span>Binding {formatCurrency(cost.bindingCost ?? 0)}</span>
+                {typeof cost.bindingCost === 'number' && (
+                  <div className="mt-2 space-y-1 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700">
+                    {specs?.totalPages ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <span>Pages {formatCurrency(cost.pageCost ?? 0)}</span>
+                        <span>Binding {formatCurrency(cost.bindingCost)}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <span>Binding</span>
+                        <span>{formatCurrency(cost.bindingCost)}</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {specs.colorOption === 'mixed' && specs.colorPages && (
