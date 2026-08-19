@@ -370,7 +370,12 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               cost={cost}
               dispatch={dispatch}
               agreed={agreed}
-              onAgreedChange={setAgreed}
+              onAgreedChange={(value) => {
+                setAgreed(value);
+                // Checking the box clears the "accept the terms" error so the
+                // Place order button re-enables immediately.
+                if (value) dispatch({ type: 'SET_ERROR', payload: null });
+              }}
               error={state.error}
               couponCode={couponCode}
               onCouponCodeChange={setCouponCode}
