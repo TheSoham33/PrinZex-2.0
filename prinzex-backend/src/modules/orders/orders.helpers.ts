@@ -284,7 +284,9 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     0,
   );
 
-  const totalPages = Math.max(1, specifications.totalPages || 1);
+  // No uploaded file ⇒ 0 pages ⇒ page cost ₹0 (the summary resets). Once a PDF
+  // is chosen the page count is set and pricing scales with it.
+  const totalPages = Math.max(0, specifications.totalPages || 0);
   const quantity = input.quantity;
 
   const isPerPage = unit.toLowerCase().includes('page');

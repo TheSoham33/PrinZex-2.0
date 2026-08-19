@@ -107,11 +107,13 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     return Math.min(...pageServices.map((s) => s.startingPrice));
   }, [store.services]);
 
-  // Calculate local cost for non-logged in users or while loading
+  // Calculate local cost for non-logged in users or while loading. While the
+  // quote is refetching (e.g. right after the PDF was removed) we use the local
+  // estimate so the summary resets immediately instead of showing stale prices.
   const cost = useMemo(() => {
-    if (token && quoteData) return quoteData;
+    if (token && quoteData && !quoteLoading) return quoteData;
     return computeCost(specs, service, 0, 0, pageRateFallback);
-  }, [token, quoteData, specs, service, pageRateFallback]);
+  }, [token, quoteData, quoteLoading, specs, service, pageRateFallback]);
 
   useEffect(() => {
     if (quoteData) {

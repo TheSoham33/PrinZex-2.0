@@ -175,7 +175,7 @@ export default function SpecificationsStep({
                   type="button"
                   onClick={() => {
                     dispatch({ type: 'SET_FILE', payload: null });
-                    dispatch({ type: 'SET_SPEC', payload: { totalPages: 0 } });
+                    dispatch({ type: 'SET_SPEC', payload: { totalPages: 0, colorPages: '' } });
                     if (inputRef.current) inputRef.current.value = '';
                   }}
                   className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
