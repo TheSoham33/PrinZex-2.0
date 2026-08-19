@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   type StoreDetail,
 } from '@/lib/types';
-import { fetchAddresses } from '@/lib/api/customer';
+import { createAddress, fetchAddresses } from '@/lib/api/customer';
 import { getOrderQuote, placeOrder as placeOrderApi } from '@/lib/api/orders';
 import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
 import { useRazorpay } from '@/hooks/useRazorpay';
@@ -52,11 +52,50 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     createInitialState(store.id, store.name, serviceParam),
   );
   
+  const queryClient = useQueryClient();
+
   const { data: addresses = [] } = useQuery({
     queryKey: ['addresses'],
     queryFn: fetchAddresses,
     enabled: !!token
   });
+
+  // Persist a new address (from the DeliveryStep modal), refresh the list and
+  // auto-select it so the customer stays in the order flow.
+  const handleAddAddress = async (address: {
+    label: string;
+    fullAddress: string;
+    phone: string;
+    city: string;
+    state: string;
+    pincode: string;
+  }): Promise<boolean> => {
+    try {
+      const created = await createAddress({
+        label: address.label,
+        fullAddress: address.fullAddress,
+        phone: address.phone,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      dispatch({
+        type: 'SET_ADDRESS',
+        payload: {
+          id: created.id,
+          label: created.label,
+          fullAddress: created.fullAddress,
+          phone: created.phone,
+        },
+      });
+      showToast('Address saved');
+      return true;
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save address', 'error');
+      return false;
+    }
+  };
 
   const [agreed, setAgreed] = useState(false);
   const [maxReached, setMaxReached] = useState(1);
@@ -321,7 +360,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               selectedAddress={state.order.address ?? null}
               speed={state.order.deliverySpeed ?? 'standard'}
               dispatch={dispatch}
-              onAddAddress={() => router.push('/dashboard/addresses')}
+              onAddAddress={handleAddAddress}
               error={state.error}
             />
           )}
