@@ -14,7 +14,7 @@ import type { OrderSpecifications, ServiceOffering, UploadedFile } from '@/lib/t
 import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
-import { useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { PDFDocument } from 'pdf-lib';
 
 const ACCEPTED = '.pdf';
@@ -27,6 +27,19 @@ interface SpecificationsStepProps {
   instructions: string;
   dispatch: React.Dispatch<OrderAction>;
   error: string | null;
+  /** Cover customization options offered by this specific store. */
+  availableCoverTypes?: string[];
+  availableCoilTypes?: string[];
+  availableCoverColors?: string[];
+}
+
+/** `undefined` availability → show all options; otherwise only the offered ones. */
+function filterOffered<T extends { value: string }>(
+  options: readonly T[],
+  available: string[] | undefined,
+): T[] {
+  if (!available) return [...options];
+  return options.filter((option) => available.includes(option.value));
 }
 
 export default function SpecificationsStep({
@@ -36,6 +49,9 @@ export default function SpecificationsStep({
   instructions,
   dispatch,
   error,
+  availableCoverTypes,
+  availableCoilTypes,
+  availableCoverColors,
 }: SpecificationsStepProps) {
   const isHardBinding = specs.serviceId === 'bind-hard';
   const isSpiralBinding = specs.serviceId === 'bind-spiral';
@@ -119,6 +135,45 @@ export default function SpecificationsStep({
 
   const totalPages = specs.totalPages || 0;
   const colorPageCount = countColorPages(specs.colorPages, totalPages);
+
+  // Only show cover-customization options this store actually offers.
+  const offeredCoilTypes = filterOffered(SPIRAL_COIL_TYPES, availableCoilTypes);
+  const offeredCoverTypes = filterOffered(
+    isSpiralBinding ? SPIRAL_COVER_TYPES : COVER_TYPES,
+    availableCoverTypes,
+  );
+  const offeredCoverColors = filterOffered(COVER_COLORS, availableCoverColors);
+
+  // If a previously selected option is no longer offered (e.g. the seller
+  // changed availability, or the default isn't offered), fall back to the
+  // first offered option so the form never shows a hidden selection.
+  useEffect(() => {
+    if (!isCustomizableBinding) return;
+    const fixes: Partial<OrderSpecifications> = {};
+
+    if (offeredCoilTypes.length > 0 && specs.spiralType && !offeredCoilTypes.some((t) => t.value === specs.spiralType)) {
+      fixes.spiralType = offeredCoilTypes[0].value;
+    }
+    if (offeredCoverTypes.length > 0 && specs.coverType && !offeredCoverTypes.some((t) => t.value === specs.coverType)) {
+      fixes.coverType = offeredCoverTypes[0].value;
+    }
+    if (offeredCoverColors.length > 0 && specs.coverColor && !offeredCoverColors.some((c) => c.value === specs.coverColor)) {
+      fixes.coverColor = offeredCoverColors[0].value;
+    }
+
+    if (Object.keys(fixes).length > 0) {
+      dispatch({ type: 'SET_SPEC', payload: fixes });
+    }
+  }, [
+    isCustomizableBinding,
+    specs.spiralType,
+    specs.coverType,
+    specs.coverColor,
+    offeredCoilTypes,
+    offeredCoverTypes,
+    offeredCoverColors,
+    dispatch,
+  ]);
 
   return (
     <div className="space-y-8">
@@ -416,21 +471,25 @@ export default function SpecificationsStep({
               <div>
                 <p className="label">Spiral Type <span className="text-red-500">*</span></p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {SPIRAL_COIL_TYPES.map((type) => (
-                    <button
-                      key={type.value}
-                      type="button"
-                      onClick={() => dispatch({ type: 'SET_SPEC', payload: { spiralType: type.value } })}
-                      className={`rounded-xl border p-3 bg-white text-left transition-all ${
-                        specs.spiralType === type.value
-                          ? 'border-blue-500 ring-1 ring-blue-500'
-                          : 'border-slate-200 hover:border-blue-200'
-                      }`}
-                    >
-                      <span className="block text-sm font-semibold text-slate-900">{type.label}</span>
-                      <span className="mt-0.5 block text-xs text-slate-500">{type.hint}</span>
-                    </button>
-                  ))}
+                  {offeredCoilTypes.length > 0 ? (
+                    offeredCoilTypes.map((type) => (
+                      <button
+                        key={type.value}
+                        type="button"
+                        onClick={() => dispatch({ type: 'SET_SPEC', payload: { spiralType: type.value } })}
+                        className={`rounded-xl border p-3 bg-white text-left transition-all ${
+                          specs.spiralType === type.value
+                            ? 'border-blue-500 ring-1 ring-blue-500'
+                            : 'border-slate-200 hover:border-blue-200'
+                        }`}
+                      >
+                        <span className="block text-sm font-semibold text-slate-900">{type.label}</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">{type.hint}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="col-span-full text-sm text-slate-400">No spiral types offered by this store.</p>
+                  )}
                 </div>
               </div>
             )}
@@ -438,21 +497,25 @@ export default function SpecificationsStep({
             <div>
               <p className="label">Cover type <span className="text-red-500">*</span></p>
               <div className="grid gap-3 sm:grid-cols-3">
-                {(isSpiralBinding ? SPIRAL_COVER_TYPES : COVER_TYPES).map((type) => (
-                  <button
-                    key={type.value}
-                    type="button"
-                    onClick={() => dispatch({ type: 'SET_SPEC', payload: { coverType: type.value } })}
-                    className={`rounded-xl border p-3 bg-white text-left transition-all ${
-                      specs.coverType === type.value
-                        ? 'border-blue-500 ring-1 ring-blue-500'
-                        : 'border-slate-200 hover:border-blue-200'
-                    }`}
-                  >
-                    <span className="block text-sm font-semibold text-slate-900">{type.label}</span>
-                    <span className="mt-0.5 block text-xs text-slate-500">{type.hint}</span>
-                  </button>
-                ))}
+                {offeredCoverTypes.length > 0 ? (
+                  offeredCoverTypes.map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => dispatch({ type: 'SET_SPEC', payload: { coverType: type.value } })}
+                      className={`rounded-xl border p-3 bg-white text-left transition-all ${
+                        specs.coverType === type.value
+                          ? 'border-blue-500 ring-1 ring-blue-500'
+                          : 'border-slate-200 hover:border-blue-200'
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold text-slate-900">{type.label}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">{type.hint}</span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="col-span-full text-sm text-slate-400">No cover types offered by this store.</p>
+                )}
               </div>
             </div>
 
@@ -460,17 +523,21 @@ export default function SpecificationsStep({
               <div>
                 <p className="label">Colour for cover <span className="text-red-500">*</span></p>
                 <div className="flex flex-wrap gap-3">
-                  {COVER_COLORS.map((color) => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() => dispatch({ type: 'SET_SPEC', payload: { coverColor: color.value } })}
-                      title={color.label}
-                      className={`h-10 w-10 rounded-full border-2 transition-all ${
-                        specs.coverColor === color.value ? 'border-blue-600 ring-2 ring-blue-100' : 'border-white shadow-sm'
-                      } ${color.class}`}
-                    />
-                  ))}
+                  {offeredCoverColors.length > 0 ? (
+                    offeredCoverColors.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        onClick={() => dispatch({ type: 'SET_SPEC', payload: { coverColor: color.value } })}
+                        title={color.label}
+                        className={`h-10 w-10 rounded-full border-2 transition-all ${
+                          specs.coverColor === color.value ? 'border-blue-600 ring-2 ring-blue-100' : 'border-white shadow-sm'
+                        } ${color.class}`}
+                      />
+                    ))
+                  ) : (
+                    <span className="text-sm text-slate-400">No cover colours offered.</span>
+                  )}
                 </div>
               </div>
 

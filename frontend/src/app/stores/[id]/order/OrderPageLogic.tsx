@@ -352,6 +352,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               instructions={state.order.specialInstructions ?? ''}
               dispatch={dispatch}
               error={state.error}
+              availableCoverTypes={store.availableCoverTypes}
+              availableCoilTypes={store.availableCoilTypes}
+              availableCoverColors={store.availableCoverColors}
             />
           )}
           {state.step === 2 && (

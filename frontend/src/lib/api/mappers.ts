@@ -62,6 +62,14 @@ function synthesizeHours(openingTime?: string, closingTime?: string) {
 export function mapBackendStoreDetailToFrontend(b: any, reviews: any[] = []): StoreDetail {
   const openingTime = b.openingTime;
   const closingTime = b.closingTime;
+
+  // Seller-defined cover customization availability lives in metadata.
+  // A key present in the price map means the option is offered by the store.
+  const pricingOverrides =
+    b.metadata && typeof b.metadata === 'object' && !Array.isArray(b.metadata)
+      ? (b.metadata.pricingOverrides ?? {})
+      : {};
+
   return {
     ...mapBackendStoreToFrontend(b),
     description: b.description || '',
@@ -75,6 +83,15 @@ export function mapBackendStoreDetailToFrontend(b: any, reviews: any[] = []): St
     services: b.services?.map(mapBackendServiceToFrontend) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),
     ratingBreakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }, // Calculate if needed
+    availableCoverTypes: pricingOverrides.coverType
+      ? Object.keys(pricingOverrides.coverType)
+      : undefined,
+    availableCoilTypes: pricingOverrides.coilType
+      ? Object.keys(pricingOverrides.coilType)
+      : undefined,
+    availableCoverColors: pricingOverrides.coverColor
+      ? Object.keys(pricingOverrides.coverColor)
+      : undefined,
   };
 }
 

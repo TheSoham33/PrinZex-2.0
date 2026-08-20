@@ -58,6 +58,12 @@ export interface StoreDetail extends Store {
   services: ServiceOffering[];
   reviews: Review[];
   ratingBreakdown: Record<number, number>;
+  /** Cover customization options this store offers. `undefined` means the
+   *  seller has not configured availability (all options shown); an empty
+   *  array means none are offered. */
+  availableCoverTypes?: string[];
+  availableCoilTypes?: string[];
+  availableCoverColors?: string[];
 }
 
 export interface OrderSpecifications {
