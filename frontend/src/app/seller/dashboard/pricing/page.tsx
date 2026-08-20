@@ -16,7 +16,7 @@ import {
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { IconAlertCircle, IconPencil, IconRefreshCw, IconZap } from '@/components/icons';
+import { IconAlertCircle, IconPencil, IconRefreshCw } from '@/components/icons';
 
 export default function SellerPricingPage() {
   const { showToast } = useToast();
@@ -29,14 +29,14 @@ export default function SellerPricingPage() {
   const [pricing, setPricing] = useState<any[]>([]);
   const [tiers, setTiers] = useState<any[]>([]);
   const [pageRate, setPageRate] = useState<{ bw: string; color: string }>({ bw: '', color: '' });
-  const [coverTypePrices, setCoverTypePrices] = useState<Record<string, string>>({});
-  const [coilPrices, setCoilPrices] = useState<Record<string, string>>({});
-  const [coverColorPrices, setCoverColorPrices] = useState<Record<string, string>>({});
+  // Each option carries an "offered" toggle + its extra price. Only offered
+  // options are saved (and shown to customers on the store).
+  const [coverTypeOptions, setCoverTypeOptions] = useState<Record<string, { price: string; enabled: boolean }>>({});
+  const [coilOptions, setCoilOptions] = useState<Record<string, { price: string; enabled: boolean }>>({});
+  const [coverColorOptions, setCoverColorOptions] = useState<Record<string, { price: string; enabled: boolean }>>({});
 
   const [editingTier, setEditingTier] = useState<number | null>(null);
   const [tierDraft, setTierDraft] = useState('');
-  const [rushEnabled, setRushEnabled] = useState(true);
-  const [rushPct, setRushPct] = useState('25');
 
   useEffect(() => {
     if (data) {
@@ -50,17 +50,35 @@ export default function SellerPricingPage() {
         color: String(overrides.pageRate?.color ?? ''),
       });
 
-      const ct: Record<string, string> = {};
-      [...SPIRAL_COVER_TYPES, ...COVER_TYPES].forEach(c => ct[c.value] = String(overrides.coverType?.[c.value] || '0'));
-      setCoverTypePrices(ct);
+      const coverType = overrides.coverType ?? {};
+      const ct: Record<string, { price: string; enabled: boolean }> = {};
+      [...SPIRAL_COVER_TYPES, ...COVER_TYPES].forEach(c => {
+        ct[c.value] = {
+          price: String(coverType[c.value] ?? ''),
+          enabled: coverType[c.value] !== undefined,
+        };
+      });
+      setCoverTypeOptions(ct);
 
-      const cl: Record<string, string> = {};
-      SPIRAL_COIL_TYPES.forEach(c => cl[c.value] = String(overrides.coilType?.[c.value] || '0'));
-      setCoilPrices(cl);
+      const coilType = overrides.coilType ?? {};
+      const cl: Record<string, { price: string; enabled: boolean }> = {};
+      SPIRAL_COIL_TYPES.forEach(c => {
+        cl[c.value] = {
+          price: String(coilType[c.value] ?? ''),
+          enabled: coilType[c.value] !== undefined,
+        };
+      });
+      setCoilOptions(cl);
 
-      const cc: Record<string, string> = {};
-      COVER_COLORS.forEach(c => cc[c.value] = String(overrides.coverColor?.[c.value] || '0'));
-      setCoverColorPrices(cc);
+      const coverColor = overrides.coverColor ?? {};
+      const cc: Record<string, { price: string; enabled: boolean }> = {};
+      COVER_COLORS.forEach(c => {
+        cc[c.value] = {
+          price: String(coverColor[c.value] ?? ''),
+          enabled: coverColor[c.value] !== undefined,
+        };
+      });
+      setCoverColorOptions(cc);
     }
   }, [data]);
 
@@ -113,13 +131,19 @@ export default function SellerPricingPage() {
     };
 
     const coverType: Record<string, number> = {};
-    Object.entries(coverTypePrices).forEach(([k, v]) => coverType[k] = Number(v));
+    Object.entries(coverTypeOptions).forEach(([k, v]) => {
+      if (v.enabled) coverType[k] = Number(v.price) || 0;
+    });
 
     const coilType: Record<string, number> = {};
-    Object.entries(coilPrices).forEach(([k, v]) => coilType[k] = Number(v));
+    Object.entries(coilOptions).forEach(([k, v]) => {
+      if (v.enabled) coilType[k] = Number(v.price) || 0;
+    });
 
     const coverColor: Record<string, number> = {};
-    Object.entries(coverColorPrices).forEach(([k, v]) => coverColor[k] = Number(v));
+    Object.entries(coverColorOptions).forEach(([k, v]) => {
+      if (v.enabled) coverColor[k] = Number(v.price) || 0;
+    });
 
     updateOverridesMutation.mutate({
       pageRate: pageRatePayload,
@@ -223,60 +247,105 @@ export default function SellerPricingPage() {
             </div>
           </div>
 
-          {/* Binding — cover type (₹/binding) */}
+          {/* Binding — cover type (offer toggle + ₹/binding) */}
           <div className="border-t border-slate-100 pt-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover Type Extra (₹/binding)</h3>
-            <p className="text-xs text-slate-400 mb-3">Binding services only — added per binding.</p>
-            <div className="grid grid-cols-2 gap-4">
-              {[...SPIRAL_COVER_TYPES, ...COVER_TYPES].map(cover => (
-                <div key={cover.value} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-600">{cover.label}</span>
-                  <input 
-                    type="number" 
-                    value={coverTypePrices[cover.value] || '0'} 
-                    onChange={(e) => setCoverTypePrices(p => ({ ...p, [cover.value]: e.target.value }))}
-                    className="input w-24 py-1 text-right text-sm"
-                  />
-                </div>
-              ))}
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover types</h3>
+            <p className="text-xs text-slate-400 mb-3">Toggle which cover types your store offers; set the extra charge for each (added per binding).</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {[...SPIRAL_COVER_TYPES, ...COVER_TYPES].map(cover => {
+                const opt = coverTypeOptions[cover.value] ?? { price: '', enabled: false };
+                return (
+                  <div key={cover.value} className="flex items-center justify-between gap-3">
+                    <span className={`text-sm ${opt.enabled ? 'text-slate-600' : 'text-slate-400'}`}>{cover.label}</span>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        min="0"
+                        step="0.5"
+                        value={opt.price} 
+                        disabled={!opt.enabled}
+                        onChange={(e) => setCoverTypeOptions(p => ({ ...p, [cover.value]: { ...opt, price: e.target.value } }))}
+                        className="input w-24 py-1 text-right text-sm disabled:opacity-40"
+                      />
+                      <ToggleSwitch
+                        checked={opt.enabled}
+                        label={`Offer ${cover.label}`}
+                        hideLabel
+                        onChange={(value) => setCoverTypeOptions(p => ({ ...p, [cover.value]: { ...opt, enabled: value } }))}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Binding — coil type (₹/binding) */}
+          {/* Binding — coil type (offer toggle + ₹/binding) */}
           <div className="border-t border-slate-100 pt-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Coil Type Extra (₹/binding)</h3>
-            <p className="text-xs text-slate-400 mb-3">Spiral binding — added per binding.</p>
-            <div className="grid grid-cols-2 gap-4">
-              {SPIRAL_COIL_TYPES.map(coil => (
-                <div key={coil.value} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-600">{coil.label}</span>
-                  <input 
-                    type="number" 
-                    value={coilPrices[coil.value] || '0'} 
-                    onChange={(e) => setCoilPrices(p => ({ ...p, [coil.value]: e.target.value }))}
-                    className="input w-24 py-1 text-right text-sm"
-                  />
-                </div>
-              ))}
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Coil types</h3>
+            <p className="text-xs text-slate-400 mb-3">Spiral binding — toggle which coils you offer and set the extra charge.</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {SPIRAL_COIL_TYPES.map(coil => {
+                const opt = coilOptions[coil.value] ?? { price: '', enabled: false };
+                return (
+                  <div key={coil.value} className="flex items-center justify-between gap-3">
+                    <span className={`text-sm ${opt.enabled ? 'text-slate-600' : 'text-slate-400'}`}>{coil.label}</span>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        min="0"
+                        step="0.5"
+                        value={opt.price} 
+                        disabled={!opt.enabled}
+                        onChange={(e) => setCoilOptions(p => ({ ...p, [coil.value]: { ...opt, price: e.target.value } }))}
+                        className="input w-24 py-1 text-right text-sm disabled:opacity-40"
+                      />
+                      <ToggleSwitch
+                        checked={opt.enabled}
+                        label={`Offer ${coil.label}`}
+                        hideLabel
+                        onChange={(value) => setCoilOptions(p => ({ ...p, [coil.value]: { ...opt, enabled: value } }))}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Binding — cover colour (₹/binding) */}
+          {/* Binding — cover colour (offer toggle + ₹/binding) */}
           <div className="border-t border-slate-100 pt-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover Colour Extra (₹/binding)</h3>
-            <p className="text-xs text-slate-400 mb-3">Binding services only — added per binding.</p>
-            <div className="grid grid-cols-2 gap-4">
-              {COVER_COLORS.map(color => (
-                <div key={color.value} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-600">{color.label}</span>
-                  <input 
-                    type="number" 
-                    value={coverColorPrices[color.value] || '0'} 
-                    onChange={(e) => setCoverColorPrices(p => ({ ...p, [color.value]: e.target.value }))}
-                    className="input w-24 py-1 text-right text-sm"
-                  />
-                </div>
-              ))}
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover colours</h3>
+            <p className="text-xs text-slate-400 mb-3">Binding services — toggle which cover colours you offer and set the extra charge.</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {COVER_COLORS.map(color => {
+                const opt = coverColorOptions[color.value] ?? { price: '', enabled: false };
+                return (
+                  <div key={color.value} className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2">
+                      <span className={`h-4 w-4 rounded-full border ${color.class}`} />
+                      <span className={`text-sm ${opt.enabled ? 'text-slate-600' : 'text-slate-400'}`}>{color.label}</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        min="0"
+                        step="0.5"
+                        value={opt.price} 
+                        disabled={!opt.enabled}
+                        onChange={(e) => setCoverColorOptions(p => ({ ...p, [color.value]: { ...opt, price: e.target.value } }))}
+                        className="input w-24 py-1 text-right text-sm disabled:opacity-40"
+                      />
+                      <ToggleSwitch
+                        checked={opt.enabled}
+                        label={`Offer ${color.label}`}
+                        hideLabel
+                        onChange={(value) => setCoverColorOptions(p => ({ ...p, [color.value]: { ...opt, enabled: value } }))}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
