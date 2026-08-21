@@ -18,12 +18,10 @@ export default function StoreCard({ store }: { store: Store }) {
         className={`relative flex h-32 items-center justify-center bg-gradient-to-br ${storeGradient(store.id)}`}
       >
         <IconStore className="h-10 w-10 text-white/70" />
-        <span className="absolute left-3 top-3 rounded-md bg-white/95 px-2 py-1 text-xs font-bold text-slate-700">
-          {store.priceRange}
-        </span>
-        {store.verified && (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-white/95 px-2 py-1 text-xs font-semibold text-blue-700">
-            <IconBadgeCheck className="h-3.5 w-3.5" /> Verified
+        {typeof store.pagePrice === 'number' && (
+          <span className="absolute right-3 top-3 rounded-md bg-white/95 px-2 py-1 text-xs font-bold text-slate-900">
+            {formatCurrency(store.pagePrice)}
+            <span className="font-normal text-slate-500">/page</span>
           </span>
         )}
         <span className={`absolute bottom-3 left-3 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${store.isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
@@ -33,9 +31,16 @@ export default function StoreCard({ store }: { store: Store }) {
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-semibold leading-tight text-slate-900 group-hover:text-blue-600">
-            {store.name}
-          </h3>
+          <div className="min-w-0">
+            <h3 className="font-semibold leading-tight text-slate-900 group-hover:text-blue-600">
+              {store.name}
+            </h3>
+            {store.verified && (
+              <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600">
+                <IconBadgeCheck className="h-3.5 w-3.5" /> Verified
+              </span>
+            )}
+          </div>
           <span className="flex shrink-0 items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 text-xs font-bold text-green-700">
             <IconStar className="h-3 w-3 fill-current" />
             {Number(store.rating).toFixed(1)}
