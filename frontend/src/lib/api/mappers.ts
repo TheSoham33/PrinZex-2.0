@@ -1,6 +1,20 @@
 import type { Store, StoreDetail, ServiceOffering, Review } from '../types';
 
 /**
+ * Realistic delivery-time estimate derived from the customer's distance to the
+ * store (print delivery). No per-store "delivery time" column exists, so this
+ * maps a real distance to the delivery windows the app actually offers.
+ */
+export function deliveryEtaLabel(distanceKm: number): string {
+  if (!distanceKm || distanceKm <= 0) return 'Delivery in 1–3 days';
+  if (distanceKm <= 1) return '15–30 min';
+  if (distanceKm <= 5) return '30–60 min';
+  if (distanceKm <= 15) return '1–2 hours';
+  if (distanceKm <= 60) return '1–2 days';
+  return '2–3 days';
+}
+
+/**
  * Canonical display names for services whose stored name may still be the old
  * one (e.g. rows seeded before the "Printing" → "Document Printing" rename).
  * Guarantees the correct label is shown even if the database hasn't been
@@ -55,11 +69,13 @@ export function mapBackendStoreToFrontend(b: any, userLat?: number, userLng?: nu
     rating: Number(b.averageRating || 0),
     reviewCount: b.reviewCount || 0,
     distanceKm: parseFloat(distanceKm.toFixed(1)),
-    etaLabel: distanceKm > 0 ? `${Math.round(distanceKm * 5 + 20)}–${Math.round(distanceKm * 5 + 35)} min` : '30–45 min',
+    etaLabel: deliveryEtaLabel(distanceKm),
     priceRange: '$$',
     tags: b.services?.slice(0, 3).map((s: any) => normalizeServiceName(s.serviceId, s.serviceName)) || [],
     verified: b.isVerified || false,
     isOpen: isStoreOpen(b.openingTime, b.closingTime, b.metadata),
+    lat: b.lat ?? null,
+    lng: b.lng ?? null,
     matchedService: b.matchedService
       ? {
           ...b.matchedService,
@@ -141,7 +157,7 @@ export function mapBackendStoreDetailToFrontend(b: any, reviews: any[] = []): St
 }
 
 /** Basic haversine distance formula for frontend usage. */
-function calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+export function calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // km
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
