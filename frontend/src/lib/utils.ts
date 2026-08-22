@@ -6,13 +6,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Format a number as Indian Rupees, e.g. 1200 -> "₹1,200". */
+/** Format a number as Indian Rupees, e.g. 1200 -> "₹1,200", 1.5 -> "₹1.50". */
 export function formatCurrency(amount: number, withDecimals = false): string {
+  // Whole amounts render without decimals; fractional amounts (e.g. ₹1.5)
+  // always show their paise so values are never silently rounded up.
+  const showDecimals = withDecimals || !Number.isInteger(amount);
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-    minimumFractionDigits: withDecimals ? 2 : 0,
-    maximumFractionDigits: withDecimals ? 2 : 0,
+    minimumFractionDigits: showDecimals ? 2 : 0,
+    maximumFractionDigits: showDecimals ? 2 : 0,
   }).format(amount);
 }
 
