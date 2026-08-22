@@ -53,7 +53,7 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
             id={`price-${entry.serviceId}`}
             type="number"
             min={0}
-            step="0.5"
+            step="0.01"
             value={price}
             onChange={(event) => setPrice(event.target.value)}
             onKeyDown={(event) => {
