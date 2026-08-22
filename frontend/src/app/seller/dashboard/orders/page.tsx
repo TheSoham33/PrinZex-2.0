@@ -39,7 +39,7 @@ export default function SellerOrdersPage() {
     status: o.status,
     isRush: o.isRush ?? false,
     customerName: o.customerName ?? '',
-    serviceName: o.serviceName ?? o.services?.[0]?.replace(/ ×\d+$/, '') ?? 'Printing Service',
+    serviceName: o.serviceName ?? o.services?.[0]?.replace(/ ×\d+$/, '') ?? 'Document Printing',
     specifications: o.specsSummary ?? o.specifications ?? '',
     quantity: o.quantity ?? 1,
     total: o.total ?? 0,

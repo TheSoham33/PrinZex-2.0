@@ -312,7 +312,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       storeId: store.id,
       storeName: store.name,
       serviceId: specs.serviceId,
-      serviceName: service?.name || 'Printing Service',
+      serviceName: service?.name || 'Document Printing',
       specifications: specs,
       file: state.order.file,
       specialInstructions: state.order.specialInstructions || '',
