@@ -53,7 +53,7 @@ async function main() {
           categoryId,
           categoryName,
           serviceId: 'doc-print',
-          serviceName: 'Printing',
+          serviceName: 'Document Printing',
           basePrice,
           unit,
           isActive: true,
@@ -65,7 +65,7 @@ async function main() {
     for (const row of rows) {
       await prisma.orderItem.updateMany({
         where: { sellerServiceId: row.id },
-        data: { sellerServiceId: merged.id, serviceName: 'Printing' },
+        data: { sellerServiceId: merged.id, serviceName: 'Document Printing' },
       });
     }
 

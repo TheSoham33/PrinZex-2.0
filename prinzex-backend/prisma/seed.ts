@@ -325,7 +325,7 @@ const SELLERS: Array<{
     onTimeRate: 96.2,
     servedPincodes: ['560034', '560095', '560030'],
     services: [
-      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Printing', basePrice: 2.0, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Document Printing', basePrice: 2.0, unit: 'per page' },
       { categoryId: 'specialty', categoryName: 'Specialty Printing', serviceId: 'spec-photo-prints', serviceName: 'Photo Print', basePrice: 99.0, unit: 'per set' },
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
@@ -354,7 +354,7 @@ const SELLERS: Array<{
     onTimeRate: 94.8,
     servedPincodes: ['560038', '560008', '560066'],
     services: [
-      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Printing', basePrice: 1.5, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Document Printing', basePrice: 1.5, unit: 'per page' },
       { categoryId: 'binding', categoryName: 'Book binding & finishing', serviceId: 'bind-spiral', serviceName: 'Spiral Binding', basePrice: 60.0, unit: 'per document' },
     ],
     documents: ['gst_certificate', 'business_license', 'owner_id', 'address_proof'],
@@ -418,7 +418,7 @@ const SELLERS: Array<{
     onTimeRate: 0,
     servedPincodes: ['560029', '560030'],
     services: [
-      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Printing', basePrice: 1.0, unit: 'per page' },
+      { categoryId: 'documents', categoryName: 'Documents', serviceId: 'doc-print', serviceName: 'Document Printing', basePrice: 1.0, unit: 'per page' },
     ],
     documents: [], // pending seller — no documents uploaded yet
     account: { holder: 'Mohan Lal', number: '50400567890123', ifsc: 'UTIB0003456', pan: 'PQRST3456Q' },

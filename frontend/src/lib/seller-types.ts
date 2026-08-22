@@ -107,7 +107,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     name: 'Documents',
     description: 'Everyday printing and photocopying',
     services: [
-      { id: 'doc-print', name: 'Printing' },
+      { id: 'doc-print', name: 'Document Printing' },
       { id: 'doc-xerox', name: 'Photocopy / Xerox' },
     ],
   },

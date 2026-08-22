@@ -35,7 +35,7 @@ export function mapSellerOrderDetail(raw: any): SellerOrder {
     isRush: raw?.isRush ?? false,
     customerName: raw?.customer?.name ?? '',
     customerPhone: raw?.customer?.maskedPhone ?? null,
-    serviceName: firstItem?.serviceName ?? 'Printing Service',
+    serviceName: firstItem?.serviceName ?? 'Document Printing',
     specifications: summarizeSpecs(firstItem?.specifications),
     quantity: (raw?.items ?? []).reduce((sum: number, item: any) => sum + (item.quantity ?? 0), 0) || 1,
     total: Number(raw?.total ?? 0),

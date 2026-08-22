@@ -974,7 +974,7 @@ export async function listOrders(
     customerName: firstName(order.customer.name),
     services: order.items.map((item) => `${item.serviceName} ×${item.quantity}`),
     specsSummary: summarizeSpecifications(order.items[0]?.specifications ?? null),
-    serviceName: order.items[0]?.serviceName ?? 'Printing Service',
+    serviceName: order.items[0]?.serviceName ?? 'Document Printing',
     quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
     specialInstructions: order.specialInstructions,
   }));
