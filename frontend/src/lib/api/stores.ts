@@ -5,7 +5,7 @@ export interface StoreListQuery {
   q?: string;
   services?: string;
   minRating?: number;
-  sort?: 'relevance' | 'rating' | 'distance' | 'price_asc';
+  sort?: 'relevance' | 'rating' | 'distance' | 'price_asc' | 'price_desc';
   lat?: number;
   lng?: number;
   page?: number;

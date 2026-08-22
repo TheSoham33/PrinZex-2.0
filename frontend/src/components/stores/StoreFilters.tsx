@@ -24,6 +24,7 @@ export const SORT_OPTIONS = [
   { value: 'rating', label: 'Rating (high to low)' },
   { value: 'distance', label: 'Distance (nearest)' },
   { value: 'price_asc', label: 'Price (low to high)' },
+  { value: 'price_desc', label: 'Price (high to low)' },
 ];
 
 export interface FilterState {

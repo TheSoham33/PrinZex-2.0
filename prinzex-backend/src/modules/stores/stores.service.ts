@@ -142,7 +142,7 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   let rows: StoreListRow[];
   let total: number;
 
-  if (query.sort === 'distance' || query.sort === 'price_asc') {
+  if (query.sort === 'distance' || query.sort === 'price_asc' || query.sort === 'price_desc') {
     // Computed sorts run in the app layer over a bounded working set.
     const WORKING_SET_LIMIT = 200;
     const candidates = await prisma.seller.findMany({
@@ -161,9 +161,13 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
             }))
             .sort((a, b) => a.distanceKm - b.distanceKm)
             .map((entry) => entry.seller)
-        : [...candidates].sort(
-            (a, b) => minServicePrice(a.services) - minServicePrice(b.services),
-          );
+        : query.sort === 'price_desc'
+          ? [...candidates].sort(
+              (a, b) => minServicePrice(b.services) - minServicePrice(a.services),
+            )
+          : [...candidates].sort(
+              (a, b) => minServicePrice(a.services) - minServicePrice(b.services),
+            );
 
     total = sorted.length;
     rows = sorted.slice(skip, skip + take);
