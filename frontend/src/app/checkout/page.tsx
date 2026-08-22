@@ -5,7 +5,7 @@ import { clearCart, setCartOpen } from '@/store/slices/cartSlice';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAddresses } from '@/lib/api/customer';
 import { placeOrder } from '@/lib/api/orders';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
@@ -32,8 +32,15 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Redirect when the cart is empty. Done in an effect — calling router.replace
+  // during render would update a different component (Router) while rendering.
+  useEffect(() => {
+    if (items.length === 0) {
+      router.replace('/stores');
+    }
+  }, [items.length, router]);
+
   if (items.length === 0) {
-    if (typeof window !== 'undefined') router.replace('/stores');
     return null;
   }
 
