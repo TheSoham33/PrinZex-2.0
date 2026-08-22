@@ -23,7 +23,7 @@ export const SORT_OPTIONS = [
   { value: 'relevance', label: 'Relevance' },
   { value: 'rating', label: 'Rating (high to low)' },
   { value: 'distance', label: 'Distance (nearest)' },
-  { value: 'price', label: 'Price (low to high)' },
+  { value: 'price_asc', label: 'Price (low to high)' },
 ];
 
 export interface FilterState {

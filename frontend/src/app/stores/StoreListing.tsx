@@ -53,6 +53,9 @@ export default function StoreListing() {
       services: filters.services.join(','),
       minRating: filters.minRating || undefined,
       sort: filters.sortBy as any,
+      // Distance sorting (and per-card distance) needs the user's coordinates.
+      lat: userCoords?.lat,
+      lng: userCoords?.lng,
       page,
       limit: 12
     }),
