@@ -89,7 +89,7 @@ export default function PricingSetupStep({
                   id={`price-${entry.serviceId}`}
                   type="number"
                   min={0}
-                  step="0.5"
+                  step="0.01"
                   value={entry.basePrice || ''}
                   onChange={(event) =>
                     onUpdate(entry.serviceId, { basePrice: Number(event.target.value) })

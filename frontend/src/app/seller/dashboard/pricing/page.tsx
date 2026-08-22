@@ -227,7 +227,7 @@ export default function SellerPricingPage() {
                 <input 
                   type="number" 
                   min="0"
-                  step="0.5"
+                  step="0.01"
                   value={pageRate.bw} 
                   onChange={(e) => setPageRate(p => ({ ...p, bw: e.target.value }))}
                   className="input w-24 py-1 text-right text-sm"
@@ -238,7 +238,7 @@ export default function SellerPricingPage() {
                 <input 
                   type="number" 
                   min="0"
-                  step="0.5"
+                  step="0.01"
                   value={pageRate.color} 
                   onChange={(e) => setPageRate(p => ({ ...p, color: e.target.value }))}
                   className="input w-24 py-1 text-right text-sm"
@@ -261,7 +261,7 @@ export default function SellerPricingPage() {
                       <input 
                         type="number" 
                         min="0"
-                        step="0.5"
+                        step="0.01"
                         value={opt.price} 
                         disabled={!opt.enabled}
                         onChange={(e) => setCoverTypeOptions(p => ({ ...p, [cover.value]: { ...opt, price: e.target.value } }))}
@@ -294,7 +294,7 @@ export default function SellerPricingPage() {
                       <input 
                         type="number" 
                         min="0"
-                        step="0.5"
+                        step="0.01"
                         value={opt.price} 
                         disabled={!opt.enabled}
                         onChange={(e) => setCoilOptions(p => ({ ...p, [coil.value]: { ...opt, price: e.target.value } }))}
@@ -330,7 +330,7 @@ export default function SellerPricingPage() {
                       <input 
                         type="number" 
                         min="0"
-                        step="0.5"
+                        step="0.01"
                         value={opt.price} 
                         disabled={!opt.enabled}
                         onChange={(e) => setCoverColorOptions(p => ({ ...p, [color.value]: { ...opt, price: e.target.value } }))}

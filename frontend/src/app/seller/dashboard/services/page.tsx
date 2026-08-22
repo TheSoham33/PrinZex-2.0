@@ -186,6 +186,8 @@ export default function ManageServicesPage() {
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">₹</span>
                                 <input
                                   type="number"
+                                  min={0}
+                                  step="0.01"
                                   value={local.price}
                                   onChange={(e) => setLocalPrices(prev => ({
                                     ...prev,
