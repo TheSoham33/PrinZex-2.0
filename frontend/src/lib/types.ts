@@ -12,6 +12,9 @@ export interface Store {
   tags: string[];
   verified: boolean;
   isOpen: boolean;
+  /** Store coordinates (from the DB) — used to compute distance client-side. */
+  lat?: number | null;
+  lng?: number | null;
   matchedService?: {
     id: string;
     serviceName: string;

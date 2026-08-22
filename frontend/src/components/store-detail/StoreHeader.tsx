@@ -46,9 +46,11 @@ export default function StoreHeader({ store }: { store: StoreDetail }) {
                 </span>
                 <span className="text-slate-500">({store.reviewCount} reviews)</span>
               </span>
-              <span className="inline-flex items-center gap-1.5">
-                <IconMapPin className="h-4 w-4 text-slate-400" /> {store.distanceKm} km away
-              </span>
+              {store.distanceKm > 0 && (
+                <span className="inline-flex items-center gap-1.5">
+                  <IconMapPin className="h-4 w-4 text-slate-400" /> {store.distanceKm} km away
+                </span>
+              )}
               <span className="inline-flex items-center gap-1.5">
                 <IconClock className="h-4 w-4 text-slate-400" /> {store.etaLabel}
               </span>
