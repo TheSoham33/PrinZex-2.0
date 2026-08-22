@@ -192,7 +192,7 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/seller/register" className="btn-ghost text-sm">
+              <Link href="/login?tab=seller" className="btn-ghost text-sm">
                 <IconStore className="h-4 w-4" /> Become a seller
               </Link>
               <Link href="/login" className="btn-secondary">
@@ -295,7 +295,7 @@ export default function Navbar() {
                   </>
                 )}
                 <Link
-                  href="/seller/register"
+                  href="/login?tab=seller"
                   onClick={() => setMenuOpen(false)}
                   className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
