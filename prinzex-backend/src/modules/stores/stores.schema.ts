@@ -8,7 +8,7 @@ export const listStoresQuery = z
   .object({
     city: z.string().trim().min(2).max(60).optional(),
     q: z.string().trim().min(1).max(80).optional(),
-    services: z.string().trim().max(200).optional(), // comma-separated serviceIds
+    services: z.string().trim().max(200).optional(), // comma-separated categoryIds
     minRating: z.coerce.number().min(0).max(5).optional(),
     deliveryTime: z.enum(['same_day', 'next_day', 'standard']).optional(),
     sort: z.enum(['relevance', 'rating', 'distance', 'price_asc', 'price_desc']).default('relevance'),

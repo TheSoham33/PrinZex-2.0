@@ -23,6 +23,8 @@ storesRouter.get(
   storesController.getSuggestions,
 );
 
+storesRouter.get('/categories', storesController.listServiceCategories);
+
 storesRouter.get('/:sellerId', validate({ params: storeParams }), storesController.getStore);
 
 storesRouter.get(

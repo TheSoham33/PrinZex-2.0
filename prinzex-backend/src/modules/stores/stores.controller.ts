@@ -16,6 +16,11 @@ export const listStores = asyncHandler(async (req, res) => {
   sendCached(res, result, 'Stores fetched');
 });
 
+export const listServiceCategories = asyncHandler(async (_req, res) => {
+  const categories = await storesService.listServiceCategories();
+  res.status(200).json(new ApiResponse(200, { categories }, 'Service categories fetched'));
+});
+
 export const getStore = asyncHandler(async (req, res) => {
   const result = await storesService.getStore(req.params.sellerId);
   sendCached(res, result, 'Store fetched');
