@@ -13,8 +13,9 @@ function LoginContent() {
   const user = useAppSelector((state) => state.auth.user);
   
   const returnUrl = searchParams.get('returnUrl') || '';
-  // If we're redirecting back to seller registration, we MUST login as a customer first.
-  const initialTab = returnUrl.includes('/seller/register') ? 'Customer' : 'Customer';
+  // `tab=seller` opens the Seller sign-in tab (e.g. from "Become a seller").
+  const tabParam = searchParams.get('tab') || '';
+  const initialTab = tabParam === 'seller' ? 'Seller' : 'Customer';
 
   useEffect(() => {
     if (user) {
