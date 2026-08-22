@@ -1447,6 +1447,9 @@ export async function updatePricingOverrides(
     where: { id: sellerId },
     data: { metadata: metadata as Prisma.InputJsonValue },
   });
+  // Customers read cover availability from the (cached) store detail — drop the
+  // cache so the storefront reflects the new options immediately.
+  await invalidateStoreCaches(sellerId);
 
   return overrides;
 }

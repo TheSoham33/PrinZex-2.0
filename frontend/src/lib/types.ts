@@ -18,6 +18,8 @@ export interface Store {
     basePrice: number;
     unit: string;
   } | null;
+  /** The store's B&W per-page rate (₹/page), shown on the store card. */
+  pagePrice?: number | null;
 }
 
 export interface StoreHours {

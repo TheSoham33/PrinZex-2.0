@@ -1,5 +1,27 @@
 import type { Store, StoreDetail, ServiceOffering, Review } from '../types';
 
+/**
+ * The store's B&W per-page rate. Prefers the seller-wide pageRate; falls back
+ * to the cheapest per-page service's base price.
+ */
+function pageRateOf(b: any): number | null {
+  const overrides = b?.metadata?.pricingOverrides;
+  if (overrides?.pageRate?.bw !== undefined && overrides.pageRate.bw !== null) {
+    const value = Number(overrides.pageRate.bw);
+    if (Number.isFinite(value)) return value;
+  }
+  const pageServices = (b?.services ?? []).filter((s: any) =>
+    String(s.unit ?? '').toLowerCase().includes('page'),
+  );
+  if (pageServices.length > 0) {
+    const cheapest = pageServices.reduce((min: any, s: any) =>
+      Number(s.basePrice) < Number(min.basePrice) ? s : min,
+    );
+    return Number(cheapest.basePrice);
+  }
+  return null;
+}
+
 export function mapBackendStoreToFrontend(b: any, userLat?: number, userLng?: number): Store {
   const storeLat = b.lat;
   const storeLng = b.lng;
@@ -22,6 +44,7 @@ export function mapBackendStoreToFrontend(b: any, userLat?: number, userLng?: nu
     verified: b.isVerified || false,
     isOpen: isStoreOpen(b.openingTime, b.closingTime, b.metadata),
     matchedService: b.matchedService,
+    pagePrice: pageRateOf(b),
   };
 }
 

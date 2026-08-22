@@ -8,7 +8,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 async function getStore(id: string) {
   try {
-    const res = await fetch(`${API_URL}/stores/${id}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_URL}/stores/${id}`, { cache: 'no-store' });
     if (!res.ok) return null;
     const data = await res.json();
     return data.data;
