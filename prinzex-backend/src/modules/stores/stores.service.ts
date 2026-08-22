@@ -70,6 +70,30 @@ type StoreListItem = Omit<StoreListRow, '_count'> & {
   } | null;
 };
 
+export interface StoreCategory {
+  categoryId: string;
+  categoryName: string;
+}
+
+/** Distinct service categories offered by approved sellers, alphabetically. */
+export async function listServiceCategories(): Promise<StoreCategory[]> {
+  const rows = await prisma.sellerService.findMany({
+    where: { isActive: true, seller: { status: 'APPROVED' } },
+    select: { categoryId: true, categoryName: true },
+  });
+
+  const seen = new Map<string, string>();
+  for (const row of rows) {
+    if (!seen.has(row.categoryId)) {
+      seen.set(row.categoryId, row.categoryName);
+    }
+  }
+
+  return [...seen.entries()]
+    .map(([categoryId, categoryName]) => ({ categoryId, categoryName }))
+    .sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+}
+
 export interface CachedResult<T> {
   result: T;
   cacheHit: boolean;
@@ -78,7 +102,7 @@ export interface CachedResult<T> {
 // ── GET /api/stores ────────────────────────────────────────────────────────
 
 export async function listStores(query: ListStoresQuery): Promise<CachedResult<PaginatedResponse<StoreListItem>>> {
-  const serviceIds = (query.services ?? '')
+  const categoryIds = (query.services ?? '')
     .split(',')
     .map((id) => id.trim())
     .filter((id) => id.length > 0);
@@ -89,7 +113,7 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
     .update(
       JSON.stringify({
         q: query.q ?? '',
-        services: [...serviceIds].sort(),
+        services: [...categoryIds].sort(),
         minRating: query.minRating ?? null,
         sort: query.sort,
         lat: query.lat ?? null,
@@ -122,9 +146,9 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   if (query.minRating !== undefined) {
     and.push({ averageRating: { gte: query.minRating } });
   }
-  // Sellers must offer ALL requested services (one `some` per serviceId).
-  for (const serviceId of serviceIds) {
-    and.push({ services: { some: { serviceId, isActive: true } } });
+  // Sellers must offer ALL requested service categories (one `some` per categoryId).
+  for (const categoryId of categoryIds) {
+    and.push({ services: { some: { categoryId, isActive: true } } });
   }
   // deliveryTime is accepted for forward compatibility — per-store delivery
   // options are defined in the ordering step; no filtering applied yet.

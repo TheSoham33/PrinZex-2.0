@@ -1,16 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchStoreCategories } from '@/lib/api/stores';
 import { IconX } from '@/components/icons';
-
-export const SERVICE_FILTERS = [
-  { value: 'documents', label: 'Documents' },
-  { value: 'bulk', label: 'Bulk Printing' },
-  { value: 'packaging', label: 'Packaging & Labels' },
-  { value: 'binding', label: 'Binding & Finishing' },
-  { value: 'large-format', label: 'Banners & Large Format' },
-  { value: 'specialty', label: 'Specialty Printing' },
-];
 
 export const DELIVERY_FILTERS = [
   { value: 'under-30', label: 'Under 30 min' },
@@ -67,6 +60,18 @@ export default function StoreFilters({
     };
   }, [open]);
 
+  // Service categories come from the database (what approved sellers actually
+  // offer), not a hardcoded list.
+  const { data: categories = [] } = useQuery({
+    queryKey: ['store-categories'],
+    queryFn: fetchStoreCategories,
+  });
+
+  const serviceCategories = categories.map((category) => ({
+    value: category.categoryId,
+    label: category.categoryName,
+  }));
+
   const toggleService = (serviceId: string) => {
     const services = filters.services.includes(serviceId)
       ? filters.services.filter((item) => item !== serviceId)
@@ -86,20 +91,24 @@ export default function StoreFilters({
       <section>
         <h3 className="text-sm font-semibold text-slate-900">Service category</h3>
         <div className="mt-3 space-y-2">
-          {SERVICE_FILTERS.map((service) => (
-            <label
-              key={service.value}
-              className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-600 hover:text-slate-900"
-            >
-              <input
-                type="checkbox"
-                checked={filters.services.includes(service.value)}
-                onChange={() => toggleService(service.value)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
-              />
-              {service.label}
-            </label>
-          ))}
+          {serviceCategories.length === 0 ? (
+            <p className="text-sm text-slate-400">No categories yet</p>
+          ) : (
+            serviceCategories.map((service) => (
+              <label
+                key={service.value}
+                className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-600 hover:text-slate-900"
+              >
+                <input
+                  type="checkbox"
+                  checked={filters.services.includes(service.value)}
+                  onChange={() => toggleService(service.value)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
+                />
+                {service.label}
+              </label>
+            ))
+          )}
         </div>
       </section>
 

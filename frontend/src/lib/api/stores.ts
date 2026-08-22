@@ -31,3 +31,14 @@ export const fetchStoreReviews = async (sellerId: string, params: any = {}): Pro
 export const fetchSearchSuggestions = async (q: string, city?: string): Promise<any> => {
   return apiRequest<any>('/stores/search/suggestions', { params: { q, city } });
 };
+
+export interface StoreCategory {
+  categoryId: string;
+  categoryName: string;
+}
+
+/** Distinct service categories offered by approved sellers (for the filter UI). */
+export const fetchStoreCategories = async (): Promise<StoreCategory[]> => {
+  const res = await apiRequest<any>('/stores/categories');
+  return res.categories ?? res ?? [];
+};
