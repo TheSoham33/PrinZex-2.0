@@ -11,7 +11,7 @@ export const listStoresQuery = z
     services: z.string().trim().max(200).optional(), // comma-separated serviceIds
     minRating: z.coerce.number().min(0).max(5).optional(),
     deliveryTime: z.enum(['same_day', 'next_day', 'standard']).optional(),
-    sort: z.enum(['relevance', 'rating', 'distance', 'price_asc']).default('relevance'),
+    sort: z.enum(['relevance', 'rating', 'distance', 'price_asc', 'price_desc']).default('relevance'),
     lat: z.coerce.number().min(-90).max(90).optional(),
     lng: z.coerce.number().min(-180).max(180).optional(),
     page: z.coerce.number().int().min(1).default(1),
