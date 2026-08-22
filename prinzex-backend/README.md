@@ -55,9 +55,9 @@ outside production so the flow is end-to-end testable).
 ### Quick smoke (after `npm run dev` + seeds)
 
 ```bash
-# customer login (seeded: aarav.sharma@example.com / Customer@123)
+# customer login (seeded: soham@gmail.com / Customer@123)
 curl -s localhost:5000/api/auth/login -H 'content-type: application/json' \
-  -d '{"identifier":"aarav.sharma@example.com","password":"Customer@123"}'
+  -d '{"identifier":"soham@gmail.com","password":"Customer@123"}'
 
 # pending seller is rejected with a message
 curl -s localhost:5000/api/seller/auth/login -H 'content-type: application/json' \

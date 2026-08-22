@@ -93,10 +93,10 @@ const CUSTOMERS: Array<{
   }>;
 }> = [
   {
-    name: 'Aarav Sharma',
-    email: 'aarav.sharma@example.com',
+    name: 'Soham Dey',
+    email: 'soham@gmail.com',
     phone: '+919800000001',
-    referralCode: 'AARAV10',
+    referralCode: 'SOHAM10',
     walletBalance: 500,
     loyaltyPoints: 120,
     addresses: [
