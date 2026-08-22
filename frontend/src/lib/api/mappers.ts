@@ -1,6 +1,23 @@
 import type { Store, StoreDetail, ServiceOffering, Review } from '../types';
 
 /**
+ * Canonical display names for services whose stored name may still be the old
+ * one (e.g. rows seeded before the "Printing" → "Document Printing" rename).
+ * Guarantees the correct label is shown even if the database hasn't been
+ * migrated yet.
+ */
+const SERVICE_NAME_OVERRIDES: Record<string, string> = {
+  'doc-print': 'Document Printing',
+};
+
+function normalizeServiceName(serviceId: string | undefined, serviceName: string): string {
+  if (serviceId && SERVICE_NAME_OVERRIDES[serviceId]) {
+    return SERVICE_NAME_OVERRIDES[serviceId];
+  }
+  return serviceName;
+}
+
+/**
  * The store's B&W per-page rate. Prefers the seller-wide pageRate; falls back
  * to the cheapest per-page service's base price.
  */
@@ -40,10 +57,15 @@ export function mapBackendStoreToFrontend(b: any, userLat?: number, userLng?: nu
     distanceKm: parseFloat(distanceKm.toFixed(1)),
     etaLabel: distanceKm > 0 ? `${Math.round(distanceKm * 5 + 20)}–${Math.round(distanceKm * 5 + 35)} min` : '30–45 min',
     priceRange: '$$',
-    tags: b.services?.slice(0, 3).map((s: any) => s.serviceName) || [],
+    tags: b.services?.slice(0, 3).map((s: any) => normalizeServiceName(s.serviceId, s.serviceName)) || [],
     verified: b.isVerified || false,
     isOpen: isStoreOpen(b.openingTime, b.closingTime, b.metadata),
-    matchedService: b.matchedService,
+    matchedService: b.matchedService
+      ? {
+          ...b.matchedService,
+          serviceName: normalizeServiceName(b.matchedService.id, b.matchedService.serviceName),
+        }
+      : b.matchedService,
     pagePrice: pageRateOf(b),
   };
 }
@@ -51,7 +73,7 @@ export function mapBackendStoreToFrontend(b: any, userLat?: number, userLng?: nu
 export function mapBackendServiceToFrontend(s: any): ServiceOffering {
   return {
     id: s.serviceId || s.id,
-    name: s.serviceName,
+    name: normalizeServiceName(s.serviceId, s.serviceName),
     icon: 'file', // Map category to icon
     startingPrice: Number(s.basePrice),
     unit: s.unit || 'per page',
