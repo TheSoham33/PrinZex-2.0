@@ -1,6 +1,7 @@
 'use client';
 
 import { COVER_COLORS, COVER_TEXT_COLORS } from '@/lib/domain/stores';
+import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 
 interface HardBindingCustomizationOptionsProps {
   coverColors: string[];
@@ -45,25 +46,25 @@ export default function HardBindingCustomizationOptions({
           Cover fabrics
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
-          {COVER_COLORS.map((color) => (
-            <label
-              key={color.value}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white p-3"
-            >
-              <input
-                type="checkbox"
-                checked={coverColors.includes(color.value)}
-                onChange={() =>
-                  onCoverColorsChange(toggle(coverColors, color.value))
-                }
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className={`h-4 w-4 rounded-full border ${color.class}`} />
-              <span className="text-sm font-medium text-slate-700">
-                {color.label}
-              </span>
-            </label>
-          ))}
+          {COVER_COLORS.map((color) => {
+            const enabled = coverColors.includes(color.value);
+            return (
+              <div key={color.value} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2">
+                  <span className={`h-4 w-4 rounded-full border ${color.class}`} />
+                  <span className={`text-sm ${enabled ? 'text-slate-600' : 'text-slate-400'}`}>
+                    {color.label}
+                  </span>
+                </span>
+                <ToggleSwitch
+                  checked={enabled}
+                  label={`Offer ${color.label}`}
+                  hideLabel
+                  onChange={() => onCoverColorsChange(toggle(coverColors, color.value))}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -72,25 +73,25 @@ export default function HardBindingCustomizationOptions({
           Font foil colours
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
-          {foilOptions.map((color) => (
-            <label
-              key={color.value}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white p-3"
-            >
-              <input
-                type="checkbox"
-                checked={foilColors.includes(color.value)}
-                onChange={() =>
-                  onFoilColorsChange(toggle(foilColors, color.value))
-                }
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className={`h-4 w-4 rounded-full border ${color.class}`} />
-              <span className="text-sm font-medium text-slate-700">
-                {color.label}
-              </span>
-            </label>
-          ))}
+          {foilOptions.map((color) => {
+            const enabled = foilColors.includes(color.value);
+            return (
+              <div key={color.value} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2">
+                  <span className={`h-4 w-4 rounded-full border ${color.class}`} />
+                  <span className={`text-sm ${enabled ? 'text-slate-600' : 'text-slate-400'}`}>
+                    {color.label}
+                  </span>
+                </span>
+                <ToggleSwitch
+                  checked={enabled}
+                  label={`Offer ${color.label}`}
+                  hideLabel
+                  onChange={() => onFoilColorsChange(toggle(foilColors, color.value))}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
