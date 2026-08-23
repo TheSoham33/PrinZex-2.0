@@ -223,6 +223,32 @@ export default function SpecificationsStep({
     }
   };
 
+  const removeHardCoverFile = (side: 'front' | 'back') => {
+    const previewUrl =
+      side === 'front' ? specs.frontCoverFileUrl : specs.backCoverFileUrl;
+    if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+    const input = document.getElementById(
+      `hard-${side}-cover`,
+    ) as HTMLInputElement | null;
+    if (input) input.value = '';
+
+    dispatch({
+      type: 'SET_SPEC',
+      payload:
+        side === 'front'
+          ? {
+              frontCoverFileUrl: undefined,
+              frontCoverFileName: undefined,
+              hardBindingProofApproved: false,
+            }
+          : {
+              backCoverFileUrl: undefined,
+              backCoverFileName: undefined,
+              hardBindingProofApproved: false,
+            },
+    });
+  };
+
   const applyCoverToAll = specs.applyCoverToAll !== false;
   const shownError = localError ?? error;
 
@@ -905,22 +931,49 @@ export default function SpecificationsStep({
                       }
                       className="hidden"
                     />
-                    <label
-                      htmlFor="hard-front-cover"
-                      className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 ${specs.frontCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'}`}
-                    >
-                      {specs.frontCoverFileUrl ? (
-                        <>
-                          <IconCheckCircle className="h-5 w-5" />{' '}
-                          {specs.frontCoverFileName}
-                        </>
-                      ) : (
-                        <>
-                          <IconUpload className="h-5 w-5" /> Upload single-page
-                          portrait PDF
-                        </>
+                    <div className="flex items-stretch gap-2">
+                      <label
+                        htmlFor="hard-front-cover"
+                        className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 ${specs.frontCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'}`}
+                      >
+                        {specs.frontCoverFileUrl ? (
+                          <>
+                            <IconCheckCircle className="h-5 w-5 shrink-0" />
+                            <span className="truncate">
+                              {specs.frontCoverFileName}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <IconUpload className="h-5 w-5" /> Upload
+                            single-page portrait PDF
+                          </>
+                        )}
+                      </label>
+                      {specs.frontCoverFileUrl && (
+                        <div className="flex flex-col gap-2">
+                          <a
+                            href={specs.frontCoverFileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn-secondary flex-1 p-3"
+                            title="View front cover PDF"
+                            aria-label="View front cover PDF"
+                          >
+                            <IconEye className="h-5 w-5" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => removeHardCoverFile('front')}
+                            className="flex flex-1 items-center justify-center rounded-lg border border-red-200 bg-white p-3 text-red-600 transition-colors hover:bg-red-50"
+                            title="Remove front cover PDF"
+                            aria-label="Remove front cover PDF"
+                          >
+                            <IconTrash className="h-5 w-5" />
+                          </button>
+                        </div>
                       )}
-                    </label>
+                    </div>
                   </div>
                 )}
 
@@ -938,22 +991,49 @@ export default function SpecificationsStep({
                     onChange={(event) => void handleCoverUpload(event, 'back')}
                     className="hidden"
                   />
-                  <label
-                    htmlFor="hard-back-cover"
-                    className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 ${specs.backCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'}`}
-                  >
-                    {specs.backCoverFileUrl ? (
-                      <>
-                        <IconCheckCircle className="h-5 w-5" />{' '}
-                        {specs.backCoverFileName}
-                      </>
-                    ) : (
-                      <>
-                        <IconUpload className="h-5 w-5" /> Upload single-page
-                        portrait PDF
-                      </>
+                  <div className="flex items-stretch gap-2">
+                    <label
+                      htmlFor="hard-back-cover"
+                      className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 ${specs.backCoverFileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'}`}
+                    >
+                      {specs.backCoverFileUrl ? (
+                        <>
+                          <IconCheckCircle className="h-5 w-5 shrink-0" />
+                          <span className="truncate">
+                            {specs.backCoverFileName}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <IconUpload className="h-5 w-5" /> Upload single-page
+                          portrait PDF
+                        </>
+                      )}
+                    </label>
+                    {specs.backCoverFileUrl && (
+                      <div className="flex flex-col gap-2">
+                        <a
+                          href={specs.backCoverFileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-secondary flex-1 p-3"
+                          title="View back cover PDF"
+                          aria-label="View back cover PDF"
+                        >
+                          <IconEye className="h-5 w-5" />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => removeHardCoverFile('back')}
+                          className="flex flex-1 items-center justify-center rounded-lg border border-red-200 bg-white p-3 text-red-600 transition-colors hover:bg-red-50"
+                          title="Remove back cover PDF"
+                          aria-label="Remove back cover PDF"
+                        >
+                          <IconTrash className="h-5 w-5" />
+                        </button>
+                      </div>
                     )}
-                  </label>
+                  </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
