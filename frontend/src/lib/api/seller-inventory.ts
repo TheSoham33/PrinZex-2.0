@@ -47,6 +47,13 @@ export const updatePricingOverrides = async (overrides: {
       paperSizes?: Record<string, number>;
     }
   >;
+  twinLoopOptions?: {
+    wireColors?: Record<string, number>;
+    frontCovers?: Record<string, number>;
+    backCovers?: Record<string, number>;
+    hangerPrice?: number;
+    concealedPrice?: number;
+  };
 }): Promise<any> => {
   return apiRequest<any>('/seller/settings/pricing-overrides', {
     method: 'PATCH',

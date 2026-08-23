@@ -44,6 +44,13 @@ export interface ServiceOffering {
   paperSizePrices?: Record<string, number>;
   /** Document Printing modes enabled by the seller. */
   availableColorModes?: Array<'bw' | 'color'>;
+  twinLoopOptions?: {
+    wireColors?: Record<string, number>;
+    frontCovers?: Record<string, number>;
+    backCovers?: Record<string, number>;
+    hangerPrice?: number;
+    concealedPrice?: number;
+  };
 }
 
 export interface Review {
@@ -109,6 +116,15 @@ export interface OrderSpecifications {
   paperGsm?: 75 | 100;
   /** Customer must approve the cover proof before continuing. */
   hardBindingProofApproved?: boolean;
+  // Twin Loop Binding options.
+  twinLoopWireColor?: string;
+  twinLoopFrontCover?: string;
+  twinLoopBackCover?: string;
+  twinLoopBindingEdge?: 'left' | 'top';
+  twinLoopPrintSides?: 'single' | 'double';
+  twinLoopCalendarHanger?: boolean;
+  twinLoopConcealed?: boolean;
+  twinLoopSafeZoneAcknowledged?: boolean;
   totalPages?: number;
 }
 
@@ -142,6 +158,9 @@ export interface CostBreakdown {
   bindingCost?: number;
   /** Hard Binding: server-calculated spine width estimate. */
   spineWidthMm?: number;
+  twinLoopPitch?: '3:1' | '2:1';
+  twinLoopWireSize?: string;
+  twinLoopTotalSheets?: number;
 }
 
 export interface Order {

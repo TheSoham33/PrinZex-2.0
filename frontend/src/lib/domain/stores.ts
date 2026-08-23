@@ -179,6 +179,78 @@ export const SPIRAL_COVER_TYPES = [
   },
 ];
 
+export const TWIN_LOOP_WIRE_COLORS = [
+  { value: 'black', label: 'Pitch Black', class: 'bg-black', premium: false },
+  { value: 'white', label: 'Bright White', class: 'bg-white', premium: false },
+  {
+    value: 'silver',
+    label: 'Metallic Silver',
+    class: 'bg-[#C0C0C0]',
+    premium: false,
+  },
+  {
+    value: 'gold',
+    label: 'Metallic Gold',
+    class: 'bg-[#D4AF37]',
+    premium: true,
+  },
+  {
+    value: 'rose-gold',
+    label: 'Rose Gold',
+    class: 'bg-[#B76E79]',
+    premium: true,
+  },
+  {
+    value: 'royal-blue',
+    label: 'Royal Blue',
+    class: 'bg-[#4169E1]',
+    premium: true,
+  },
+  {
+    value: 'forest-green',
+    label: 'Forest Green',
+    class: 'bg-[#228B22]',
+    premium: true,
+  },
+  { value: 'bronze', label: 'Bronze', class: 'bg-[#CD7F32]', premium: true },
+] as const;
+
+export const TWIN_LOOP_FRONT_COVERS = [
+  {
+    value: 'clear-gloss',
+    label: 'Clear Gloss Acetate / PVC',
+    hint: 'Transparent; first printed page remains visible',
+  },
+  {
+    value: 'frosted-matte',
+    label: 'Frosted / Matte Polypropylene',
+    hint: 'Semi-opaque and scratch resistant',
+  },
+  {
+    value: 'heavy-cardstock',
+    label: 'Heavy Cardstock (300+ GSM)',
+    hint: 'Printable artwork with matte or gloss lamination',
+  },
+] as const;
+
+export const TWIN_LOOP_BACK_COVERS = [
+  {
+    value: 'matching-front',
+    label: 'Matching Front',
+    hint: 'Use the same style as the selected front cover',
+  },
+  {
+    value: 'vinyl-black',
+    label: 'Heavy Vinyl / Leatherette — Black',
+    hint: 'Rigid textured backing sheet',
+  },
+  {
+    value: 'vinyl-navy',
+    label: 'Heavy Vinyl / Leatherette — Navy',
+    hint: 'Rigid textured backing sheet',
+  },
+] as const;
+
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */

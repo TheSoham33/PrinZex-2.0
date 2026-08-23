@@ -29,6 +29,14 @@ export interface QuoteSpecifications {
   spineText?: string;
   paperGsm?: 75 | 100;
   hardBindingProofApproved?: boolean;
+  twinLoopWireColor?: string;
+  twinLoopFrontCover?: string;
+  twinLoopBackCover?: string;
+  twinLoopBindingEdge?: 'left' | 'top';
+  twinLoopPrintSides?: 'single' | 'double';
+  twinLoopCalendarHanger?: boolean;
+  twinLoopConcealed?: boolean;
+  twinLoopSafeZoneAcknowledged?: boolean;
 }
 
 export interface QuoteInput {
@@ -56,6 +64,9 @@ export interface QuoteResult {
   bindingCost?: number;
   /** Hard Binding: estimated finished spine width from page count and paper GSM. */
   spineWidthMm?: number;
+  twinLoopPitch?: '3:1' | '2:1';
+  twinLoopWireSize?: string;
+  twinLoopTotalSheets?: number;
 }
 
 // ── Pricing constants ──────────────────────────────────────────────────────
@@ -351,7 +362,17 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
           (overrides.coilType?.[specifications.spiralType ?? ''] ?? 0) +
           (overrides.coverColor?.[specifications.coverColor ?? ''] ?? 0)
         : 0;
-    const bindingRate = input.basePrice + spiralCustomizationRate;
+    const twinLoop = overrides.twinLoopOptions ?? {};
+    const twinLoopCustomizationRate =
+      input.serviceId === 'bind-twin-loop'
+        ? (twinLoop.wireColors?.[specifications.twinLoopWireColor ?? ''] ?? 0) +
+          (twinLoop.frontCovers?.[specifications.twinLoopFrontCover ?? ''] ?? 0) +
+          (twinLoop.backCovers?.[specifications.twinLoopBackCover ?? ''] ?? 0) +
+          (specifications.twinLoopCalendarHanger ? twinLoop.hangerPrice ?? 0 : 0) +
+          (specifications.twinLoopConcealed ? twinLoop.concealedPrice ?? 0 : 0)
+        : 0;
+    const bindingRate =
+      input.basePrice + spiralCustomizationRate + twinLoopCustomizationRate;
 
     bindingCost = round2(bindingRate * quantity);
     subtotal = round2(pageCost + bindingCost + finishingCharge * quantity);
@@ -381,6 +402,39 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
         )
       : undefined;
 
+  const twinLoopTotalSheets =
+    input.serviceId === 'bind-twin-loop' && totalPages > 0
+      ? (specifications.twinLoopPrintSides === 'single'
+          ? totalPages
+          : Math.ceil(totalPages / 2)) + 2
+      : undefined;
+  const twinLoopPitch: '3:1' | '2:1' | undefined =
+    twinLoopTotalSheets !== undefined
+      ? totalPages <= 120
+        ? '3:1'
+        : '2:1'
+      : undefined;
+  const twinLoopStackMm =
+    twinLoopTotalSheets !== undefined
+      ? twinLoopTotalSheets * (specifications.paperGsm === 100 ? 0.13 : 0.1) + 0.6
+      : undefined;
+  const twinLoopWireSize =
+    twinLoopStackMm === undefined
+      ? undefined
+      : twinLoopStackMm <= 4.5
+        ? '1/4"'
+        : twinLoopStackMm <= 6
+          ? '5/16"'
+          : twinLoopStackMm <= 8
+            ? '3/8"'
+            : twinLoopStackMm <= 10.5
+              ? '1/2"'
+              : twinLoopStackMm <= 13
+                ? '5/8"'
+                : twinLoopStackMm <= 16
+                  ? '3/4"'
+                  : '1"';
+
   return {
     subtotal,
     rushFee,
@@ -392,5 +446,8 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     ...(pageCost !== undefined ? { pageCost } : {}),
     ...(bindingCost !== undefined ? { bindingCost } : {}),
     ...(spineWidthMm !== undefined ? { spineWidthMm } : {}),
+    ...(twinLoopPitch !== undefined ? { twinLoopPitch } : {}),
+    ...(twinLoopWireSize !== undefined ? { twinLoopWireSize } : {}),
+    ...(twinLoopTotalSheets !== undefined ? { twinLoopTotalSheets } : {}),
   };
 }

@@ -107,7 +107,7 @@ export default function ManageServicesPage() {
         serviceId,
         serviceName,
         basePrice: 1, // Default initial price
-        unit: 'per page'
+        unit: serviceId.startsWith('bind-') ? 'per piece' : 'per page'
       });
     }
   };
