@@ -325,11 +325,16 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     // PLUS any cover-customization extras (cover type, coil type, cover colour).
     // The base is always included so a seller's set price is never replaced by
     // the add-ons.
-    const bindingRate =
-      input.basePrice +
-      (overrides.coverType?.[specifications.coverType ?? ''] ?? 0) +
-      (overrides.coilType?.[specifications.spiralType ?? ''] ?? 0) +
-      (overrides.coverColor?.[specifications.coverColor ?? ''] ?? 0);
+    // Seller-defined cover/coil/colour customization prices belong only to
+    // Spiral Binding. Other binding services use their own base price without
+    // inheriting Spiral Binding add-ons.
+    const spiralCustomizationRate =
+      input.serviceId === 'bind-spiral'
+        ? (overrides.coverType?.[specifications.coverType ?? ''] ?? 0) +
+          (overrides.coilType?.[specifications.spiralType ?? ''] ?? 0) +
+          (overrides.coverColor?.[specifications.coverColor ?? ''] ?? 0)
+        : 0;
+    const bindingRate = input.basePrice + spiralCustomizationRate;
 
     bindingCost = round2(bindingRate * quantity);
     subtotal = round2(pageCost + bindingCost + finishingCharge * quantity);

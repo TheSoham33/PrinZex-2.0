@@ -9,7 +9,6 @@ import {
 } from '@/lib/domain/seller-inventory';
 import {
   COVER_COLORS,
-  COVER_TYPES,
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
 } from '@/lib/domain/stores';
@@ -56,7 +55,7 @@ export default function SellerPricingPage() {
 
       const coverType = overrides.coverType ?? {};
       const ct: Record<string, { price: string; enabled: boolean }> = {};
-      [...SPIRAL_COVER_TYPES, ...COVER_TYPES].forEach(c => {
+      SPIRAL_COVER_TYPES.forEach(c => {
         ct[c.value] = {
           price: String(coverType[c.value] ?? ''),
           enabled: coverType[c.value] !== undefined,
@@ -259,10 +258,11 @@ export default function SellerPricingPage() {
         )}
       </section>
 
-      {/* Specification Overrides */}
+      {/* Spiral Binding customization prices */}
+      {pricing.some((entry) => entry.serviceId === 'bind-spiral') && (
       <section className="card mt-6 overflow-hidden">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">Binding customization prices</h2>
+          <h2 className="text-sm font-bold text-slate-900">Spiral Binding customization prices</h2>
           <button 
             onClick={handleSaveOverrides}
             disabled={updateOverridesMutation.isPending}
@@ -276,9 +276,9 @@ export default function SellerPricingPage() {
           {/* Binding — cover type (offer toggle + ₹/binding) */}
           <div className="border-t border-slate-100 pt-5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover types</h3>
-            <p className="text-xs text-slate-400 mb-3">Toggle which cover types your store offers; set the extra charge for each (added per binding).</p>
+            <p className="text-xs text-slate-400 mb-3">Toggle which cover types you offer for Spiral Binding and set the extra charge for each.</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {[...SPIRAL_COVER_TYPES, ...COVER_TYPES].map(cover => {
+              {SPIRAL_COVER_TYPES.map(cover => {
                 const opt = coverTypeOptions[cover.value] ?? { price: '', enabled: false };
                 return (
                   <div key={cover.value} className="flex items-center justify-between gap-3">
@@ -342,7 +342,7 @@ export default function SellerPricingPage() {
           {/* Binding — cover colour (offer toggle + ₹/binding) */}
           <div className="border-t border-slate-100 pt-5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover colours</h3>
-            <p className="text-xs text-slate-400 mb-3">Binding services — toggle which cover colours you offer and set the extra charge.</p>
+            <p className="text-xs text-slate-400 mb-3">Spiral Binding — toggle which cover colours you offer and set the extra charge.</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {COVER_COLORS.map(color => {
                 const opt = coverColorOptions[color.value] ?? { price: '', enabled: false };
@@ -376,6 +376,7 @@ export default function SellerPricingPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Bulk Discounts */}
       <section className="card mt-6 overflow-hidden">
