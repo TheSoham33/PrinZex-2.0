@@ -34,6 +34,7 @@ export const updateBulkDiscounts = async (tiers: Array<{ minQty: number; discoun
 
 export const updatePricingOverrides = async (overrides: {
   pageRate?: { bw: number; color: number };
+  documentColorModes?: { bw: boolean; color: boolean };
   coverType?: Record<string, number>;
   coilType?: Record<string, number>;
   coverColor?: Record<string, number>;

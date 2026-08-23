@@ -25,7 +25,7 @@ import {
   IconTrash,
   IconEye,
 } from '@/components/icons';
-import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { PDFDocument } from 'pdf-lib';
 
 const ACCEPTED = '.pdf';
@@ -278,6 +278,42 @@ export default function SpecificationsStep({
   const selectedService = services.find(
     (service) => service.id === specs.serviceId,
   );
+  const colorChoices = useMemo(() => {
+    const availableColorModes =
+      selectedService?.id === 'doc-print'
+        ? (selectedService.availableColorModes ?? ['bw', 'color'])
+        : (['bw', 'color'] as const);
+    return [
+      ...(availableColorModes.includes('bw')
+        ? [
+            {
+              value: 'bw' as const,
+              label: 'Black & White',
+              hint: 'Most economical',
+            },
+          ]
+        : []),
+      ...(availableColorModes.includes('color')
+        ? [
+            {
+              value: 'color' as const,
+              label: 'Colour',
+              hint: 'Full colour print',
+            },
+          ]
+        : []),
+      ...(availableColorModes.includes('bw') &&
+      availableColorModes.includes('color')
+        ? [
+            {
+              value: 'mixed' as const,
+              label: 'Particular pages',
+              hint: 'Choose pages to print in colour',
+            },
+          ]
+        : []),
+    ];
+  }, [selectedService?.id, selectedService?.availableColorModes]);
   const offeredPaperTypes = filterOffered(
     PAPER_TYPES,
     selectedService?.paperTypePrices
@@ -300,6 +336,20 @@ export default function SpecificationsStep({
   const offeredCoverColors = isHardBinding
     ? filterOffered(COVER_COLORS, availableHardCoverColors)
     : filterOffered(COVER_COLORS, availableCoverColors);
+
+  // Hide seller-disabled Document Printing modes and move stale selections to
+  // the first mode still offered. Mixed pages require both B&W and colour.
+  useEffect(() => {
+    if (
+      colorChoices.length > 0 &&
+      !colorChoices.some((option) => option.value === specs.colorOption)
+    ) {
+      dispatch({
+        type: 'SET_SPEC',
+        payload: { colorOption: colorChoices[0].value, colorPages: '' },
+      });
+    }
+  }, [colorChoices, specs.colorOption, dispatch]);
 
   // Keep the selected paper options aligned with the seller's current menu.
   useEffect(() => {
@@ -688,21 +738,7 @@ export default function SpecificationsStep({
             Colour <span className="text-red-500">*</span>
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {(
-              [
-                {
-                  value: 'bw',
-                  label: 'Black & White',
-                  hint: 'Most economical',
-                },
-                { value: 'color', label: 'Colour', hint: 'Full colour print' },
-                {
-                  value: 'mixed',
-                  label: 'Particular pages',
-                  hint: 'Choose pages to print in colour',
-                },
-              ] as const
-            ).map((option) => (
+            {colorChoices.map((option) => (
               <button
                 key={option.value}
                 type="button"
@@ -730,31 +766,32 @@ export default function SpecificationsStep({
         </section>
       </div>
 
-      {specs.colorOption === 'mixed' && (
-        <section className="animate-fade-in">
-          <label htmlFor="colorPages" className="label">
-            Pages to print in colour <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            id="colorPages"
-            rows={2}
-            value={specs.colorPages || ''}
-            onChange={(e) =>
-              dispatch({
-                type: 'SET_SPEC',
-                payload: { colorPages: e.target.value },
-              })
-            }
-            placeholder={`e.g. 1, 5, 10-15${totalPages ? ` (out of ${totalPages} pages)` : ''}`}
-            className="input resize-none"
-          />
-          <p className="mt-1.5 text-xs text-slate-500">
-            {colorPageCount > 0
-              ? `${colorPageCount} of ${totalPages} page${totalPages === 1 ? '' : 's'} will print in colour; the rest stay black & white.`
-              : 'List the page numbers (or ranges) you want in colour, e.g. 1, 5, 10-15.'}
-          </p>
-        </section>
-      )}
+      {specs.colorOption === 'mixed' &&
+        colorChoices.some((option) => option.value === 'mixed') && (
+          <section className="animate-fade-in">
+            <label htmlFor="colorPages" className="label">
+              Pages to print in colour <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              id="colorPages"
+              rows={2}
+              value={specs.colorPages || ''}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_SPEC',
+                  payload: { colorPages: e.target.value },
+                })
+              }
+              placeholder={`e.g. 1, 5, 10-15${totalPages ? ` (out of ${totalPages} pages)` : ''}`}
+              className="input resize-none"
+            />
+            <p className="mt-1.5 text-xs text-slate-500">
+              {colorPageCount > 0
+                ? `${colorPageCount} of ${totalPages} page${totalPages === 1 ? '' : 's'} will print in colour; the rest stay black & white.`
+                : 'List the page numbers (or ranges) you want in colour, e.g. 1, 5, 10-15.'}
+            </p>
+          </section>
+        )}
 
       {isCustomizableBinding && (
         <section className="animate-fade-in rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6">

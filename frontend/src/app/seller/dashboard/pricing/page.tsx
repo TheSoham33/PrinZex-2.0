@@ -24,6 +24,7 @@ import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import HardBindingCustomizationOptions from '@/components/seller-dashboard/HardBindingCustomizationOptions';
 import PaperCustomizationOptions from '@/components/seller-dashboard/PaperCustomizationOptions';
 import SpiralBindingCustomizationPricing from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
+import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconPencil, IconRefreshCw } from '@/components/icons';
 
@@ -40,6 +41,10 @@ export default function SellerPricingPage() {
   const [pageRate, setPageRate] = useState<{ bw: string; color: string }>({
     bw: '',
     color: '',
+  });
+  const [documentColorModes, setDocumentColorModes] = useState({
+    bw: true,
+    color: true,
   });
   // Each option carries an "offered" toggle + its extra price. Only offered
   // options are saved (and shown to customers on the store).
@@ -81,6 +86,10 @@ export default function SellerPricingPage() {
         // The Document Printing base price is the canonical B&W page price.
         bw: String(documentPrinting?.basePrice ?? overrides.pageRate?.bw ?? ''),
         color: String(overrides.pageRate?.color ?? ''),
+      });
+      setDocumentColorModes({
+        bw: overrides.documentColorModes?.bw ?? true,
+        color: overrides.documentColorModes?.color ?? true,
       });
 
       const coverType = overrides.coverType ?? {};
@@ -222,6 +231,7 @@ export default function SellerPricingPage() {
 
     updateOverridesMutation.mutate({
       pageRate: pageRatePayload,
+      documentColorModes,
       coverType,
       coilType,
       coverColor,
@@ -331,54 +341,99 @@ export default function SellerPricingPage() {
                     </p>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="flex items-center justify-between gap-3 text-sm text-slate-700">
-                      B&amp;W printing
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                          ₹
-                        </span>
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={pageRate.bw}
-                          onChange={(event) =>
-                            setPageRate((current) => ({
+                    <div className="flex items-center justify-between gap-3">
+                      <span
+                        className={`text-sm ${documentColorModes.bw ? 'text-slate-700' : 'text-slate-400'}`}
+                      >
+                        B&amp;W printing
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            disabled={!documentColorModes.bw}
+                            value={pageRate.bw}
+                            onChange={(event) =>
+                              setPageRate((current) => ({
+                                ...current,
+                                bw: event.target.value,
+                              }))
+                            }
+                            className="input w-24 py-1 pl-6 text-right text-sm disabled:opacity-40"
+                          />
+                        </div>
+                        <ToggleSwitch
+                          checked={documentColorModes.bw}
+                          disabled={
+                            documentColorModes.bw && !documentColorModes.color
+                          }
+                          label="Show B&W printing"
+                          hideLabel
+                          onChange={(bw) =>
+                            setDocumentColorModes((current) => ({
                               ...current,
-                              bw: event.target.value,
+                              bw,
                             }))
                           }
-                          className="input w-28 py-1 pl-6 text-right text-sm"
                         />
                       </div>
-                    </label>
-                    <label className="flex items-center justify-between gap-3 text-sm text-slate-700">
-                      Color printing
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                          ₹
-                        </span>
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={pageRate.color}
-                          onChange={(event) =>
-                            setPageRate((current) => ({
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span
+                        className={`text-sm ${documentColorModes.color ? 'text-slate-700' : 'text-slate-400'}`}
+                      >
+                        Color printing
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            disabled={!documentColorModes.color}
+                            value={pageRate.color}
+                            onChange={(event) =>
+                              setPageRate((current) => ({
+                                ...current,
+                                color: event.target.value,
+                              }))
+                            }
+                            className="input w-24 py-1 pl-6 text-right text-sm disabled:opacity-40"
+                          />
+                        </div>
+                        <ToggleSwitch
+                          checked={documentColorModes.color}
+                          disabled={
+                            documentColorModes.color && !documentColorModes.bw
+                          }
+                          label="Show color printing"
+                          hideLabel
+                          onChange={(color) =>
+                            setDocumentColorModes((current) => ({
                               ...current,
-                              color: event.target.value,
+                              color,
                             }))
                           }
-                          className="input w-28 py-1 pl-6 text-right text-sm"
                         />
                       </div>
-                    </label>
+                    </div>
                   </div>
                   <div className="mt-4 flex justify-end">
                     <button
                       type="button"
                       onClick={handleSaveOverrides}
-                      disabled={updateOverridesMutation.isPending}
+                      disabled={
+                        updateOverridesMutation.isPending ||
+                        (!documentColorModes.bw && !documentColorModes.color)
+                      }
                       className="btn-primary py-1.5 text-xs"
                     >
                       {updateOverridesMutation.isPending

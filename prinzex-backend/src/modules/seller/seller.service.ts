@@ -73,6 +73,11 @@ export interface SellerMetadata {
       bw: number; // ₹ per B&W page
       color: number; // ₹ per colour page
     };
+    /** Document Printing colour modes shown to customers. */
+    documentColorModes?: {
+      bw: boolean;
+      color: boolean;
+    };
     // Binding services: additive ₹ components set by the seller.
     // Binding (₹/binding): coverType + coilType + coverColor.
     coverType?: Record<string, number>;
@@ -1529,6 +1534,14 @@ export async function updatePricingOverrides(
   });
   if (!seller) {
     throw ApiError.notFound('Store not found');
+  }
+
+  if (
+    overrides?.documentColorModes &&
+    !overrides.documentColorModes.bw &&
+    !overrides.documentColorModes.color
+  ) {
+    throw ApiError.badRequest('Keep at least one Document Printing colour mode enabled');
   }
 
   const bwRate = overrides?.pageRate?.bw;
