@@ -47,6 +47,7 @@ export default function ManageServicesPage() {
     mutationFn: addSellerService,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seller-my-services'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
       showToast('Service added to your shop');
     },
     onError: (err: any) => showToast(err.message, 'error'),
@@ -66,6 +67,7 @@ export default function ManageServicesPage() {
     mutationFn: deleteSellerService,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seller-my-services'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
       showToast('Service removed from your shop');
     },
     onError: (err: any) => showToast(err.message, 'error'),
