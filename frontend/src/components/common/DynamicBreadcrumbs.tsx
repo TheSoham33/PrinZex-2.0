@@ -27,16 +27,22 @@ const LABEL_MAP: Record<string, string> = {
   payouts: 'Payouts',
 };
 
-export default function DynamicBreadcrumbs() {
+interface DynamicBreadcrumbsProps {
+  sellerDashboard?: boolean;
+}
+
+export default function DynamicBreadcrumbs({ sellerDashboard = false }: DynamicBreadcrumbsProps) {
   const pathname = usePathname();
   
   // Don't show breadcrumbs on the homepage
   if (pathname === '/') return null;
   
-  const segments = pathname.split('/').filter(Boolean);
+  const allSegments = pathname.split('/').filter(Boolean);
+  const segments = sellerDashboard ? allSegments.slice(2) : allSegments;
   
-  const items: BreadcrumbItem[] = segments.map((segment, index) => {
-    const href = `/${segments.slice(0, index + 1).join('/')}`;
+  const generatedItems: BreadcrumbItem[] = segments.map((segment, index) => {
+    const sourceIndex = sellerDashboard ? index + 2 : index;
+    const href = `/${allSegments.slice(0, sourceIndex + 1).join('/')}`;
     const isLast = index === segments.length - 1;
     
     // Check if segment is a CUID/UUID (likely an ID)
@@ -58,5 +64,17 @@ export default function DynamicBreadcrumbs() {
     };
   });
 
-  return <Breadcrumbs items={items} />;
+  if (!sellerDashboard) {
+    return <Breadcrumbs items={generatedItems} />;
+  }
+
+  const isOrdersPage = segments.length === 1 && segments[0] === 'orders';
+  const items: BreadcrumbItem[] = isOrdersPage
+    ? [{ label: 'Orders', active: true }]
+    : [
+        { label: 'Orders', href: '/seller/dashboard/orders' },
+        ...generatedItems.filter((item) => item.label !== 'Orders'),
+      ];
+
+  return <Breadcrumbs items={items} showHome={false} />;
 }
