@@ -253,7 +253,9 @@ export default function TwinLoopCustomizationPricing({
             saving ||
             Object.keys(value.wireColors).length === 0 ||
             Object.keys(value.frontCovers).length === 0 ||
-            Object.keys(value.backCovers).length === 0
+            Object.keys(value.backCovers).length === 0 ||
+            !('heavy-cardstock' in value.frontCovers) ||
+            !('matching-front' in value.backCovers)
           }
           className="btn-primary py-1.5 text-xs"
         >

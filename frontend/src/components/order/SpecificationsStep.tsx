@@ -452,7 +452,12 @@ export default function SpecificationsStep({
 
       <section className="space-y-4">
         <label className="label">
-          Upload your file <span className="text-red-500">*</span>
+          {isTwinLoopBinding
+            ? specs.twinLoopCoverSubmission === 'split'
+              ? 'Upload inner content PDF'
+              : 'Upload master PDF'
+            : 'Upload your file'}{' '}
+          <span className="text-red-500">*</span>
         </label>
 
         {processing ? (

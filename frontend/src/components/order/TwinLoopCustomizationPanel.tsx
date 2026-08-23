@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import {
-  TWIN_LOOP_BACK_COVERS,
-  TWIN_LOOP_FRONT_COVERS,
-  TWIN_LOOP_WIRE_COLORS,
-} from '@/lib/domain/stores';
+import { useEffect, useMemo, useState } from 'react';
+import { PDFDocument } from 'pdf-lib';
+import { TWIN_LOOP_WIRE_COLORS } from '@/lib/domain/stores';
 import type { OrderSpecifications, ServiceOffering } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
+import {
+  IconCheckCircle,
+  IconEye,
+  IconTrash,
+  IconUpload,
+} from '@/components/icons';
 import type { OrderAction } from './orderReducer';
 
 interface Props {
@@ -93,66 +96,183 @@ function ChoiceGrid({
   );
 }
 
+function CoverUpload({
+  side,
+  printSides,
+  fileUrl,
+  fileName,
+  dispatch,
+  onError,
+}: {
+  side: 'front' | 'back';
+  printSides: 'outside' | 'both';
+  fileUrl?: string;
+  fileName?: string;
+  dispatch: React.Dispatch<OrderAction>;
+  onError: (message: string | null) => void;
+}) {
+  const id = `twin-loop-${side}-cover`;
+
+  const upload = async (file?: File) => {
+    if (!file) return;
+    const isPdf = file.type === 'application/pdf';
+    const isImage = ['image/jpeg', 'image/png'].includes(file.type);
+    if (!isPdf && !isImage) {
+      onError('Twin Loop cover artwork must be a PDF, JPG, or PNG file.');
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      onError('Twin Loop cover artwork must be 25 MB or smaller.');
+      return;
+    }
+    if (printSides === 'both' && !isPdf) {
+      onError(`A both-sides ${side} cover must be supplied as a two-page PDF.`);
+      return;
+    }
+    if (isPdf) {
+      try {
+        const pdf = await PDFDocument.load(await file.arrayBuffer(), {
+          ignoreEncryption: true,
+        });
+        const requiredPages = printSides === 'both' ? 2 : 1;
+        if (pdf.getPageCount() !== requiredPages) {
+          onError(
+            `${side === 'front' ? 'Front' : 'Back'} cover PDF must contain exactly ${requiredPages} page${requiredPages === 1 ? '' : 's'}.`,
+          );
+          return;
+        }
+      } catch {
+        onError(
+          'Could not read that cover PDF. Upload a valid, unprotected file.',
+        );
+        return;
+      }
+    }
+
+    onError(null);
+    const url = URL.createObjectURL(file);
+    dispatch({
+      type: 'SET_SPEC',
+      payload:
+        side === 'front'
+          ? { twinLoopFrontFileUrl: url, twinLoopFrontFileName: file.name }
+          : { twinLoopBackFileUrl: url, twinLoopBackFileName: file.name },
+    });
+  };
+
+  const remove = () => {
+    if (fileUrl?.startsWith('blob:')) URL.revokeObjectURL(fileUrl);
+    const input = document.getElementById(id) as HTMLInputElement | null;
+    if (input) input.value = '';
+    dispatch({
+      type: 'SET_SPEC',
+      payload:
+        side === 'front'
+          ? {
+              twinLoopFrontFileUrl: undefined,
+              twinLoopFrontFileName: undefined,
+            }
+          : { twinLoopBackFileUrl: undefined, twinLoopBackFileName: undefined },
+    });
+  };
+
+  return (
+    <div>
+      <p className="label">
+        {side === 'front' ? 'Front' : 'Back'} Cover Design{' '}
+        <span className="text-red-500">*</span>
+      </p>
+      <input
+        id={id}
+        type="file"
+        accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png"
+        onChange={(event) => void upload(event.target.files?.[0])}
+        className="hidden"
+      />
+      <div className="flex items-stretch gap-2">
+        <label
+          htmlFor={id}
+          className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 ${fileUrl ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-300'}`}
+        >
+          {fileUrl ? (
+            <>
+              <IconCheckCircle className="h-5 w-5 shrink-0" />
+              <span className="truncate">{fileName}</span>
+            </>
+          ) : (
+            <>
+              <IconUpload className="h-5 w-5" />
+              Upload{' '}
+              {printSides === 'both' ? 'two-page PDF' : 'PDF, JPG, or PNG'}
+            </>
+          )}
+        </label>
+        {fileUrl && (
+          <div className="flex flex-col gap-2">
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary flex-1 p-3"
+              title={`View ${side} cover`}
+            >
+              <IconEye className="h-5 w-5" />
+            </a>
+            <button
+              type="button"
+              onClick={remove}
+              className="flex flex-1 items-center justify-center rounded-lg border border-red-200 bg-white p-3 text-red-600 hover:bg-red-50"
+              title={`Remove ${side} cover`}
+            >
+              <IconTrash className="h-5 w-5" />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function TwinLoopCustomizationPanel({
   specs,
   service,
   dispatch,
 }: Props) {
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const config = service?.twinLoopOptions;
   const wireColors = useMemo(
     () => offered(TWIN_LOOP_WIRE_COLORS, config?.wireColors),
     [config?.wireColors],
   );
-  const frontCovers = useMemo(
-    () => offered(TWIN_LOOP_FRONT_COVERS, config?.frontCovers),
-    [config?.frontCovers],
-  );
-  const backCovers = useMemo(
-    () => offered(TWIN_LOOP_BACK_COVERS, config?.backCovers),
-    [config?.backCovers],
-  );
 
   useEffect(() => {
-    const fixes: Partial<OrderSpecifications> = {};
     if (
       wireColors.length &&
       !wireColors.some((option) => option.value === specs.twinLoopWireColor)
     ) {
-      fixes.twinLoopWireColor = wireColors[0].value;
+      dispatch({
+        type: 'SET_SPEC',
+        payload: { twinLoopWireColor: wireColors[0].value },
+      });
     }
-    if (
-      frontCovers.length &&
-      !frontCovers.some((option) => option.value === specs.twinLoopFrontCover)
-    ) {
-      fixes.twinLoopFrontCover = frontCovers[0].value;
-    }
-    if (
-      backCovers.length &&
-      !backCovers.some((option) => option.value === specs.twinLoopBackCover)
-    ) {
-      fixes.twinLoopBackCover = backCovers[0].value;
-    }
-    if (Object.keys(fixes).length)
-      dispatch({ type: 'SET_SPEC', payload: fixes });
-  }, [
-    specs.twinLoopWireColor,
-    specs.twinLoopFrontCover,
-    specs.twinLoopBackCover,
-    wireColors,
-    frontCovers,
-    backCovers,
-    dispatch,
-  ]);
+  }, [specs.twinLoopWireColor, wireColors, dispatch]);
 
   const totalPages = specs.totalPages ?? 0;
-  const totalSheets = totalPages
+  const innerPages =
+    specs.twinLoopCoverSubmission === 'embedded'
+      ? Math.max(0, totalPages - 2)
+      : totalPages;
+  const totalSheets = innerPages
     ? (specs.twinLoopPrintSides === 'single'
-        ? totalPages
-        : Math.ceil(totalPages / 2)) + 2
+        ? innerPages
+        : Math.ceil(innerPages / 2)) + 2
     : 0;
-  const pitch = totalPages <= 120 ? '3:1' : '2:1';
+  const pitch = innerPages <= 120 ? '3:1' : '2:1';
   const stackMm =
     totalSheets * ((specs.paperGsm ?? 75) === 100 ? 0.13 : 0.1) + 0.6;
+  const selectedWire = TWIN_LOOP_WIRE_COLORS.find(
+    (option) => option.value === specs.twinLoopWireColor,
+  );
   const wireSize =
     stackMm <= 4.5
       ? '1/4"'
@@ -179,6 +299,210 @@ export default function TwinLoopCustomizationPanel({
       </p>
 
       <div className="mt-6 space-y-6">
+        <div>
+          <p className="label">
+            Cover artwork submission <span className="text-red-500">*</span>
+          </p>
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              {
+                value: 'embedded',
+                label: 'Single Master PDF',
+                hint: 'Page 1 front cover · middle inner pages · last page back cover',
+              },
+              {
+                value: 'split',
+                label: 'Split File Uploads',
+                hint: 'Separate front cover, inner PDF, and back cover files',
+              },
+              {
+                value: 'mirror',
+                label: 'Quick Mirror Back',
+                hint: 'Use the first master-PDF page for front; solid or blank back',
+              },
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() =>
+                  dispatch({
+                    type: 'SET_SPEC',
+                    payload: {
+                      twinLoopCoverSubmission: option.value as
+                        'embedded' | 'split' | 'mirror',
+                      twinLoopFrontCover: 'heavy-cardstock',
+                      twinLoopBackCover: 'matching-front',
+                    },
+                  })
+                }
+                className={`rounded-xl border p-3.5 text-left ${
+                  specs.twinLoopCoverSubmission === option.value
+                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                    : 'border-slate-200 bg-white hover:border-blue-200'
+                }`}
+              >
+                <span className="block text-sm font-semibold text-slate-900">
+                  {option.label}
+                </span>
+                <span className="mt-1 block text-xs text-slate-500">
+                  {option.hint}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {specs.twinLoopCoverSubmission === 'embedded' && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+            <p className="font-bold">Master PDF page mapping</p>
+            <p className="mt-1 text-xs">
+              Page 1 is the front cover, pages 2 through{' '}
+              {Math.max(2, totalPages - 1)} are inner content, and page{' '}
+              {totalPages || 'N'} is the back cover. Upload at least three
+              pages.
+            </p>
+          </div>
+        )}
+
+        {specs.twinLoopCoverSubmission === 'split' && (
+          <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-4">
+            {uploadError && (
+              <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                {uploadError}
+              </p>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="label">Front cover printing</p>
+                <select
+                  value={specs.twinLoopFrontPrintSides ?? 'outside'}
+                  onChange={(event) =>
+                    dispatch({
+                      type: 'SET_SPEC',
+                      payload: {
+                        twinLoopFrontPrintSides: event.target.value as
+                          'outside' | 'both',
+                        twinLoopFrontFileUrl: undefined,
+                        twinLoopFrontFileName: undefined,
+                      },
+                    })
+                  }
+                  className="input"
+                >
+                  <option value="outside">Print outside only</option>
+                  <option value="both">Print both sides (2-page PDF)</option>
+                </select>
+              </div>
+              <div>
+                <p className="label">Back cover printing</p>
+                <select
+                  value={specs.twinLoopBackPrintSides ?? 'outside'}
+                  onChange={(event) =>
+                    dispatch({
+                      type: 'SET_SPEC',
+                      payload: {
+                        twinLoopBackPrintSides: event.target.value as
+                          'outside' | 'both',
+                        twinLoopBackFileUrl: undefined,
+                        twinLoopBackFileName: undefined,
+                      },
+                    })
+                  }
+                  className="input"
+                >
+                  <option value="outside">Print outside only</option>
+                  <option value="both">Print both sides (2-page PDF)</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <CoverUpload
+                side="front"
+                printSides={specs.twinLoopFrontPrintSides ?? 'outside'}
+                fileUrl={specs.twinLoopFrontFileUrl}
+                fileName={specs.twinLoopFrontFileName}
+                dispatch={dispatch}
+                onError={setUploadError}
+              />
+              <CoverUpload
+                side="back"
+                printSides={specs.twinLoopBackPrintSides ?? 'outside'}
+                fileUrl={specs.twinLoopBackFileUrl}
+                fileName={specs.twinLoopBackFileName}
+                dispatch={dispatch}
+                onError={setUploadError}
+              />
+            </div>
+            <p className="text-xs text-slate-500">
+              The main document upload above is used only for the inner content
+              pages in split mode.
+            </p>
+          </div>
+        )}
+
+        {specs.twinLoopCoverSubmission === 'mirror' && (
+          <div>
+            <p className="label">Quick back cover</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                {
+                  value: 'wire-color',
+                  label: 'Solid colour matching wire / theme',
+                },
+                { value: 'blank-white', label: 'Blank white back cover' },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() =>
+                    dispatch({
+                      type: 'SET_SPEC',
+                      payload: {
+                        twinLoopMirrorBack: option.value as
+                          'wire-color' | 'blank-white',
+                      },
+                    })
+                  }
+                  className={`rounded-xl border p-3 text-left text-sm font-semibold ${specs.twinLoopMirrorBack === option.value ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 bg-white'}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="twin-cover-material" className="label">
+            Printable cover material <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="twin-cover-material"
+            value={specs.twinLoopCoverMaterial ?? 'gloss-300'}
+            onChange={(event) =>
+              dispatch({
+                type: 'SET_SPEC',
+                payload: {
+                  twinLoopCoverMaterial: event.target.value as
+                    'gloss-300' | 'matte-350',
+                },
+              })
+            }
+            className="input"
+          >
+            <option value="gloss-300">
+              300 GSM Gloss Art Card — vibrant colour
+            </option>
+            <option value="matte-350">
+              350 GSM Matte Card with Lamination — premium scratch resistance
+            </option>
+          </select>
+          <p className="mt-1.5 text-xs text-slate-500">
+            Clear acetate is intentionally unavailable for custom printed
+            artwork.
+          </p>
+        </div>
+
         <ChoiceGrid
           title="Wire material & colour"
           options={wireColors}
@@ -245,25 +569,6 @@ export default function TwinLoopCustomizationPanel({
             </p>
           </div>
         </div>
-
-        <ChoiceGrid
-          title="Front cover type"
-          options={frontCovers}
-          selected={specs.twinLoopFrontCover}
-          prices={config?.frontCovers}
-          onSelect={(twinLoopFrontCover) =>
-            dispatch({ type: 'SET_SPEC', payload: { twinLoopFrontCover } })
-          }
-        />
-        <ChoiceGrid
-          title="Back cover type"
-          options={backCovers}
-          selected={specs.twinLoopBackCover}
-          prices={config?.backCovers}
-          onSelect={(twinLoopBackCover) =>
-            dispatch({ type: 'SET_SPEC', payload: { twinLoopBackCover } })
-          }
-        />
 
         <div className="grid gap-6 sm:grid-cols-2">
           <div>
@@ -390,6 +695,86 @@ export default function TwinLoopCustomizationPanel({
             />
           </label>
         )}
+
+        <div>
+          <p className="label">Binding preview</p>
+          <div className="flex min-h-64 items-center justify-center overflow-hidden rounded-2xl bg-slate-200 p-6">
+            <div className="relative flex h-52 w-72 items-center justify-center">
+              <div className="absolute left-4 top-3 h-48 w-56 rotate-[-4deg] rounded-r-lg border border-slate-300 bg-white shadow-lg" />
+              <div
+                className={`absolute ${specs.twinLoopBindingEdge === 'top' ? 'left-8 top-1 flex-row' : 'left-1 top-5 flex-col'} flex gap-1.5`}
+              >
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <span
+                    key={index}
+                    className={`h-4 w-4 rounded-full border-4 border-slate-500 ${selectedWire?.class ?? 'bg-black'}`}
+                  />
+                ))}
+              </div>
+              <div className="relative flex h-48 w-56 flex-col items-center justify-center rounded-r-lg border border-slate-300 bg-gradient-to-br from-white to-slate-100 p-6 text-center shadow-xl">
+                <p className="text-sm font-bold text-slate-800">CUSTOM COVER</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {specs.twinLoopCoverMaterial === 'matte-350'
+                    ? '350 GSM Matte Laminated'
+                    : '300 GSM Gloss Art Card'}
+                </p>
+                <p className="mt-6 text-[10px] uppercase text-slate-400">
+                  {specs.twinLoopBindingEdge} edge ·{' '}
+                  {selectedWire?.label ?? 'Wire'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+          <p className="font-bold">360-degree back-cover flip rule</p>
+          <p className="mt-1 text-xs leading-relaxed">
+            Upload the back cover exactly like a normal upright page—never
+            upside down or mirrored. When the book opens flat, the back rotates
+            naturally into position.
+          </p>
+          <label className="mt-3 flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={Boolean(specs.twinLoopFlipAcknowledged)}
+              onChange={(event) =>
+                dispatch({
+                  type: 'SET_SPEC',
+                  payload: { twinLoopFlipAcknowledged: event.target.checked },
+                })
+              }
+              className="mt-0.5 h-5 w-5 rounded border-violet-300 text-blue-600"
+            />
+            <span className="text-xs font-semibold">
+              I confirm the back cover artwork is upright and not mirrored.
+            </span>
+          </label>
+        </div>
+
+        <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-900">
+          <p className="font-bold">3 mm edge bleed</p>
+          <p className="mt-1 text-xs leading-relaxed">
+            Extend cover backgrounds 0.125 inches (3 mm) beyond every trim edge
+            to prevent white borders after cutting.
+          </p>
+          <label className="mt-3 flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={Boolean(specs.twinLoopBleedAcknowledged)}
+              onChange={(event) =>
+                dispatch({
+                  type: 'SET_SPEC',
+                  payload: { twinLoopBleedAcknowledged: event.target.checked },
+                })
+              }
+              className="mt-0.5 h-5 w-5 rounded border-cyan-300 text-blue-600"
+            />
+            <span className="text-xs font-semibold">
+              I confirm my cover artwork includes a 3 mm bleed on all sides.
+            </span>
+          </label>
+        </div>
 
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-bold">10 mm punch-margin safe zone</p>
