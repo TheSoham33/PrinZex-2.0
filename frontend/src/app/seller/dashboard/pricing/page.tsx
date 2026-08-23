@@ -193,16 +193,68 @@ export default function SellerPricingPage() {
           <div className="h-48 animate-pulse bg-slate-100" />
         ) : (
           pricing.map((entry) => (
-            <PricingEditor 
-              key={entry.id} 
-              entry={{
-                serviceId: entry.id,
-                serviceName: entry.serviceName,
-                basePrice: Number(entry.basePrice),
-                unit: entry.unit
-              }} 
-              onSave={savePrice} 
-            />
+            <div key={entry.id} className="border-b border-slate-100 last:border-0">
+              <PricingEditor
+                entry={{
+                  serviceId: entry.id,
+                  serviceName: entry.serviceName,
+                  basePrice: Number(entry.basePrice),
+                  unit: entry.unit
+                }}
+                onSave={savePrice}
+              />
+
+              {entry.serviceId === 'doc-print' && (
+                <div className="border-t border-slate-100 bg-blue-50/40 px-4 py-4">
+                  <div className="mb-3">
+                    <h3 className="text-sm font-bold text-slate-900">Document printing prices</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      The base price and B&amp;W printing price always stay the same.
+                    </p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="flex items-center justify-between gap-3 text-sm text-slate-700">
+                      B&amp;W printing
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">₹</span>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={pageRate.bw}
+                          onChange={(event) => setPageRate((current) => ({ ...current, bw: event.target.value }))}
+                          className="input w-28 py-1 pl-6 text-right text-sm"
+                        />
+                      </div>
+                    </label>
+                    <label className="flex items-center justify-between gap-3 text-sm text-slate-700">
+                      Color printing
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">₹</span>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={pageRate.color}
+                          onChange={(event) => setPageRate((current) => ({ ...current, color: event.target.value }))}
+                          className="input w-28 py-1 pl-6 text-right text-sm"
+                        />
+                      </div>
+                    </label>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSaveOverrides}
+                      disabled={updateOverridesMutation.isPending}
+                      className="btn-primary py-1.5 text-xs"
+                    >
+                      {updateOverridesMutation.isPending ? 'Saving...' : 'Save printing prices'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ))
         )}
       </section>
@@ -210,7 +262,7 @@ export default function SellerPricingPage() {
       {/* Specification Overrides */}
       <section className="card mt-6 overflow-hidden">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">Page rates & binding add-ons</h2>
+          <h2 className="text-sm font-bold text-slate-900">Binding customization prices</h2>
           <button 
             onClick={handleSaveOverrides}
             disabled={updateOverridesMutation.isPending}
@@ -221,38 +273,6 @@ export default function SellerPricingPage() {
         </div>
         
         <div className="p-4 space-y-6">
-          {/* Page rates — B&W / Colour, common across all page services */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Page rates (₹/page)</h3>
-            <p className="text-xs text-slate-400 mb-3">
-              Applies to every page-based service. Each page is B&W or colour — priced from these two rates.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-slate-600">B&W page</span>
-                <input 
-                  type="number" 
-                  min="0"
-                  step="0.01"
-                  value={pageRate.bw} 
-                  onChange={(e) => setPageRate(p => ({ ...p, bw: e.target.value }))}
-                  className="input w-24 py-1 text-right text-sm"
-                />
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-slate-600">Colour page</span>
-                <input 
-                  type="number" 
-                  min="0"
-                  step="0.01"
-                  value={pageRate.color} 
-                  onChange={(e) => setPageRate(p => ({ ...p, color: e.target.value }))}
-                  className="input w-24 py-1 text-right text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Binding — cover type (offer toggle + ₹/binding) */}
           <div className="border-t border-slate-100 pt-5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Cover types</h3>
