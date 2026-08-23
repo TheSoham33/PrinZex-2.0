@@ -14,10 +14,12 @@ import {
 } from '@/lib/domain/seller-inventory';
 import {
   COVER_COLORS,
+  COVER_TEXT_COLORS,
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
 } from '@/lib/domain/stores';
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
+import HardBindingCustomizationOptions from '@/components/seller-dashboard/HardBindingCustomizationOptions';
 import SpiralBindingCustomizationPricing from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconPencil, IconRefreshCw } from '@/components/icons';
@@ -47,6 +49,8 @@ export default function SellerPricingPage() {
   const [coverColorOptions, setCoverColorOptions] = useState<
     Record<string, { price: string; enabled: boolean }>
   >({});
+  const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
+  const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
 
   const [editingTier, setEditingTier] = useState<number | null>(null);
   const [tierDraft, setTierDraft] = useState('');
@@ -96,6 +100,16 @@ export default function SellerPricingPage() {
         };
       });
       setCoverColorOptions(cc);
+
+      setHardCoverColors(
+        overrides.hardCoverColors ?? COVER_COLORS.map((color) => color.value),
+      );
+      setHardFoilColors(
+        overrides.hardFoilColors ??
+          COVER_TEXT_COLORS.filter((color) => color.value !== 'white').map(
+            (color) => color.value,
+          ),
+      );
     }
   }, [data]);
 
@@ -146,10 +160,16 @@ export default function SellerPricingPage() {
   };
 
   const handleSaveOverrides = () => {
-    const pageRatePayload = {
-      bw: Number(pageRate.bw) || 0,
-      color: Number(pageRate.color) || 0,
-    };
+    const documentPrinting = pricing.find(
+      (service) => service.serviceId === 'doc-print',
+    );
+    const pageRatePayload = documentPrinting
+      ? {
+          bw: Number(pageRate.bw) || Number(documentPrinting.basePrice),
+          color:
+            Number(pageRate.color) || Number(documentPrinting.basePrice) * 2,
+        }
+      : undefined;
 
     const coverType: Record<string, number> = {};
     Object.entries(coverTypeOptions).forEach(([k, v]) => {
@@ -171,6 +191,8 @@ export default function SellerPricingPage() {
       coverType,
       coilType,
       coverColor,
+      hardCoverColors,
+      hardFoilColors,
     });
   };
 
@@ -300,6 +322,17 @@ export default function SellerPricingPage() {
                     </button>
                   </div>
                 </div>
+              )}
+
+              {entry.serviceId === 'bind-hard' && (
+                <HardBindingCustomizationOptions
+                  coverColors={hardCoverColors}
+                  foilColors={hardFoilColors}
+                  onCoverColorsChange={setHardCoverColors}
+                  onFoilColorsChange={setHardFoilColors}
+                  onSave={handleSaveOverrides}
+                  saving={updateOverridesMutation.isPending}
+                />
               )}
 
               {entry.serviceId === 'bind-spiral' && (

@@ -78,6 +78,9 @@ export interface SellerMetadata {
     coverType?: Record<string, number>;
     coilType?: Record<string, number>;
     coverColor?: Record<string, number>;
+    /** Hard Binding menus are availability-only; no automatic surcharge. */
+    hardCoverColors?: string[];
+    hardFoilColors?: string[];
   };
 }
 

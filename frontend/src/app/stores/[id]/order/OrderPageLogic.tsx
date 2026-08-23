@@ -5,9 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import {
-  type StoreDetail,
-} from '@/lib/types';
+import { type StoreDetail } from '@/lib/types';
 import { createAddress, fetchAddresses } from '@/lib/api/customer';
 import { getOrderQuote, placeOrder as placeOrderApi } from '@/lib/api/orders';
 import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
@@ -27,7 +25,13 @@ import {
   EMPTY_COST,
   computeCost,
 } from '@/components/order/orderReducer';
-import { IconArrowLeft, IconArrowRight, IconChevronRight, IconLock, IconShoppingCart } from '@/components/icons';
+import {
+  IconArrowLeft,
+  IconArrowRight,
+  IconChevronRight,
+  IconLock,
+  IconShoppingCart,
+} from '@/components/icons';
 
 const TOTAL_STEPS = 3;
 
@@ -51,13 +55,13 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     orderReducer,
     createInitialState(store.id, store.name, serviceParam),
   );
-  
+
   const queryClient = useQueryClient();
 
   const { data: addresses = [] } = useQuery({
     queryKey: ['addresses'],
     queryFn: fetchAddresses,
-    enabled: !!token
+    enabled: !!token,
   });
 
   // Persist a new address (from the DeliveryStep modal), refresh the list and
@@ -107,34 +111,49 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   // Real Quote Fetching
   const { data: quoteData, isFetching: quoteLoading } = useQuery({
-    queryKey: ['order-quote', store.id, specs, state.order.deliverySpeed, couponCode],
-    queryFn: () => getOrderQuote({
-      sellerId: store.id,
-      sellerServiceId: specs.serviceId,
-      quantity: Number(specs.quantity),
-      specifications: {
-        paperType: specs.paperType,
-        size: specs.size,
-        colorOption: specs.colorOption,
-        finishing: specs.finishing,
-        totalPages: specs.totalPages,
-        colorPages: specs.colorPages,
-        coverType: specs.coverType,
-        spiralType: specs.spiralType,
-        coverColor: specs.coverColor,
-        coverDesignType: specs.coverDesignType,
-      },
-      deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
-      couponCode: couponCode || undefined,
-    }),
+    queryKey: [
+      'order-quote',
+      store.id,
+      specs,
+      state.order.deliverySpeed,
+      couponCode,
+    ],
+    queryFn: () =>
+      getOrderQuote({
+        sellerId: store.id,
+        sellerServiceId: specs.serviceId,
+        quantity: Number(specs.quantity),
+        specifications: {
+          paperType: specs.paperType,
+          size: specs.size,
+          colorOption: specs.colorOption,
+          finishing: specs.finishing,
+          totalPages: specs.totalPages,
+          colorPages: specs.colorPages,
+          coverType: specs.coverType,
+          spiralType: specs.spiralType,
+          coverColor: specs.coverColor,
+          coverTextColor: specs.coverTextColor,
+          coverDesignType: specs.coverDesignType,
+          hardCoverFrontSource: specs.hardCoverFrontSource,
+          frontCoverFileUrl: specs.frontCoverFileUrl,
+          backCoverFileUrl: specs.backCoverFileUrl,
+          printSpineText: specs.printSpineText,
+          spineText: specs.spineText,
+          paperGsm: specs.paperGsm,
+          hardBindingProofApproved: specs.hardBindingProofApproved,
+        },
+        deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
+        couponCode: couponCode || undefined,
+      }),
     enabled: !!token && !!specs.serviceId && !!specs.paperType && !!specs.size,
-    retry: false
+    retry: false,
   });
 
   // Backend-validated coupon feedback (quote returns coupon.valid / coupon.error).
   const couponError =
     couponCode && quoteData?.coupon && !quoteData.coupon.valid
-      ? quoteData.coupon.error ?? 'Coupon is not valid'
+      ? (quoteData.coupon.error ?? 'Coupon is not valid')
       : null;
 
   // Seller's cheapest per-page rate — fallback for binding services.
@@ -169,8 +188,28 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       if (!specs.serviceId) return 'Please choose a service';
       if (!specs.paperType) return 'Please choose a paper type';
       if (!specs.size) return 'Please choose a size';
-      if (!specs.quantity || specs.quantity < 1) return 'Quantity must be at least 1';
+      if (!specs.quantity || specs.quantity < 1)
+        return 'Quantity must be at least 1';
       if (!state.order.file) return 'Please upload the file you want printed';
+      if (specs.serviceId === 'bind-hard') {
+        if (!specs.coverColor)
+          return 'Please choose a hard cover fabric colour';
+        if (!specs.coverTextColor) return 'Please choose a foil font colour';
+        if (!specs.hardCoverFrontSource)
+          return 'Please choose the front cover source';
+        if (
+          specs.hardCoverFrontSource === 'upload' &&
+          !specs.frontCoverFileUrl
+        ) {
+          return 'Please upload the single-page portrait front cover PDF';
+        }
+        if (specs.printSpineText && !specs.spineText?.trim()) {
+          return 'Please enter the spine text';
+        }
+        if (!specs.hardBindingProofApproved) {
+          return 'Please approve the hard binding cover proof';
+        }
+      }
       return null;
     }
     if (step === 2) {
@@ -195,7 +234,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
     // Require login to proceed to Delivery (Step 2)
     if (state.step === 1 && !token) {
-      router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      router.push(
+        `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+      );
       return;
     }
 
@@ -234,7 +275,15 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           coverType: specs.coverType,
           spiralType: specs.spiralType,
           coverColor: specs.coverColor,
+          coverTextColor: specs.coverTextColor,
           coverDesignType: specs.coverDesignType,
+          hardCoverFrontSource: specs.hardCoverFrontSource,
+          frontCoverFileUrl: specs.frontCoverFileUrl,
+          backCoverFileUrl: specs.backCoverFileUrl,
+          printSpineText: specs.printSpineText,
+          spineText: specs.spineText,
+          paperGsm: specs.paperGsm,
+          hardBindingProofApproved: specs.hardBindingProofApproved,
         },
         deliveryAddressId: (state.order.address as any)?.id,
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
@@ -242,16 +291,19 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         specialInstructions: state.order.specialInstructions,
         couponCode: couponCode || undefined,
         // fileUrl would be real here after upload
-        fileUrl: "/uploads/designs/demo.pdf" 
+        fileUrl: '/uploads/designs/demo.pdf',
       });
 
       const orderId = result.order.id;
 
       // Handle Online Payment (Razorpay)
-      if (state.order.paymentMethod === 'card' || state.order.paymentMethod === 'upi') {
+      if (
+        state.order.paymentMethod === 'card' ||
+        state.order.paymentMethod === 'upi'
+      ) {
         try {
           const rzpOrder = await createPaymentOrder(orderId);
-          
+
           await openCheckout({
             amount: rzpOrder.amount,
             currency: rzpOrder.currency,
@@ -273,11 +325,14 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
                 });
                 router.push(`/orders/confirmation/${orderId}`);
               } catch (err: any) {
-                dispatch({ type: 'SET_ERROR', payload: `Payment verification failed: ${err.message}` });
+                dispatch({
+                  type: 'SET_ERROR',
+                  payload: `Payment verification failed: ${err.message}`,
+                });
                 setPlacing(false);
               }
             },
-            theme: { color: '#2563eb' }
+            theme: { color: '#2563eb' },
           });
           return; // Stay on page until handler completes
         } catch (err: any) {
@@ -303,21 +358,26 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     }
 
     if (!state.order.file) {
-      dispatch({ type: 'SET_ERROR', payload: 'Please upload a file before adding to cart' });
+      dispatch({
+        type: 'SET_ERROR',
+        payload: 'Please upload a file before adding to cart',
+      });
       return;
     }
 
-    reduxDispatch(addToCart({
-      id: `cart-${Date.now()}`,
-      storeId: store.id,
-      storeName: store.name,
-      serviceId: specs.serviceId,
-      serviceName: service?.name || 'Document Printing',
-      specifications: specs,
-      file: state.order.file,
-      specialInstructions: state.order.specialInstructions || '',
-      costBreakdown: cost,
-    }));
+    reduxDispatch(
+      addToCart({
+        id: `cart-${Date.now()}`,
+        storeId: store.id,
+        storeName: store.name,
+        serviceId: specs.serviceId,
+        serviceName: service?.name || 'Document Printing',
+        specifications: specs,
+        file: state.order.file,
+        specialInstructions: state.order.specialInstructions || '',
+        costBreakdown: cost,
+      }),
+    );
 
     showToast('Added to cart successfully!');
     router.push(`/stores/${store.id}`);
@@ -325,12 +385,12 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   return (
     <div className="container-page py-6">
-      <Breadcrumbs 
+      <Breadcrumbs
         items={[
           { label: 'Stores', href: '/stores' },
           { label: store.name, href: `/stores/${store.id}` },
-          { label: 'Order', active: true }
-        ]} 
+          { label: 'Order', active: true },
+        ]}
         className="mb-5"
       />
 
@@ -355,6 +415,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               availableCoverTypes={store.availableCoverTypes}
               availableCoilTypes={store.availableCoilTypes}
               availableCoverColors={store.availableCoverColors}
+              availableHardCoverColors={store.availableHardCoverColors}
+              availableHardFoilColors={store.availableHardFoilColors}
             />
           )}
           {state.step === 2 && (
@@ -398,18 +460,26 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
             </button>
 
             <div className="flex gap-2">
-              {state.step === 1 && specs.serviceId && specs.paperType && specs.size && (
-                <button
-                  type="button"
-                  onClick={handleAddToCart}
-                  className="btn-secondary px-6"
-                >
-                  <IconShoppingCart className="h-4 w-4 mr-2" />
-                  Add to Cart
-                </button>
-              )}
+              {state.step === 1 &&
+                specs.serviceId &&
+                specs.paperType &&
+                specs.size && (
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    className="btn-secondary px-6"
+                  >
+                    <IconShoppingCart className="h-4 w-4 mr-2" />
+                    Add to Cart
+                  </button>
+                )}
 
-              <button type="button" onClick={goNext} disabled={placing || state.error !== null} className="btn-primary">
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={placing || state.error !== null}
+                className="btn-primary"
+              >
                 {placing ? (
                   'Placing order…'
                 ) : state.step === TOTAL_STEPS ? (

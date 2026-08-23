@@ -240,6 +240,25 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     input.sellerServiceId,
   );
 
+  if (service.serviceId === 'bind-hard') {
+    const specs = input.specifications;
+    if (!specs.coverColor || !specs.coverTextColor) {
+      throw ApiError.badRequest('Choose the hard cover and foil font colours');
+    }
+    if (!specs.hardCoverFrontSource) {
+      throw ApiError.badRequest('Choose the hard binding front cover source');
+    }
+    if (specs.hardCoverFrontSource === 'upload' && !specs.frontCoverFileUrl) {
+      throw ApiError.badRequest('Upload the separate front cover PDF');
+    }
+    if (specs.printSpineText && !specs.spineText?.trim()) {
+      throw ApiError.badRequest('Spine text is required when spine printing is enabled');
+    }
+    if (specs.hardBindingProofApproved !== true) {
+      throw ApiError.badRequest('Approve the hard binding cover proof before placing the order');
+    }
+  }
+
   // SAME_DAY only when the store actually delivers to the address pincode.
   if (input.deliverySpeed === 'SAME_DAY') {
     const pincodes = await prisma.sellerPincode.findMany({

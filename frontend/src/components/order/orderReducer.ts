@@ -63,7 +63,14 @@ export function createInitialState(
         // Binding defaults — applied for every new job.
         spiralType: 'plastic',
         coverType: 'clear',
+        coverColor: 'navy',
+        coverTextColor: 'gold',
         coverDesignType: 'default',
+        hardCoverFrontSource: 'first-page',
+        printSpineText: false,
+        spineText: '',
+        paperGsm: 75,
+        hardBindingProofApproved: false,
       },
       file: null,
       specialInstructions: '',
@@ -75,7 +82,10 @@ export function createInitialState(
   };
 }
 
-export function orderReducer(state: OrderState, action: OrderAction): OrderState {
+export function orderReducer(
+  state: OrderState,
+  action: OrderAction,
+): OrderState {
   switch (action.type) {
     case 'SET_SPEC':
       return {
@@ -91,29 +101,53 @@ export function orderReducer(state: OrderState, action: OrderAction): OrderState
       };
 
     case 'SET_FILE':
-      return { ...state, error: null, order: { ...state.order, file: action.payload } };
+      return {
+        ...state,
+        error: null,
+        order: { ...state.order, file: action.payload },
+      };
 
     case 'SET_INSTRUCTIONS':
-      return { ...state, order: { ...state.order, specialInstructions: action.payload } };
+      return {
+        ...state,
+        order: { ...state.order, specialInstructions: action.payload },
+      };
 
     case 'SET_ADDRESS':
-      return { ...state, error: null, order: { ...state.order, address: action.payload } };
+      return {
+        ...state,
+        error: null,
+        order: { ...state.order, address: action.payload },
+      };
 
     case 'SET_SPEED':
-      return { ...state, order: { ...state.order, deliverySpeed: action.payload } };
+      return {
+        ...state,
+        order: { ...state.order, deliverySpeed: action.payload },
+      };
 
     case 'SET_PAYMENT':
-      return { ...state, error: null, order: { ...state.order, paymentMethod: action.payload } };
+      return {
+        ...state,
+        error: null,
+        order: { ...state.order, paymentMethod: action.payload },
+      };
 
     case 'SET_COST': {
       const current = state.order.costBreakdown ?? EMPTY_COST;
-      const next: CostBreakdown = { ...current, [action.payload.field]: action.payload.value };
+      const next: CostBreakdown = {
+        ...current,
+        [action.payload.field]: action.payload.value,
+      };
       next.total = recalcTotal(next);
       return { ...state, order: { ...state.order, costBreakdown: next } };
     }
 
     case 'SET_COST_BREAKDOWN':
-      return { ...state, order: { ...state.order, costBreakdown: action.payload } };
+      return {
+        ...state,
+        order: { ...state.order, costBreakdown: action.payload },
+      };
 
     case 'SET_STEP':
       return { ...state, step: action.payload, error: null };
@@ -129,7 +163,13 @@ export function orderReducer(state: OrderState, action: OrderAction): OrderState
 export function recalcTotal(cost: CostBreakdown): number {
   return Math.max(
     0,
-    Math.round(cost.subtotal + cost.rushFee + cost.deliveryFee + cost.tax - cost.discount),
+    Math.round(
+      cost.subtotal +
+        cost.rushFee +
+        cost.deliveryFee +
+        cost.tax -
+        cost.discount,
+    ),
   );
 }
 
@@ -179,7 +219,9 @@ export function computeCost(
   let bindingCost: number | undefined;
 
   if (isBinding) {
-    pageCost = Math.round((bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity);
+    pageCost = Math.round(
+      (bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity,
+    );
     const bindingRate = base;
     bindingCost = Math.round(bindingRate * quantity);
     subtotal = Math.round(pageCost + bindingCost + finishingPerUnit * quantity);

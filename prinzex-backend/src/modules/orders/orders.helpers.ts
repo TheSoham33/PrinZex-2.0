@@ -20,7 +20,15 @@ export interface QuoteSpecifications {
   coverType?: string;
   spiralType?: string;
   coverColor?: string;
+  coverTextColor?: string;
   coverDesignType?: string;
+  hardCoverFrontSource?: 'first-page' | 'upload';
+  frontCoverFileUrl?: string;
+  backCoverFileUrl?: string;
+  printSpineText?: boolean;
+  spineText?: string;
+  paperGsm?: 75 | 100;
+  hardBindingProofApproved?: boolean;
 }
 
 export interface QuoteInput {
@@ -46,6 +54,8 @@ export interface QuoteResult {
   pageCost?: number;
   /** Binding services only — binding/cover component (bindingRate × copies). */
   bindingCost?: number;
+  /** Hard Binding: estimated finished spine width from page count and paper GSM. */
+  spineWidthMm?: number;
 }
 
 // ── Pricing constants ──────────────────────────────────────────────────────
@@ -354,6 +364,13 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const tax = round2(subtotal * GST_RATE);
   const commissionAmount = round2(subtotal * input.commissionRate);
   const total = round2(subtotal + rushFee + deliveryFee + tax - input.discount);
+  const spineWidthMm =
+    input.serviceId === 'bind-hard' && totalPages > 0
+      ? Math.max(
+          2,
+          round2((totalPages / 2) * (specifications.paperGsm === 100 ? 0.13 : 0.1)),
+        )
+      : undefined;
 
   return {
     subtotal,
@@ -365,5 +382,6 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     total,
     ...(pageCost !== undefined ? { pageCost } : {}),
     ...(bindingCost !== undefined ? { bindingCost } : {}),
+    ...(spineWidthMm !== undefined ? { spineWidthMm } : {}),
   };
 }
