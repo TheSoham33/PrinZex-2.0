@@ -1,6 +1,10 @@
 'use client';
 
-import type { CostBreakdown, OrderSpecifications, ServiceOffering } from '@/lib/types';
+import type {
+  CostBreakdown,
+  OrderSpecifications,
+  ServiceOffering,
+} from '@/lib/types';
 import { countColorPages, formatCurrency } from '@/lib/utils';
 import { IconShieldCheck, IconLock } from '@/components/icons';
 
@@ -31,7 +35,13 @@ export default function OrderSummarySidebar({
     },
     { label: 'GST (18%)', value: cost.tax },
     ...(cost.discount > 0
-      ? [{ label: 'Discount', value: -cost.discount, className: 'text-green-600' }]
+      ? [
+          {
+            label: 'Discount',
+            value: -cost.discount,
+            className: 'text-green-600',
+          },
+        ]
       : []),
   ];
 
@@ -47,16 +57,24 @@ export default function OrderSummarySidebar({
           <div className="flex flex-col gap-2 border-b border-slate-200 pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">{service.name}</p>
+                <p className="truncate text-sm font-semibold text-slate-900">
+                  {service.name}
+                </p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {formatCurrency(service.startingPrice)} {service.unit} · {specs?.totalPages ? `${specs.totalPages} pages · ` : ''}Qty {quantity}
+                  {formatCurrency(service.startingPrice)} {service.unit} ·{' '}
+                  {specs?.totalPages ? `${specs.totalPages} pages · ` : ''}Qty{' '}
+                  {quantity}
                 </p>
               </div>
             </div>
-            
+
             {specs && (
               <div className="space-y-1 text-[11px] text-slate-500">
-                {specs.paperType && <p>Paper: <span className="capitalize">{specs.paperType}</span></p>}
+                {specs.paperType && (
+                  <p>
+                    Paper: <span className="capitalize">{specs.paperType}</span>
+                  </p>
+                )}
                 {specs.size && <p>Size: {specs.size}</p>}
                 {typeof cost.bindingCost === 'number' && (
                   <div className="mt-2 space-y-1 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700">
@@ -75,27 +93,64 @@ export default function OrderSummarySidebar({
                 )}
                 {specs.colorOption === 'mixed' && specs.colorPages && (
                   <p className="line-clamp-1">
-                    Colour pages: {countColorPages(specs.colorPages, specs.totalPages || 0)} of {specs.totalPages || 0}
+                    Colour pages:{' '}
+                    {countColorPages(specs.colorPages, specs.totalPages || 0)}{' '}
+                    of {specs.totalPages || 0}
                   </p>
                 )}
-                {specs.coverType && (
+                {specs.serviceId === 'bind-hard' && (
+                  <div className="mt-2 space-y-1 rounded bg-slate-100 p-2 text-slate-700">
+                    <p className="font-bold text-[10px] uppercase text-slate-500">
+                      Hard cover
+                    </p>
+                    <p className="capitalize">
+                      {specs.coverColor} · {specs.coverTextColor} foil
+                    </p>
+                    <p>
+                      Front:{' '}
+                      {specs.hardCoverFrontSource === 'first-page'
+                        ? 'First document page'
+                        : specs.frontCoverFileName || 'Separate PDF'}
+                    </p>
+                    {specs.backCoverFileName && (
+                      <p className="truncate">
+                        Back: {specs.backCoverFileName}
+                      </p>
+                    )}
+                    {specs.printSpineText && (
+                      <p className="truncate">Spine: {specs.spineText}</p>
+                    )}
+                    <p>{specs.paperGsm ?? 75} GSM · Proof approved</p>
+                  </div>
+                )}
+                {specs.coverType && specs.serviceId !== 'bind-hard' && (
                   <div className="mt-2 rounded bg-slate-100 p-1.5 text-slate-700">
-                    <p className="font-bold text-[10px] uppercase text-slate-500">Cover</p>
-                    <p>{specs.coverType} · {specs.coverColor}</p>
-                    {specs.serviceId === 'bind-spiral' && specs.coverDesignType === 'custom' ? (
+                    <p className="font-bold text-[10px] uppercase text-slate-500">
+                      Cover
+                    </p>
+                    <p>
+                      {specs.coverType} · {specs.coverColor}
+                    </p>
+                    {specs.serviceId === 'bind-spiral' &&
+                    specs.coverDesignType === 'custom' ? (
                       <div className="mt-1 space-y-0.5 border-t border-slate-200 pt-1 text-[10px]">
-                        <p className="truncate">Front: {specs.frontCoverFileName || '—'}</p>
-                        <p className="truncate">Back: {specs.backCoverFileName || '—'}</p>
+                        <p className="truncate">
+                          Front: {specs.frontCoverFileName || '—'}
+                        </p>
+                        <p className="truncate">
+                          Back: {specs.backCoverFileName || '—'}
+                        </p>
                       </div>
+                    ) : specs.applyCoverToAll !== false ? (
+                      specs.coverFileName && (
+                        <p className="truncate">File: {specs.coverFileName}</p>
+                      )
                     ) : (
-                      specs.applyCoverToAll !== false ? (
-                        specs.coverFileName && <p className="truncate">File: {specs.coverFileName}</p>
-                      ) : (
-                        specs.coverFileUrls && (
-                          <p className="mt-1 font-medium italic">
-                            {specs.coverFileUrls.filter(Boolean).length} of {quantity} designs uploaded
-                          </p>
-                        )
+                      specs.coverFileUrls && (
+                        <p className="mt-1 font-medium italic">
+                          {specs.coverFileUrls.filter(Boolean).length} of{' '}
+                          {quantity} designs uploaded
+                        </p>
                       )
                     )}
                   </div>
@@ -112,15 +167,22 @@ export default function OrderSummarySidebar({
         {!isLoggedIn ? (
           <div className="py-8 text-center">
             <IconLock className="mx-auto h-8 w-8 text-slate-300" />
-            <p className="mt-2 text-sm text-slate-500">Log in to see exact pricing & taxes</p>
+            <p className="mt-2 text-sm text-slate-500">
+              Log in to see exact pricing & taxes
+            </p>
           </div>
         ) : (
           <>
             <dl className="space-y-2.5 py-4 text-sm">
               {rows.map((row) => (
-                <div key={row.label} className="flex items-center justify-between">
+                <div
+                  key={row.label}
+                  className="flex items-center justify-between"
+                >
                   <dt className="text-slate-600">{row.label}</dt>
-                  <dd className={`font-medium ${row.className ?? 'text-slate-900'}`}>
+                  <dd
+                    className={`font-medium ${row.className ?? 'text-slate-900'}`}
+                  >
                     {row.display ?? formatCurrency(row.value)}
                   </dd>
                 </div>

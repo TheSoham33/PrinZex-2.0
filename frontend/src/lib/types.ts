@@ -69,6 +69,8 @@ export interface StoreDetail extends Store {
   availableCoverTypes?: string[];
   availableCoilTypes?: string[];
   availableCoverColors?: string[];
+  availableHardCoverColors?: string[];
+  availableHardFoilColors?: string[];
 }
 
 export interface OrderSpecifications {
@@ -93,6 +95,15 @@ export interface OrderSpecifications {
   frontCoverFileName?: string;
   backCoverFileUrl?: string;
   backCoverFileName?: string;
+  /** Hard Binding: use page one of the document or a separate portrait PDF. */
+  hardCoverFrontSource?: 'first-page' | 'upload';
+  /** Hard Binding: optional foil text printed vertically on the spine. */
+  printSpineText?: boolean;
+  spineText?: string;
+  /** Used to estimate the finished spine width. */
+  paperGsm?: 75 | 100;
+  /** Customer must approve the cover proof before continuing. */
+  hardBindingProofApproved?: boolean;
   totalPages?: number;
 }
 
@@ -124,6 +135,8 @@ export interface CostBreakdown {
   pageCost?: number;
   /** Binding services only — binding/cover component (₹). */
   bindingCost?: number;
+  /** Hard Binding: server-calculated spine width estimate. */
+  spineWidthMm?: number;
 }
 
 export interface Order {

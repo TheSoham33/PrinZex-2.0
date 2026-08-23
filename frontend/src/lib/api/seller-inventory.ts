@@ -37,6 +37,8 @@ export const updatePricingOverrides = async (overrides: {
   coverType?: Record<string, number>;
   coilType?: Record<string, number>;
   coverColor?: Record<string, number>;
+  hardCoverColors?: string[];
+  hardFoilColors?: string[];
 }): Promise<any> => {
   return apiRequest<any>('/seller/settings/pricing-overrides', {
     method: 'PATCH',

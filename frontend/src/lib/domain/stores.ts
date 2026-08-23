@@ -68,17 +68,42 @@ export const DELIVERY_SPEEDS: DeliveryOption[] = [
 ];
 
 export const PAPER_TYPES = [
-  { value: 'standard', label: 'Standard', hint: '70 GSM everyday paper', multiplier: 1 },
-  { value: 'premium', label: 'Premium', hint: '100 GSM thick paper', multiplier: 1.4 },
-  { value: 'glossy', label: 'Glossy', hint: 'Shiny photo finish', multiplier: 1.8 },
-  { value: 'matte', label: 'Matte', hint: 'Non-reflective finish', multiplier: 1.6 },
+  {
+    value: 'standard',
+    label: 'Standard',
+    hint: '70 GSM everyday paper',
+    multiplier: 1,
+  },
+  {
+    value: 'premium',
+    label: 'Premium',
+    hint: '100 GSM thick paper',
+    multiplier: 1.4,
+  },
+  {
+    value: 'glossy',
+    label: 'Glossy',
+    hint: 'Shiny photo finish',
+    multiplier: 1.8,
+  },
+  {
+    value: 'matte',
+    label: 'Matte',
+    hint: 'Non-reflective finish',
+    multiplier: 1.6,
+  },
 ] as const;
 
 export const PAPER_SIZES = [
   { value: 'A4', label: 'A4', hint: '210 × 297 mm', multiplier: 1 },
   { value: 'A3', label: 'A3', hint: '297 × 420 mm', multiplier: 1.9 },
   { value: 'A2', label: 'A2', hint: '420 × 594 mm', multiplier: 3.4 },
-  { value: 'custom', label: 'Custom', hint: 'Tell us in instructions', multiplier: 2.2 },
+  {
+    value: 'custom',
+    label: 'Custom',
+    hint: 'Tell us in instructions',
+    multiplier: 2.2,
+  },
 ] as const;
 
 export const FINISHING_OPTIONS = [
@@ -92,16 +117,36 @@ export const FINISHING_OPTIONS = [
 export const TAX_RATE = 0.18;
 
 export const COVER_COLORS = [
-  { value: 'navy', label: 'Navy Blue', class: 'bg-[#000080]' },
-  { value: 'maroon', label: 'Maroon', class: 'bg-[#800000]' },
-  { value: 'black', label: 'Black', class: 'bg-black' },
-  { value: 'green', label: 'Dark Green', class: 'bg-[#006400]' },
+  { value: 'navy', label: 'Navy Blue', class: 'bg-[#000080]', hex: '#000080' },
+  {
+    value: 'maroon',
+    label: 'Maroon / Crimson',
+    class: 'bg-[#800000]',
+    hex: '#800000',
+  },
+  { value: 'black', label: 'Royal Black', class: 'bg-black', hex: '#111111' },
+  {
+    value: 'green',
+    label: 'Dark Emerald Green',
+    class: 'bg-[#006400]',
+    hex: '#006400',
+  },
 ];
 
 export const COVER_TEXT_COLORS = [
-  { value: 'gold', label: 'Gold Foil', class: 'bg-[#D4AF37]' },
-  { value: 'silver', label: 'Silver Foil', class: 'bg-[#C0C0C0]' },
-  { value: 'white', label: 'White', class: 'bg-white' },
+  {
+    value: 'gold',
+    label: 'Metallic Gold',
+    class: 'bg-[#D4AF37]',
+    hex: '#D4AF37',
+  },
+  {
+    value: 'silver',
+    label: 'Metallic Silver',
+    class: 'bg-[#C0C0C0]',
+    hex: '#C0C0C0',
+  },
+  { value: 'white', label: 'White', class: 'bg-white', hex: '#FFFFFF' },
 ];
 
 export const COVER_TYPES = [
@@ -117,9 +162,21 @@ export const SPIRAL_COIL_TYPES = [
 
 export const SPIRAL_COVER_TYPES = [
   { value: 'clear', label: 'Clear Plastic', hint: 'Transparent front' },
-  { value: 'frosted', label: 'Frosted Plastic', hint: 'Semi-transparent matte' },
-  { value: 'printed', label: 'Printed Cardstock', hint: 'Full color printed cover' },
-  { value: 'opaque', label: 'Opaque Cardstock', hint: 'Solid color heavy paper' },
+  {
+    value: 'frosted',
+    label: 'Frosted Plastic',
+    hint: 'Semi-transparent matte',
+  },
+  {
+    value: 'printed',
+    label: 'Printed Cardstock',
+    hint: 'Full color printed cover',
+  },
+  {
+    value: 'opaque',
+    label: 'Opaque Cardstock',
+    hint: 'Solid color heavy paper',
+  },
 ];
 
 /* ------------------------------------------------------------------ */
