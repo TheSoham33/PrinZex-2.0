@@ -71,6 +71,8 @@ export interface StoreDetail extends Store {
   availableCoverColors?: string[];
   availableHardCoverColors?: string[];
   availableHardFoilColors?: string[];
+  availablePaperTypes?: string[];
+  availablePaperSizes?: string[];
 }
 
 export interface OrderSpecifications {

@@ -202,6 +202,12 @@ export function mapBackendStoreDetailToFrontend(
     availableHardFoilColors: Array.isArray(pricingOverrides.hardFoilColors)
       ? pricingOverrides.hardFoilColors
       : undefined,
+    availablePaperTypes: Array.isArray(pricingOverrides.paperTypes)
+      ? pricingOverrides.paperTypes
+      : undefined,
+    availablePaperSizes: Array.isArray(pricingOverrides.paperSizes)
+      ? pricingOverrides.paperSizes
+      : undefined,
   };
 }
 
