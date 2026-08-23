@@ -80,7 +80,12 @@ export default function OrderSummarySidebar({
                   <div className="mt-2 space-y-1 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700">
                     {specs?.totalPages ? (
                       <div className="flex items-center justify-between gap-2">
-                        <span>Pages {formatCurrency(cost.pageCost ?? 0)}</span>
+                        <span>
+                          {typeof cost.billablePages === 'number'
+                            ? `Inner sheets (${cost.billablePages}) `
+                            : 'Pages '}
+                          {formatCurrency(cost.pageCost ?? 0)}
+                        </span>
                         <span>Binding {formatCurrency(cost.bindingCost)}</span>
                       </div>
                     ) : (

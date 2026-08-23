@@ -67,6 +67,8 @@ export interface QuoteResult {
   twinLoopPitch?: '3:1' | '2:1';
   twinLoopWireSize?: string;
   twinLoopTotalSheets?: number;
+  /** Twin Loop: inner sheets charged after single/duplex selection. */
+  billablePages?: number;
 }
 
 // ── Pricing constants ──────────────────────────────────────────────────────
@@ -175,6 +177,35 @@ export function countColorPages(spec: string | undefined, totalPages: number): n
   }
 
   return pages.size;
+}
+
+/** Count duplex sheets containing at least one requested colour page. */
+export function countDuplexColorSheets(
+  spec: string | undefined,
+  totalDocumentPages: number,
+): number {
+  if (!spec) return 0;
+  const sheets = new Set<number>();
+
+  for (const raw of spec.split(',')) {
+    const part = raw.trim();
+    if (!part) continue;
+    const addPage = (page: number) => {
+      if (page >= 1 && page <= totalDocumentPages) sheets.add(Math.ceil(page / 2));
+    };
+
+    if (part.includes('-')) {
+      const [a, b] = part.split('-').map((value) => parseInt(value.trim(), 10));
+      if (!Number.isFinite(a)) continue;
+      const end = Number.isFinite(b) ? b : a;
+      for (let page = Math.min(a, end); page <= Math.max(a, end); page++) addPage(page);
+    } else {
+      const page = parseInt(part, 10);
+      if (Number.isFinite(page)) addPage(page);
+    }
+  }
+
+  return sheets.size;
 }
 
 /** How many pages print B&W vs colour for the selected colour option. */
@@ -337,7 +368,26 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const bwRate = baseBwRate + paperOptionExtra;
   const colorRate = baseColorRate + paperOptionExtra;
 
-  const split = colorPageSplit(specifications.colorOption, specifications.colorPages, totalPages);
+  // Twin Loop duplex printing puts two PDF pages on one physical sheet. Per the
+  // marketplace pricing model, its inner-page charge follows that physical
+  // sheet count rather than the original PDF page count.
+  const isTwinLoopDuplex =
+    input.serviceId === 'bind-twin-loop' && specifications.twinLoopPrintSides === 'double';
+  const billablePages = isTwinLoopDuplex ? Math.ceil(totalPages / 2) : totalPages;
+  const split =
+    isTwinLoopDuplex && specifications.colorOption === 'mixed'
+      ? (() => {
+          const colorSheets = Math.min(
+            countDuplexColorSheets(specifications.colorPages, totalPages),
+            billablePages,
+          );
+          return { bwPages: billablePages - colorSheets, colorPages: colorSheets };
+        })()
+      : colorPageSplit(
+          specifications.colorOption,
+          specifications.colorPages,
+          billablePages,
+        );
 
   let subtotal: number;
   let pageCost: number | undefined;
@@ -449,5 +499,6 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     ...(twinLoopPitch !== undefined ? { twinLoopPitch } : {}),
     ...(twinLoopWireSize !== undefined ? { twinLoopWireSize } : {}),
     ...(twinLoopTotalSheets !== undefined ? { twinLoopTotalSheets } : {}),
+    ...(input.serviceId === 'bind-twin-loop' ? { billablePages } : {}),
   };
 }

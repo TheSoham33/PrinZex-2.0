@@ -181,6 +181,32 @@ export function recalcTotal(cost: CostBreakdown): number {
   );
 }
 
+function countDuplexColorSheets(
+  spec: string | undefined,
+  totalPages: number,
+): number {
+  if (!spec) return 0;
+  const sheets = new Set<number>();
+  for (const raw of spec.split(',')) {
+    const part = raw.trim();
+    if (!part) continue;
+    const add = (page: number) => {
+      if (page >= 1 && page <= totalPages) sheets.add(Math.ceil(page / 2));
+    };
+    if (part.includes('-')) {
+      const [a, b] = part.split('-').map((value) => parseInt(value.trim(), 10));
+      if (!Number.isFinite(a)) continue;
+      const end = Number.isFinite(b) ? b : a;
+      for (let page = Math.min(a, end); page <= Math.max(a, end); page++)
+        add(page);
+    } else {
+      const page = parseInt(part, 10);
+      if (Number.isFinite(page)) add(page);
+    }
+  }
+  return sheets.size;
+}
+
 /**
  * Rough client-side estimate for signed-out visitors (the signed-in quote
  * replaces it with the seller's real per-page rates). B&W pages use the
@@ -211,13 +237,23 @@ export function computeCost(
   const bwPageRate = baseBwPageRate + paperOptionExtra;
   const colorPageRate = baseBwPageRate * 2 + paperOptionExtra;
 
+  const isTwinLoopDuplex =
+    service?.id === 'bind-twin-loop' && specs.twinLoopPrintSides === 'double';
+  const billablePages = isTwinLoopDuplex
+    ? Math.ceil(totalPages / 2)
+    : totalPages;
   const colorPageCount =
     specs.colorOption === 'color'
-      ? totalPages
+      ? billablePages
       : specs.colorOption === 'mixed'
-        ? Math.min(countColorPages(specs.colorPages, totalPages), totalPages)
+        ? Math.min(
+            isTwinLoopDuplex
+              ? countDuplexColorSheets(specs.colorPages, totalPages)
+              : countColorPages(specs.colorPages, totalPages),
+            billablePages,
+          )
         : 0;
-  const bwPageCount = totalPages - colorPageCount;
+  const bwPageCount = billablePages - colorPageCount;
 
   const finishingPerUnit = specs.finishing.reduce((sum, key) => {
     const option = FINISHING_OPTIONS.find((entry) => entry.value === key);
@@ -305,6 +341,7 @@ export function computeCost(
     ...(twinLoopPitch !== undefined ? { twinLoopPitch } : {}),
     ...(twinLoopWireSize !== undefined ? { twinLoopWireSize } : {}),
     ...(twinLoopTotalSheets !== undefined ? { twinLoopTotalSheets } : {}),
+    ...(service?.id === 'bind-twin-loop' ? { billablePages } : {}),
   };
   cost.total = recalcTotal(cost);
   return cost;
