@@ -490,7 +490,7 @@ export async function bulkUpdatePrices(
   const ids = input.map((entry) => entry.serviceId);
   const owned = await prisma.sellerService.findMany({
     where: { sellerId, id: { in: ids } },
-    select: { id: true },
+    select: { id: true, serviceId: true },
   });
   const ownedIds = new Set(owned.map((service) => service.id));
   const missing = ids.filter((id) => !ownedIds.has(id));
@@ -498,15 +498,53 @@ export async function bulkUpdatePrices(
     throw ApiError.notFound(`Services not found: ${missing.join(', ')}`);
   }
 
-  // One transaction — every price updates or none do.
-  await prisma.$transaction(
-    input.map((entry) =>
-      prisma.sellerService.update({
-        where: { id: entry.serviceId },
-        data: { basePrice: entry.basePrice, unit: entry.unit },
-      }),
-    ),
+  const documentService = owned.find((service) => service.serviceId === 'doc-print');
+  const documentPrice = documentService
+    ? input.find((entry) => entry.serviceId === documentService.id)?.basePrice
+    : undefined;
+
+  const catalogServiceByRowId = new Map(
+    owned.map((service) => [service.id, service.serviceId]),
   );
+  const operations: Prisma.PrismaPromise<unknown>[] = input.map((entry) =>
+    prisma.sellerService.update({
+      where: { id: entry.serviceId },
+      data: {
+        basePrice: entry.basePrice,
+        unit: catalogServiceByRowId.get(entry.serviceId) === 'doc-print' ? 'per page' : entry.unit,
+      },
+    }),
+  );
+
+  // Document Printing has one source of truth: its base price is also the B&W
+  // per-page rate used by quote calculations.
+  if (documentPrice !== undefined) {
+    const seller = await prisma.seller.findUnique({
+      where: { id: sellerId },
+      select: { metadata: true },
+    });
+    const metadata = readSellerMetadata(seller?.metadata ?? null);
+    operations.push(
+      prisma.seller.update({
+        where: { id: sellerId },
+        data: {
+          metadata: {
+            ...metadata,
+            pricingOverrides: {
+              ...metadata.pricingOverrides,
+              pageRate: {
+                bw: documentPrice,
+                color: metadata.pricingOverrides?.pageRate?.color ?? documentPrice * 2,
+              },
+            },
+          } as Prisma.InputJsonValue,
+        },
+      }),
+    );
+  }
+
+  // One transaction — every price and the matching B&W rate update or none do.
+  await prisma.$transaction(operations);
   await invalidateStoreCaches(sellerId);
   return { updated: input.length };
 }
@@ -1443,10 +1481,30 @@ export async function updatePricingOverrides(
     ...readSellerMetadata(seller.metadata),
     pricingOverrides: overrides,
   };
-  await prisma.seller.update({
-    where: { id: sellerId },
-    data: { metadata: metadata as Prisma.InputJsonValue },
-  });
+
+  const operations: Prisma.PrismaPromise<unknown>[] = [
+    prisma.seller.update({
+      where: { id: sellerId },
+      data: { metadata: metadata as Prisma.InputJsonValue },
+    }),
+  ];
+
+  const bwRate = overrides?.pageRate?.bw;
+  if (bwRate !== undefined) {
+    if (!Number.isFinite(bwRate) || bwRate <= 0) {
+      throw ApiError.badRequest('B&W page price must be greater than 0');
+    }
+    // Saving the B&W customisation also updates Document Printing's displayed
+    // base price, so the two values can never drift apart.
+    operations.push(
+      prisma.sellerService.updateMany({
+        where: { sellerId, serviceId: 'doc-print', isActive: true },
+        data: { basePrice: bwRate, unit: 'per page' },
+      }),
+    );
+  }
+
+  await prisma.$transaction(operations);
   // Customers read cover availability from the (cached) store detail — drop the
   // cache so the storefront reflects the new options immediately.
   await invalidateStoreCaches(sellerId);
