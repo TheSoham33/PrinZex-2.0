@@ -73,6 +73,16 @@ export default function ManageServicesPage() {
     onError: (err: any) => showToast(err.message, 'error'),
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: (id: string) => updateSellerService(id, { isActive: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seller-my-services'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
+      showToast('Service added back to your shop');
+    },
+    onError: (err: any) => showToast(err.message, 'error'),
+  });
+
   const toggleCategory = (id: string) => {
     setExpandedCategories(prev => 
       prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
@@ -81,10 +91,15 @@ export default function ManageServicesPage() {
 
   const handleToggleService = (catId: string, catName: string, serviceId: string, serviceName: string) => {
     const existing = myServices.find(s => s.serviceId === serviceId);
-    if (existing) {
+    if (existing?.isActive) {
       if (confirm(`Remove "${serviceName}" from your shop? Any active orders will still use the old settings.`)) {
         deleteMutation.mutate(existing.id);
       }
+    } else if (existing) {
+      // Services referenced by active orders are soft-deleted by the backend.
+      // Re-checking one must reactivate that row instead of trying to create a
+      // duplicate seller/service record.
+      reactivateMutation.mutate(existing.id);
     } else {
       addMutation.mutate({
         categoryId: catId,
@@ -132,7 +147,7 @@ export default function ManageServicesPage() {
         {SERVICE_CATEGORIES.map((category) => {
           const isExpanded = expandedCategories.includes(category.id);
           const selectedInCategory = category.services.filter(s => 
-            myServices.some(my => my.serviceId === s.id)
+            myServices.some(my => my.serviceId === s.id && my.isActive)
           ).length;
 
           return (
@@ -159,9 +174,9 @@ export default function ManageServicesPage() {
                 <div className="divide-y divide-slate-100 border-t border-slate-200">
                   {category.services.map((service) => {
                     const myService = myServices.find(s => s.serviceId === service.id);
-                    const isSelected = !!myService;
+                    const isSelected = Boolean(myService?.isActive);
                     const local = localPrices[service.id] || { price: '0', unit: 'per page' };
-                    const isChanged = myService && (
+                    const isChanged = isSelected && myService && (
                       String(myService.basePrice) !== local.price || 
                       myService.unit !== local.unit
                     );
@@ -173,8 +188,9 @@ export default function ManageServicesPage() {
                             type="checkbox"
                             id={`check-${service.id}`}
                             checked={isSelected}
+                            disabled={addMutation.isPending || deleteMutation.isPending || reactivateMutation.isPending}
                             onChange={() => handleToggleService(category.id, category.name, service.id, service.name)}
-                            className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-wait disabled:opacity-50"
                           />
                           <label htmlFor={`check-${service.id}`} className="text-sm font-semibold text-slate-900 cursor-pointer">
                             {service.name}
