@@ -193,6 +193,13 @@ export function mapBackendStoreDetailToFrontend(
           ...mapped,
           paperTypePrices: paperOptions.paperTypes,
           paperSizePrices: paperOptions.paperSizes,
+          availableColorModes:
+            service.serviceId === 'doc-print' &&
+            pricingOverrides.documentColorModes
+              ? (['bw', 'color'] as const).filter(
+                  (mode) => pricingOverrides.documentColorModes[mode],
+                )
+              : undefined,
         };
       }) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),

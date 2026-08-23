@@ -157,6 +157,23 @@ async function loadOrderableService(sellerId: string, sellerServiceId: string) {
   };
 }
 
+function assertDocumentColorModeAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  colorOption: 'bw' | 'color' | 'mixed',
+): void {
+  if (serviceId !== 'doc-print') return;
+  const modes = readSellerMetadata(sellerMetadata).pricingOverrides?.documentColorModes;
+  if (!modes) return;
+
+  if ((colorOption === 'bw' || colorOption === 'mixed') && !modes.bw) {
+    throw ApiError.badRequest('B&W printing is not offered by the selected store');
+  }
+  if ((colorOption === 'color' || colorOption === 'mixed') && !modes.color) {
+    throw ApiError.badRequest('Color printing is not offered by the selected store');
+  }
+}
+
 function assertPaperOptionAvailable(
   sellerMetadata: Prisma.JsonValue | null,
   serviceId: string,
@@ -187,6 +204,11 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     input.sellerServiceId,
   );
   assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
+  assertDocumentColorModeAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.colorOption,
+  );
 
   // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
   // enforced for real at POST /orders (which has deliveryAddressId).
@@ -260,6 +282,11 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     input.sellerServiceId,
   );
   assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
+  assertDocumentColorModeAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.colorOption,
+  );
 
   if (service.serviceId === 'bind-hard') {
     const specs = input.specifications;

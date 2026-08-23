@@ -42,6 +42,8 @@ export interface ServiceOffering {
   /** Seller-enabled options; values are additive prices for this service. */
   paperTypePrices?: Record<string, number>;
   paperSizePrices?: Record<string, number>;
+  /** Document Printing modes enabled by the seller. */
+  availableColorModes?: Array<'bw' | 'color'>;
 }
 
 export interface Review {
