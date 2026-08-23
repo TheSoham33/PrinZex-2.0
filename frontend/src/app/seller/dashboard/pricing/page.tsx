@@ -69,6 +69,7 @@ export default function SellerPricingPage() {
     >
   >({});
 
+  const [expandedServices, setExpandedServices] = useState<string[]>([]);
   const [editingTier, setEditingTier] = useState<number | null>(null);
   const [tierDraft, setTierDraft] = useState('');
 
@@ -189,6 +190,14 @@ export default function SellerPricingPage() {
     updatePriceMutation.mutate([{ serviceId, basePrice, unit }]);
   };
 
+  const toggleServiceCustomizations = (serviceId: string) => {
+    setExpandedServices((current) =>
+      current.includes(serviceId)
+        ? current.filter((id) => id !== serviceId)
+        : [...current, serviceId],
+    );
+  };
+
   const saveTier = (index: number) => {
     const parsed = Number(tierDraft);
     if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100) {
@@ -297,175 +306,189 @@ export default function SellerPricingPage() {
                   unit: entry.unit,
                 }}
                 onSave={savePrice}
+                expanded={expandedServices.includes(entry.serviceId)}
+                onToggle={() => toggleServiceCustomizations(entry.serviceId)}
               />
 
-              <PaperCustomizationOptions
-                serviceName={entry.serviceName}
-                paperTypePrices={
-                  servicePaperOptions[entry.serviceId]?.paperTypes ?? {}
-                }
-                paperSizePrices={
-                  servicePaperOptions[entry.serviceId]?.paperSizes ?? {}
-                }
-                onPaperTypePricesChange={(paperTypes) =>
-                  setServicePaperOptions((current) => ({
-                    ...current,
-                    [entry.serviceId]: {
-                      paperTypes,
-                      paperSizes: current[entry.serviceId]?.paperSizes ?? {},
-                    },
-                  }))
-                }
-                onPaperSizePricesChange={(paperSizes) =>
-                  setServicePaperOptions((current) => ({
-                    ...current,
-                    [entry.serviceId]: {
-                      paperTypes: current[entry.serviceId]?.paperTypes ?? {},
-                      paperSizes,
-                    },
-                  }))
-                }
-                onSave={handleSaveOverrides}
-                saving={updateOverridesMutation.isPending}
-              />
+              {expandedServices.includes(entry.serviceId) && (
+                <div
+                  id={`service-customizations-${entry.serviceId}`}
+                  className="animate-fade-in"
+                >
+                  <PaperCustomizationOptions
+                    serviceName={entry.serviceName}
+                    paperTypePrices={
+                      servicePaperOptions[entry.serviceId]?.paperTypes ?? {}
+                    }
+                    paperSizePrices={
+                      servicePaperOptions[entry.serviceId]?.paperSizes ?? {}
+                    }
+                    onPaperTypePricesChange={(paperTypes) =>
+                      setServicePaperOptions((current) => ({
+                        ...current,
+                        [entry.serviceId]: {
+                          paperTypes,
+                          paperSizes:
+                            current[entry.serviceId]?.paperSizes ?? {},
+                        },
+                      }))
+                    }
+                    onPaperSizePricesChange={(paperSizes) =>
+                      setServicePaperOptions((current) => ({
+                        ...current,
+                        [entry.serviceId]: {
+                          paperTypes:
+                            current[entry.serviceId]?.paperTypes ?? {},
+                          paperSizes,
+                        },
+                      }))
+                    }
+                    onSave={handleSaveOverrides}
+                    saving={updateOverridesMutation.isPending}
+                  />
 
-              {entry.serviceId === 'doc-print' && (
-                <div className="border-t border-slate-100 bg-blue-50/40 px-4 py-4">
-                  <div className="mb-3">
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Document printing prices
-                    </h3>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      The base price and B&amp;W printing price always stay the
-                      same.
-                    </p>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <span
-                        className={`text-sm ${documentColorModes.bw ? 'text-slate-700' : 'text-slate-400'}`}
-                      >
-                        B&amp;W printing
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                            ₹
+                  {entry.serviceId === 'doc-print' && (
+                    <div className="border-t border-slate-100 bg-blue-50/40 px-4 py-4">
+                      <div className="mb-3">
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Document printing prices
+                        </h3>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          The base price and B&amp;W printing price always stay
+                          the same.
+                        </p>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <span
+                            className={`text-sm ${documentColorModes.bw ? 'text-slate-700' : 'text-slate-400'}`}
+                          >
+                            B&amp;W printing
                           </span>
-                          <input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            disabled={!documentColorModes.bw}
-                            value={pageRate.bw}
-                            onChange={(event) =>
-                              setPageRate((current) => ({
-                                ...current,
-                                bw: event.target.value,
-                              }))
-                            }
-                            className="input w-24 py-1 pl-6 text-right text-sm disabled:opacity-40"
-                          />
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                                ₹
+                              </span>
+                              <input
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                disabled={!documentColorModes.bw}
+                                value={pageRate.bw}
+                                onChange={(event) =>
+                                  setPageRate((current) => ({
+                                    ...current,
+                                    bw: event.target.value,
+                                  }))
+                                }
+                                className="input w-24 py-1 pl-6 text-right text-sm disabled:opacity-40"
+                              />
+                            </div>
+                            <ToggleSwitch
+                              checked={documentColorModes.bw}
+                              disabled={
+                                documentColorModes.bw &&
+                                !documentColorModes.color
+                              }
+                              label="Show B&W printing"
+                              hideLabel
+                              onChange={(bw) =>
+                                setDocumentColorModes((current) => ({
+                                  ...current,
+                                  bw,
+                                }))
+                              }
+                            />
+                          </div>
                         </div>
-                        <ToggleSwitch
-                          checked={documentColorModes.bw}
+                        <div className="flex items-center justify-between gap-3">
+                          <span
+                            className={`text-sm ${documentColorModes.color ? 'text-slate-700' : 'text-slate-400'}`}
+                          >
+                            Color printing
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                                ₹
+                              </span>
+                              <input
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                disabled={!documentColorModes.color}
+                                value={pageRate.color}
+                                onChange={(event) =>
+                                  setPageRate((current) => ({
+                                    ...current,
+                                    color: event.target.value,
+                                  }))
+                                }
+                                className="input w-24 py-1 pl-6 text-right text-sm disabled:opacity-40"
+                              />
+                            </div>
+                            <ToggleSwitch
+                              checked={documentColorModes.color}
+                              disabled={
+                                documentColorModes.color &&
+                                !documentColorModes.bw
+                              }
+                              label="Show color printing"
+                              hideLabel
+                              onChange={(color) =>
+                                setDocumentColorModes((current) => ({
+                                  ...current,
+                                  color,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleSaveOverrides}
                           disabled={
-                            documentColorModes.bw && !documentColorModes.color
+                            updateOverridesMutation.isPending ||
+                            (!documentColorModes.bw &&
+                              !documentColorModes.color)
                           }
-                          label="Show B&W printing"
-                          hideLabel
-                          onChange={(bw) =>
-                            setDocumentColorModes((current) => ({
-                              ...current,
-                              bw,
-                            }))
-                          }
-                        />
+                          className="btn-primary py-1.5 text-xs"
+                        >
+                          {updateOverridesMutation.isPending
+                            ? 'Saving...'
+                            : 'Save printing prices'}
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span
-                        className={`text-sm ${documentColorModes.color ? 'text-slate-700' : 'text-slate-400'}`}
-                      >
-                        Color printing
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                            ₹
-                          </span>
-                          <input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            disabled={!documentColorModes.color}
-                            value={pageRate.color}
-                            onChange={(event) =>
-                              setPageRate((current) => ({
-                                ...current,
-                                color: event.target.value,
-                              }))
-                            }
-                            className="input w-24 py-1 pl-6 text-right text-sm disabled:opacity-40"
-                          />
-                        </div>
-                        <ToggleSwitch
-                          checked={documentColorModes.color}
-                          disabled={
-                            documentColorModes.color && !documentColorModes.bw
-                          }
-                          label="Show color printing"
-                          hideLabel
-                          onChange={(color) =>
-                            setDocumentColorModes((current) => ({
-                              ...current,
-                              color,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleSaveOverrides}
-                      disabled={
-                        updateOverridesMutation.isPending ||
-                        (!documentColorModes.bw && !documentColorModes.color)
-                      }
-                      className="btn-primary py-1.5 text-xs"
-                    >
-                      {updateOverridesMutation.isPending
-                        ? 'Saving...'
-                        : 'Save printing prices'}
-                    </button>
-                  </div>
+                  )}
+
+                  {entry.serviceId === 'bind-hard' && (
+                    <HardBindingCustomizationOptions
+                      coverColors={hardCoverColors}
+                      foilColors={hardFoilColors}
+                      onCoverColorsChange={setHardCoverColors}
+                      onFoilColorsChange={setHardFoilColors}
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
+                  )}
+
+                  {entry.serviceId === 'bind-spiral' && (
+                    <SpiralBindingCustomizationPricing
+                      coverTypeOptions={coverTypeOptions}
+                      setCoverTypeOptions={setCoverTypeOptions}
+                      coilOptions={coilOptions}
+                      setCoilOptions={setCoilOptions}
+                      coverColorOptions={coverColorOptions}
+                      setCoverColorOptions={setCoverColorOptions}
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
+                  )}
                 </div>
-              )}
-
-              {entry.serviceId === 'bind-hard' && (
-                <HardBindingCustomizationOptions
-                  coverColors={hardCoverColors}
-                  foilColors={hardFoilColors}
-                  onCoverColorsChange={setHardCoverColors}
-                  onFoilColorsChange={setHardFoilColors}
-                  onSave={handleSaveOverrides}
-                  saving={updateOverridesMutation.isPending}
-                />
-              )}
-
-              {entry.serviceId === 'bind-spiral' && (
-                <SpiralBindingCustomizationPricing
-                  coverTypeOptions={coverTypeOptions}
-                  setCoverTypeOptions={setCoverTypeOptions}
-                  coilOptions={coilOptions}
-                  setCoilOptions={setCoilOptions}
-                  coverColorOptions={coverColorOptions}
-                  setCoverColorOptions={setCoverColorOptions}
-                  onSave={handleSaveOverrides}
-                  saving={updateOverridesMutation.isPending}
-                />
               )}
             </div>
           ))

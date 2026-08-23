@@ -4,14 +4,21 @@ import { useEffect, useRef, useState } from 'react';
 import { PRICING_UNITS, type PricingUnit } from '@/lib/seller-types';
 import type { SellerPricingEntry } from '@/lib/domain/seller-inventory';
 import { formatCurrency } from '@/lib/utils';
-import { IconPencil } from '@/components/icons';
+import { IconChevronDown, IconChevronUp, IconPencil } from '@/components/icons';
 
 interface PricingEditorProps {
   entry: SellerPricingEntry;
   onSave: (serviceId: string, basePrice: number, unit: string) => void;
+  expanded?: boolean;
+  onToggle?: () => void;
 }
 
-export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
+export default function PricingEditor({
+  entry,
+  onSave,
+  expanded = false,
+  onToggle,
+}: PricingEditorProps) {
   const [editing, setEditing] = useState(false);
   const [price, setPrice] = useState(String(entry.basePrice));
   const [unit, setUnit] = useState(entry.unit);
@@ -41,7 +48,9 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
     return (
       <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4 last:border-0">
         <div className="min-w-[10rem] flex-1">
-          <p className="text-sm font-medium text-slate-900">{entry.serviceName}</p>
+          <p className="text-sm font-medium text-slate-900">
+            {entry.serviceName}
+          </p>
         </div>
 
         <div className="w-28">
@@ -86,7 +95,11 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
           <button type="button" onClick={save} className="btn-primary text-xs">
             Save
           </button>
-          <button type="button" onClick={cancel} className="btn-secondary text-xs">
+          <button
+            type="button"
+            onClick={cancel}
+            className="btn-secondary text-xs"
+          >
             Cancel
           </button>
         </div>
@@ -101,7 +114,9 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
       </p>
       <p className="text-sm font-bold text-slate-900">
         {formatCurrency(entry.basePrice)}
-        <span className="ml-1 text-xs font-normal text-slate-500">{entry.unit}</span>
+        <span className="ml-1 text-xs font-normal text-slate-500">
+          {entry.unit}
+        </span>
       </p>
       <button
         type="button"
@@ -111,6 +126,22 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
       >
         <IconPencil className="h-3.5 w-3.5" /> Edit
       </button>
+      {onToggle && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="btn-secondary h-10 w-10 p-0"
+          aria-expanded={expanded}
+          aria-label={`${expanded ? 'Hide' : 'Show'} customizations for ${entry.serviceName}`}
+          title={`${expanded ? 'Hide' : 'Show'} customizations`}
+        >
+          {expanded ? (
+            <IconChevronUp className="h-4 w-4" />
+          ) : (
+            <IconChevronDown className="h-4 w-4" />
+          )}
+        </button>
+      )}
     </div>
   );
 }
