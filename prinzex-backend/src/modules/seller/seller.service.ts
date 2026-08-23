@@ -88,6 +88,24 @@ export function readSellerMetadata(json: Prisma.JsonValue | null): SellerMetadat
   return json as unknown as SellerMetadata;
 }
 
+/** Keep Document Printing's base price and the seller-wide B&W page rate identical. */
+function metadataWithDocumentBwRate(
+  json: Prisma.JsonValue | null,
+  bw: number,
+): SellerMetadata {
+  const metadata = readSellerMetadata(json);
+  return {
+    ...metadata,
+    pricingOverrides: {
+      ...metadata.pricingOverrides,
+      pageRate: {
+        bw,
+        color: metadata.pricingOverrides?.pageRate?.color ?? bw * 2,
+      },
+    },
+  };
+}
+
 /** "50100234567890" → "********7890" */
 export function maskAccountNumber(accountNumber: string): string {
   const tail = accountNumber.slice(-4);
@@ -393,8 +411,28 @@ export async function createService(sellerId: string, input: CreateServiceInput)
     throw ApiError.conflict(`Service "${input.serviceId}" is already added to your store`);
   }
 
-  const service = await prisma.sellerService.create({
-    data: { sellerId, ...input },
+  const service = await prisma.$transaction(async (tx) => {
+    const created = await tx.sellerService.create({
+      data: { sellerId, ...input },
+    });
+
+    if (input.serviceId === 'doc-print') {
+      const seller = await tx.seller.findUnique({
+        where: { id: sellerId },
+        select: { metadata: true },
+      });
+      await tx.seller.update({
+        where: { id: sellerId },
+        data: {
+          metadata: metadataWithDocumentBwRate(
+            seller?.metadata ?? null,
+            input.basePrice,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    return created;
   });
   await invalidateStoreCaches(sellerId);
   return service;
@@ -417,14 +455,34 @@ export async function updateService(
   serviceId: string,
   input: UpdateServiceInput,
 ): Promise<SellerService> {
-  await findOwnedServiceOrThrow(sellerId, serviceId);
+  const existing = await findOwnedServiceOrThrow(sellerId, serviceId);
 
   const data: Prisma.SellerServiceUpdateInput = {};
   if (input.basePrice !== undefined) data.basePrice = input.basePrice;
   if (input.unit !== undefined) data.unit = input.unit;
   if (input.isActive !== undefined) data.isActive = input.isActive;
 
-  const service = await prisma.sellerService.update({ where: { id: serviceId }, data });
+  const service = await prisma.$transaction(async (tx) => {
+    const updated = await tx.sellerService.update({ where: { id: serviceId }, data });
+
+    if (existing.serviceId === 'doc-print' && input.basePrice !== undefined) {
+      const seller = await tx.seller.findUnique({
+        where: { id: sellerId },
+        select: { metadata: true },
+      });
+      await tx.seller.update({
+        where: { id: sellerId },
+        data: {
+          metadata: metadataWithDocumentBwRate(
+            seller?.metadata ?? null,
+            input.basePrice,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    return updated;
+  });
   await invalidateStoreCaches(sellerId);
   return service;
 }
@@ -490,7 +548,7 @@ export async function bulkUpdatePrices(
   const ids = input.map((entry) => entry.serviceId);
   const owned = await prisma.sellerService.findMany({
     where: { sellerId, id: { in: ids } },
-    select: { id: true },
+    select: { id: true, serviceId: true },
   });
   const ownedIds = new Set(owned.map((service) => service.id));
   const missing = ids.filter((id) => !ownedIds.has(id));
@@ -498,15 +556,38 @@ export async function bulkUpdatePrices(
     throw ApiError.notFound(`Services not found: ${missing.join(', ')}`);
   }
 
-  // One transaction — every price updates or none do.
-  await prisma.$transaction(
-    input.map((entry) =>
-      prisma.sellerService.update({
-        where: { id: entry.serviceId },
-        data: { basePrice: entry.basePrice, unit: entry.unit },
-      }),
-    ),
-  );
+  const documentService = owned.find((service) => service.serviceId === 'doc-print');
+  const documentPrice = documentService
+    ? input.find((entry) => entry.serviceId === documentService.id)?.basePrice
+    : undefined;
+
+  // One transaction — every service price and the matching B&W rate update or none do.
+  await prisma.$transaction(async (tx) => {
+    await Promise.all(
+      input.map((entry) =>
+        tx.sellerService.update({
+          where: { id: entry.serviceId },
+          data: { basePrice: entry.basePrice, unit: entry.unit },
+        }),
+      ),
+    );
+
+    if (documentPrice !== undefined) {
+      const seller = await tx.seller.findUnique({
+        where: { id: sellerId },
+        select: { metadata: true },
+      });
+      await tx.seller.update({
+        where: { id: sellerId },
+        data: {
+          metadata: metadataWithDocumentBwRate(
+            seller?.metadata ?? null,
+            documentPrice,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+    }
+  });
   await invalidateStoreCaches(sellerId);
   return { updated: input.length };
 }
@@ -1439,13 +1520,27 @@ export async function updatePricingOverrides(
     throw ApiError.notFound('Store not found');
   }
 
+  const bwRate = overrides?.pageRate?.bw;
+  if (bwRate !== undefined && (!Number.isFinite(bwRate) || bwRate <= 0)) {
+    throw ApiError.badRequest('B&W page price must be greater than 0');
+  }
+
   const metadata: SellerMetadata = {
     ...readSellerMetadata(seller.metadata),
     pricingOverrides: overrides,
   };
-  await prisma.seller.update({
-    where: { id: sellerId },
-    data: { metadata: metadata as Prisma.InputJsonValue },
+  await prisma.$transaction(async (tx) => {
+    await tx.seller.update({
+      where: { id: sellerId },
+      data: { metadata: metadata as Prisma.InputJsonValue },
+    });
+
+    if (bwRate !== undefined) {
+      await tx.sellerService.updateMany({
+        where: { sellerId, serviceId: 'doc-print', isActive: true },
+        data: { basePrice: bwRate },
+      });
+    }
   });
   // Customers read cover availability from the (cached) store detail — drop the
   // cache so the storefront reflects the new options immediately.

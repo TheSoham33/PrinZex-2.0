@@ -56,6 +56,7 @@ export default function ManageServicesPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) => updateSellerService(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seller-my-services'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
       showToast('Price updated');
     },
     onError: (err: any) => showToast(err.message, 'error'),

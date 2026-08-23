@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { REDIS_KEYS } from '../../config/redis';
 import { ApiError } from '../../utils/ApiError';
@@ -92,6 +93,10 @@ export async function register(userId: string, input: RegisterSellerInput): Prom
       closed: day === 'sunday'
     }));
 
+    const documentPrinting = input.services.find(
+      (service) => service.serviceId === 'doc-print',
+    );
+
     const created = await tx.seller.create({
       data: {
         userId,
@@ -108,7 +113,19 @@ export async function register(userId: string, input: RegisterSellerInput): Prom
         openingTime: input.openingTime,
         closingTime: input.closingTime,
         status: 'PENDING',
-        metadata: { hours } as any,
+        metadata: {
+          hours,
+          ...(documentPrinting
+            ? {
+                pricingOverrides: {
+                  pageRate: {
+                    bw: documentPrinting.basePrice,
+                    color: documentPrinting.basePrice * 2,
+                  },
+                },
+              }
+            : {}),
+        } as Prisma.InputJsonValue,
       },
     });
 
