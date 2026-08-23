@@ -44,6 +44,8 @@ interface SpecificationsStepProps {
   availableCoverColors?: string[];
   availableHardCoverColors?: string[];
   availableHardFoilColors?: string[];
+  availablePaperTypes?: string[];
+  availablePaperSizes?: string[];
 }
 
 /** `undefined` availability → show all options; otherwise only the offered ones. */
@@ -67,6 +69,8 @@ export default function SpecificationsStep({
   availableCoverColors,
   availableHardCoverColors,
   availableHardFoilColors,
+  availablePaperTypes,
+  availablePaperSizes,
 }: SpecificationsStepProps) {
   const isHardBinding = specs.serviceId === 'bind-hard';
   const isSpiralBinding = specs.serviceId === 'bind-spiral';
@@ -275,6 +279,9 @@ export default function SpecificationsStep({
     availableHardFoilColors,
   );
 
+  const offeredPaperTypes = filterOffered(PAPER_TYPES, availablePaperTypes);
+  const offeredPaperSizes = filterOffered(PAPER_SIZES, availablePaperSizes);
+
   // Only show cover-customization options this store actually offers.
   const offeredCoilTypes = filterOffered(SPIRAL_COIL_TYPES, availableCoilTypes);
   const offeredCoverTypes = filterOffered(
@@ -284,6 +291,32 @@ export default function SpecificationsStep({
   const offeredCoverColors = isHardBinding
     ? filterOffered(COVER_COLORS, availableHardCoverColors)
     : filterOffered(COVER_COLORS, availableCoverColors);
+
+  // Keep the selected paper options aligned with the seller's current menu.
+  useEffect(() => {
+    const fixes: Partial<OrderSpecifications> = {};
+    if (
+      offeredPaperTypes.length > 0 &&
+      !offeredPaperTypes.some((option) => option.value === specs.paperType)
+    ) {
+      fixes.paperType = offeredPaperTypes[0].value;
+    }
+    if (
+      offeredPaperSizes.length > 0 &&
+      !offeredPaperSizes.some((option) => option.value === specs.size)
+    ) {
+      fixes.size = offeredPaperSizes[0].value;
+    }
+    if (Object.keys(fixes).length > 0) {
+      dispatch({ type: 'SET_SPEC', payload: fixes });
+    }
+  }, [
+    specs.paperType,
+    specs.size,
+    offeredPaperTypes,
+    offeredPaperSizes,
+    dispatch,
+  ]);
 
   // If a previously selected option is no longer offered (e.g. the seller
   // changed availability, or the default isn't offered), fall back to the
@@ -515,7 +548,7 @@ export default function SpecificationsStep({
             Paper type <span className="text-red-500">*</span>
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {PAPER_TYPES.map((type) => (
+            {offeredPaperTypes.map((type) => (
               <button
                 key={type.value}
                 type="button"
@@ -547,7 +580,7 @@ export default function SpecificationsStep({
             Size <span className="text-red-500">*</span>
           </p>
           <div className="grid grid-cols-2 gap-3">
-            {PAPER_SIZES.map((size) => (
+            {offeredPaperSizes.map((size) => (
               <button
                 key={size.value}
                 type="button"

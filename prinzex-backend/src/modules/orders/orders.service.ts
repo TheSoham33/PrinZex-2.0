@@ -14,7 +14,11 @@ import {
   toSkipTake,
   type PaginatedResponse,
 } from '../../utils/pagination';
-import { invalidateSellerAnalytics, invalidateStoreCaches } from '../seller/seller.service';
+import {
+  invalidateSellerAnalytics,
+  invalidateStoreCaches,
+  readSellerMetadata,
+} from '../seller/seller.service';
 import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import {
@@ -153,6 +157,19 @@ async function loadOrderableService(sellerId: string, sellerServiceId: string) {
   };
 }
 
+function assertPaperOptionAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  specifications: { paperType: string; size: string },
+): void {
+  const overrides = readSellerMetadata(sellerMetadata).pricingOverrides;
+  if (overrides?.paperTypes && !overrides.paperTypes.includes(specifications.paperType)) {
+    throw ApiError.badRequest('This paper type is not offered by the selected store');
+  }
+  if (overrides?.paperSizes && !overrides.paperSizes.includes(specifications.size)) {
+    throw ApiError.badRequest('This paper size is not offered by the selected store');
+  }
+}
+
 // ── POST /api/orders/quote ─────────────────────────────────────────────────
 
 export interface QuoteResponse extends QuoteResult {
@@ -167,6 +184,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     input.sellerId,
     input.sellerServiceId,
   );
+  assertPaperOptionAvailable(seller.metadata, input.specifications);
 
   // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
   // enforced for real at POST /orders (which has deliveryAddressId).
@@ -239,6 +257,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     input.sellerId,
     input.sellerServiceId,
   );
+  assertPaperOptionAvailable(seller.metadata, input.specifications);
 
   if (service.serviceId === 'bind-hard') {
     const specs = input.specifications;

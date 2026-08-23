@@ -15,11 +15,14 @@ import {
 import {
   COVER_COLORS,
   COVER_TEXT_COLORS,
+  PAPER_SIZES,
+  PAPER_TYPES,
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
 } from '@/lib/domain/stores';
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import HardBindingCustomizationOptions from '@/components/seller-dashboard/HardBindingCustomizationOptions';
+import PaperCustomizationOptions from '@/components/seller-dashboard/PaperCustomizationOptions';
 import SpiralBindingCustomizationPricing from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconPencil, IconRefreshCw } from '@/components/icons';
@@ -51,6 +54,8 @@ export default function SellerPricingPage() {
   >({});
   const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
   const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
+  const [paperTypes, setPaperTypes] = useState<string[]>([]);
+  const [paperSizes, setPaperSizes] = useState<string[]>([]);
 
   const [editingTier, setEditingTier] = useState<number | null>(null);
   const [tierDraft, setTierDraft] = useState('');
@@ -109,6 +114,12 @@ export default function SellerPricingPage() {
           COVER_TEXT_COLORS.filter((color) => color.value !== 'white').map(
             (color) => color.value,
           ),
+      );
+      setPaperTypes(
+        overrides.paperTypes ?? PAPER_TYPES.map((option) => option.value),
+      );
+      setPaperSizes(
+        overrides.paperSizes ?? PAPER_SIZES.map((option) => option.value),
       );
     }
   }, [data]);
@@ -193,6 +204,8 @@ export default function SellerPricingPage() {
       coverColor,
       hardCoverColors,
       hardFoilColors,
+      paperTypes,
+      paperSizes,
     });
   };
 
@@ -228,6 +241,15 @@ export default function SellerPricingPage() {
           Set your base rates, specification add-ons, and bulk discounts.
         </p>
       </header>
+
+      <PaperCustomizationOptions
+        paperTypes={paperTypes}
+        paperSizes={paperSizes}
+        onPaperTypesChange={setPaperTypes}
+        onPaperSizesChange={setPaperSizes}
+        onSave={handleSaveOverrides}
+        saving={updateOverridesMutation.isPending}
+      />
 
       {/* Service Rates */}
       <section className="card mt-6 overflow-hidden">

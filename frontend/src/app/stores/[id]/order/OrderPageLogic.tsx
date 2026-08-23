@@ -417,6 +417,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               availableCoverColors={store.availableCoverColors}
               availableHardCoverColors={store.availableHardCoverColors}
               availableHardFoilColors={store.availableHardFoilColors}
+              availablePaperTypes={store.availablePaperTypes}
+              availablePaperSizes={store.availablePaperSizes}
             />
           )}
           {state.step === 2 && (
