@@ -81,7 +81,7 @@ export default function SellerDashboardLayout({ children }: { children: React.Re
         <SellerSidebar />
         <div className="pt-16 lg:pl-60">
           <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">
-            <DynamicBreadcrumbs />
+            <DynamicBreadcrumbs sellerDashboard />
             {children}
           </main>
         </div>

@@ -43,7 +43,7 @@ export default function SellerLoginForm() {
       });
       
       dispatch(sellerLoginSuccess(result));
-      router.push('/seller/dashboard');
+      router.replace('/seller/dashboard/orders');
     } catch (err: any) {
       dispatch(sellerLogout());
       setErrors({ general: err.message || 'Login failed' });
