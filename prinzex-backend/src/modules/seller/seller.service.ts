@@ -94,6 +94,13 @@ export interface SellerMetadata {
         paperSizes?: Record<string, number>;
       }
     >;
+    twinLoopOptions?: {
+      wireColors?: Record<string, number>;
+      frontCovers?: Record<string, number>;
+      backCovers?: Record<string, number>;
+      hangerPrice?: number;
+      concealedPrice?: number;
+    };
   };
 }
 
@@ -1542,6 +1549,15 @@ export async function updatePricingOverrides(
     !overrides.documentColorModes.color
   ) {
     throw ApiError.badRequest('Keep at least one Document Printing colour mode enabled');
+  }
+
+  if (
+    overrides?.twinLoopOptions &&
+    (Object.keys(overrides.twinLoopOptions.wireColors ?? {}).length === 0 ||
+      Object.keys(overrides.twinLoopOptions.frontCovers ?? {}).length === 0 ||
+      Object.keys(overrides.twinLoopOptions.backCovers ?? {}).length === 0)
+  ) {
+    throw ApiError.badRequest('Twin Loop needs at least one wire, front cover, and back cover option');
   }
 
   const bwRate = overrides?.pageRate?.bw;

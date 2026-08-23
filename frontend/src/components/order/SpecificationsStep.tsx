@@ -17,6 +17,7 @@ import type {
 } from '@/lib/types';
 import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
+import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
 import {
   IconAlertCircle,
   IconUpload,
@@ -70,6 +71,7 @@ export default function SpecificationsStep({
 }: SpecificationsStepProps) {
   const isHardBinding = specs.serviceId === 'bind-hard';
   const isSpiralBinding = specs.serviceId === 'bind-spiral';
+  const isTwinLoopBinding = specs.serviceId === 'bind-twin-loop';
   const isCustomizableBinding = isHardBinding || isSpiralBinding;
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -792,6 +794,14 @@ export default function SpecificationsStep({
             </p>
           </section>
         )}
+
+      {isTwinLoopBinding && (
+        <TwinLoopCustomizationPanel
+          specs={specs}
+          service={selectedService}
+          dispatch={dispatch}
+        />
+      )}
 
       {isCustomizableBinding && (
         <section className="animate-fade-in rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6">

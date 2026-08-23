@@ -1,6 +1,7 @@
 /** Seller onboarding types + the service catalogue used in step 2. */
 
-export type BusinessType = 'sole_proprietor' | 'partnership' | 'pvt_ltd' | 'llp' | '';
+export type BusinessType =
+  'sole_proprietor' | 'partnership' | 'pvt_ltd' | 'llp' | '';
 
 export interface StoreInfo {
   storeName: string;
@@ -26,11 +27,7 @@ export interface SelectedService {
 }
 
 export type PricingUnit =
-  | 'per page'
-  | 'per piece'
-  | 'per sq ft'
-  | 'per kg'
-  | 'starting from';
+  'per page' | 'per piece' | 'per sq ft' | 'per kg' | 'starting from';
 
 export const PRICING_UNITS: PricingUnit[] = [
   'per page',
@@ -56,10 +53,7 @@ export interface BankDetails {
 }
 
 export type DocumentType =
-  | 'gst_certificate'
-  | 'business_license'
-  | 'owner_id'
-  | 'address_proof';
+  'gst_certificate' | 'business_license' | 'owner_id' | 'address_proof';
 
 export interface UploadedDoc {
   type: DocumentType;
@@ -86,7 +80,10 @@ export interface ServiceCategory {
   services: { id: string; name: string }[];
 }
 
-export const BUSINESS_TYPES: { value: Exclude<BusinessType, ''>; label: string }[] = [
+export const BUSINESS_TYPES: {
+  value: Exclude<BusinessType, ''>;
+  label: string;
+}[] = [
   { value: 'sole_proprietor', label: 'Sole Proprietor' },
   { value: 'partnership', label: 'Partnership' },
   { value: 'pvt_ltd', label: 'Private Limited' },
@@ -94,8 +91,18 @@ export const BUSINESS_TYPES: { value: Exclude<BusinessType, ''>; label: string }
 ];
 
 export const REQUIRED_DOCUMENTS: UploadedDoc[] = [
-  { type: 'gst_certificate', label: 'GST Certificate', file: null, fileName: null },
-  { type: 'business_license', label: 'Business License', file: null, fileName: null },
+  {
+    type: 'gst_certificate',
+    label: 'GST Certificate',
+    file: null,
+    fileName: null,
+  },
+  {
+    type: 'business_license',
+    label: 'Business License',
+    file: null,
+    fileName: null,
+  },
   { type: 'owner_id', label: 'Owner ID Proof', file: null, fileName: null },
   { type: 'address_proof', label: 'Address Proof', file: null, fileName: null },
 ];
@@ -138,6 +145,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     description: 'Post-print finishing services',
     services: [
       { id: 'bind-spiral', name: 'Spiral Binding' },
+      { id: 'bind-twin-loop', name: 'Twin Loop Binding' },
       { id: 'bind-hard', name: 'Hard Binding' },
       { id: 'bind-perfect', name: 'Perfect Binding' },
     ],
@@ -192,7 +200,8 @@ export const INITIAL_BANK_DETAILS: BankDetails = {
 
 export const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 export const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-export const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+export const GST_REGEX =
+  /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 export const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
 export const PHONE_REGEX = /^[6-9]\d{9}$/;
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -174,6 +174,50 @@ function assertDocumentColorModeAvailable(
   }
 }
 
+function assertTwinLoopOptionsAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  specifications: {
+    twinLoopWireColor?: string;
+    twinLoopFrontCover?: string;
+    twinLoopBackCover?: string;
+    twinLoopCalendarHanger?: boolean;
+    twinLoopConcealed?: boolean;
+  },
+): void {
+  if (serviceId !== 'bind-twin-loop') return;
+  const options = readSellerMetadata(sellerMetadata).pricingOverrides?.twinLoopOptions;
+  if (!options) return;
+
+  if (
+    specifications.twinLoopWireColor &&
+    options.wireColors &&
+    !(specifications.twinLoopWireColor in options.wireColors)
+  ) {
+    throw ApiError.badRequest('This Twin Loop wire colour is not offered');
+  }
+  if (
+    specifications.twinLoopFrontCover &&
+    options.frontCovers &&
+    !(specifications.twinLoopFrontCover in options.frontCovers)
+  ) {
+    throw ApiError.badRequest('This Twin Loop front cover is not offered');
+  }
+  if (
+    specifications.twinLoopBackCover &&
+    options.backCovers &&
+    !(specifications.twinLoopBackCover in options.backCovers)
+  ) {
+    throw ApiError.badRequest('This Twin Loop back cover is not offered');
+  }
+  if (specifications.twinLoopCalendarHanger && options.hangerPrice === undefined) {
+    throw ApiError.badRequest('Calendar hangers are not offered by this store');
+  }
+  if (specifications.twinLoopConcealed && options.concealedPrice === undefined) {
+    throw ApiError.badRequest('Concealed Twin Loop binding is not offered by this store');
+  }
+}
+
 function assertPaperOptionAvailable(
   sellerMetadata: Prisma.JsonValue | null,
   serviceId: string,
@@ -208,6 +252,11 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     seller.metadata,
     service.serviceId,
     input.specifications.colorOption,
+  );
+  assertTwinLoopOptionsAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications,
   );
 
   // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
@@ -287,6 +336,11 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     service.serviceId,
     input.specifications.colorOption,
   );
+  assertTwinLoopOptionsAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications,
+  );
 
   if (service.serviceId === 'bind-hard') {
     const specs = input.specifications;
@@ -304,6 +358,22 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     }
     if (specs.hardBindingProofApproved !== true) {
       throw ApiError.badRequest('Approve the hard binding cover proof before placing the order');
+    }
+  }
+
+  if (service.serviceId === 'bind-twin-loop') {
+    const specs = input.specifications;
+    if (!specs.twinLoopWireColor || !specs.twinLoopFrontCover || !specs.twinLoopBackCover) {
+      throw ApiError.badRequest('Choose the Twin Loop wire and cover options');
+    }
+    if (!specs.twinLoopBindingEdge || !specs.twinLoopPrintSides) {
+      throw ApiError.badRequest('Choose the Twin Loop binding edge and print style');
+    }
+    if (specs.twinLoopCalendarHanger && specs.twinLoopBindingEdge !== 'top') {
+      throw ApiError.badRequest('A calendar hanger requires top-edge binding');
+    }
+    if (specs.twinLoopSafeZoneAcknowledged !== true) {
+      throw ApiError.badRequest('Acknowledge the 10 mm Twin Loop punch safe zone');
     }
   }
 

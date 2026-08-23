@@ -200,6 +200,10 @@ export function mapBackendStoreDetailToFrontend(
                   (mode) => pricingOverrides.documentColorModes[mode],
                 )
               : undefined,
+          twinLoopOptions:
+            service.serviceId === 'bind-twin-loop'
+              ? pricingOverrides.twinLoopOptions
+              : undefined,
         };
       }) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),

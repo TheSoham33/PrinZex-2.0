@@ -123,38 +123,69 @@ export default function OrderSummarySidebar({
                     <p>{specs.paperGsm ?? 75} GSM · Proof approved</p>
                   </div>
                 )}
-                {specs.coverType && specs.serviceId !== 'bind-hard' && (
-                  <div className="mt-2 rounded bg-slate-100 p-1.5 text-slate-700">
+                {specs.serviceId === 'bind-twin-loop' && (
+                  <div className="mt-2 space-y-1 rounded bg-slate-100 p-2 text-slate-700">
                     <p className="font-bold text-[10px] uppercase text-slate-500">
-                      Cover
+                      Twin Loop
                     </p>
-                    <p>
-                      {specs.coverType} · {specs.coverColor}
+                    <p className="capitalize">
+                      {specs.twinLoopWireColor} wire ·{' '}
+                      {specs.twinLoopBindingEdge} edge
                     </p>
-                    {specs.serviceId === 'bind-spiral' &&
-                    specs.coverDesignType === 'custom' ? (
-                      <div className="mt-1 space-y-0.5 border-t border-slate-200 pt-1 text-[10px]">
-                        <p className="truncate">
-                          Front: {specs.frontCoverFileName || '—'}
-                        </p>
-                        <p className="truncate">
-                          Back: {specs.backCoverFileName || '—'}
-                        </p>
-                      </div>
-                    ) : specs.applyCoverToAll !== false ? (
-                      specs.coverFileName && (
-                        <p className="truncate">File: {specs.coverFileName}</p>
-                      )
-                    ) : (
-                      specs.coverFileUrls && (
-                        <p className="mt-1 font-medium italic">
-                          {specs.coverFileUrls.filter(Boolean).length} of{' '}
-                          {quantity} designs uploaded
-                        </p>
-                      )
+                    <p className="capitalize">
+                      {specs.twinLoopPrintSides}-sided ·{' '}
+                      {specs.twinLoopFrontCover}
+                    </p>
+                    {cost.twinLoopPitch && (
+                      <p>
+                        {cost.twinLoopPitch} pitch · {cost.twinLoopWireSize}{' '}
+                        wire · {cost.twinLoopTotalSheets} sheets
+                      </p>
+                    )}
+                    {specs.twinLoopCalendarHanger && (
+                      <p>Calendar hanger included</p>
+                    )}
+                    {specs.twinLoopConcealed && (
+                      <p>Concealed Hardcover Wire-O</p>
                     )}
                   </div>
                 )}
+                {specs.coverType &&
+                  specs.serviceId !== 'bind-hard' &&
+                  specs.serviceId !== 'bind-twin-loop' && (
+                    <div className="mt-2 rounded bg-slate-100 p-1.5 text-slate-700">
+                      <p className="font-bold text-[10px] uppercase text-slate-500">
+                        Cover
+                      </p>
+                      <p>
+                        {specs.coverType} · {specs.coverColor}
+                      </p>
+                      {specs.serviceId === 'bind-spiral' &&
+                      specs.coverDesignType === 'custom' ? (
+                        <div className="mt-1 space-y-0.5 border-t border-slate-200 pt-1 text-[10px]">
+                          <p className="truncate">
+                            Front: {specs.frontCoverFileName || '—'}
+                          </p>
+                          <p className="truncate">
+                            Back: {specs.backCoverFileName || '—'}
+                          </p>
+                        </div>
+                      ) : specs.applyCoverToAll !== false ? (
+                        specs.coverFileName && (
+                          <p className="truncate">
+                            File: {specs.coverFileName}
+                          </p>
+                        )
+                      ) : (
+                        specs.coverFileUrls && (
+                          <p className="mt-1 font-medium italic">
+                            {specs.coverFileUrls.filter(Boolean).length} of{' '}
+                            {quantity} designs uploaded
+                          </p>
+                        )
+                      )}
+                    </div>
+                  )}
               </div>
             )}
           </div>

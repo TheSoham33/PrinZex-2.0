@@ -142,6 +142,14 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           spineText: specs.spineText,
           paperGsm: specs.paperGsm,
           hardBindingProofApproved: specs.hardBindingProofApproved,
+          twinLoopWireColor: specs.twinLoopWireColor,
+          twinLoopFrontCover: specs.twinLoopFrontCover,
+          twinLoopBackCover: specs.twinLoopBackCover,
+          twinLoopBindingEdge: specs.twinLoopBindingEdge,
+          twinLoopPrintSides: specs.twinLoopPrintSides,
+          twinLoopCalendarHanger: specs.twinLoopCalendarHanger,
+          twinLoopConcealed: specs.twinLoopConcealed,
+          twinLoopSafeZoneAcknowledged: specs.twinLoopSafeZoneAcknowledged,
         },
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
         couponCode: couponCode || undefined,
@@ -208,6 +216,21 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         }
         if (!specs.hardBindingProofApproved) {
           return 'Please approve the hard binding cover proof';
+        }
+      }
+      if (specs.serviceId === 'bind-twin-loop') {
+        if (
+          !specs.twinLoopWireColor ||
+          !specs.twinLoopFrontCover ||
+          !specs.twinLoopBackCover
+        ) {
+          return 'Please choose the Twin Loop wire and cover options';
+        }
+        if (!specs.twinLoopBindingEdge || !specs.twinLoopPrintSides) {
+          return 'Please choose the binding edge and inner-page print style';
+        }
+        if (!specs.twinLoopSafeZoneAcknowledged) {
+          return 'Please confirm the 10 mm Twin Loop punch-margin safe zone';
         }
       }
       return null;
@@ -284,6 +307,14 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           spineText: specs.spineText,
           paperGsm: specs.paperGsm,
           hardBindingProofApproved: specs.hardBindingProofApproved,
+          twinLoopWireColor: specs.twinLoopWireColor,
+          twinLoopFrontCover: specs.twinLoopFrontCover,
+          twinLoopBackCover: specs.twinLoopBackCover,
+          twinLoopBindingEdge: specs.twinLoopBindingEdge,
+          twinLoopPrintSides: specs.twinLoopPrintSides,
+          twinLoopCalendarHanger: specs.twinLoopCalendarHanger,
+          twinLoopConcealed: specs.twinLoopConcealed,
+          twinLoopSafeZoneAcknowledged: specs.twinLoopSafeZoneAcknowledged,
         },
         deliveryAddressId: (state.order.address as any)?.id,
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),

@@ -19,11 +19,17 @@ import {
   PAPER_TYPES,
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
+  TWIN_LOOP_BACK_COVERS,
+  TWIN_LOOP_FRONT_COVERS,
+  TWIN_LOOP_WIRE_COLORS,
 } from '@/lib/domain/stores';
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import HardBindingCustomizationOptions from '@/components/seller-dashboard/HardBindingCustomizationOptions';
 import PaperCustomizationOptions from '@/components/seller-dashboard/PaperCustomizationOptions';
 import SpiralBindingCustomizationPricing from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
+import TwinLoopCustomizationPricing, {
+  type TwinLoopPricingState,
+} from '@/components/seller-dashboard/TwinLoopCustomizationPricing';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconPencil, IconRefreshCw } from '@/components/icons';
@@ -68,6 +74,11 @@ export default function SellerPricingPage() {
       }
     >
   >({});
+  const [twinLoopOptions, setTwinLoopOptions] = useState<TwinLoopPricingState>({
+    wireColors: {},
+    frontCovers: {},
+    backCovers: {},
+  });
 
   const [expandedServices, setExpandedServices] = useState<string[]>([]);
   const [editingTier, setEditingTier] = useState<number | null>(null);
@@ -154,6 +165,27 @@ export default function SellerPricingPage() {
           ]),
         ),
       );
+
+      const savedTwinLoop = overrides.twinLoopOptions ?? {};
+      setTwinLoopOptions({
+        wireColors:
+          savedTwinLoop.wireColors ??
+          Object.fromEntries(
+            TWIN_LOOP_WIRE_COLORS.map((option) => [option.value, 0]),
+          ),
+        frontCovers:
+          savedTwinLoop.frontCovers ??
+          Object.fromEntries(
+            TWIN_LOOP_FRONT_COVERS.map((option) => [option.value, 0]),
+          ),
+        backCovers:
+          savedTwinLoop.backCovers ??
+          Object.fromEntries(
+            TWIN_LOOP_BACK_COVERS.map((option) => [option.value, 0]),
+          ),
+        hangerPrice: savedTwinLoop.hangerPrice ?? 0,
+        concealedPrice: savedTwinLoop.concealedPrice ?? 0,
+      });
     }
   }, [data]);
 
@@ -247,6 +279,7 @@ export default function SellerPricingPage() {
       hardCoverColors,
       hardFoilColors,
       servicePaperOptions,
+      twinLoopOptions,
     });
   };
 
@@ -484,6 +517,15 @@ export default function SellerPricingPage() {
                       setCoilOptions={setCoilOptions}
                       coverColorOptions={coverColorOptions}
                       setCoverColorOptions={setCoverColorOptions}
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
+                  )}
+
+                  {entry.serviceId === 'bind-twin-loop' && (
+                    <TwinLoopCustomizationPricing
+                      value={twinLoopOptions}
+                      onChange={setTwinLoopOptions}
                       onSave={handleSaveOverrides}
                       saving={updateOverridesMutation.isPending}
                     />

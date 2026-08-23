@@ -71,6 +71,14 @@ export function createInitialState(
         spineText: '',
         paperGsm: 75,
         hardBindingProofApproved: false,
+        twinLoopWireColor: 'black',
+        twinLoopFrontCover: 'clear-gloss',
+        twinLoopBackCover: 'matching-front',
+        twinLoopBindingEdge: 'left',
+        twinLoopPrintSides: 'double',
+        twinLoopCalendarHanger: false,
+        twinLoopConcealed: false,
+        twinLoopSafeZoneAcknowledged: false,
       },
       file: null,
       specialInstructions: '',
@@ -217,6 +225,15 @@ export function computeCost(
   }, 0);
 
   const isBinding = Boolean(service?.id?.startsWith('bind-'));
+  const twinLoop = service?.twinLoopOptions;
+  const twinLoopExtra =
+    service?.id === 'bind-twin-loop'
+      ? (twinLoop?.wireColors?.[specs.twinLoopWireColor ?? ''] ?? 0) +
+        (twinLoop?.frontCovers?.[specs.twinLoopFrontCover ?? ''] ?? 0) +
+        (twinLoop?.backCovers?.[specs.twinLoopBackCover ?? ''] ?? 0) +
+        (specs.twinLoopCalendarHanger ? (twinLoop?.hangerPrice ?? 0) : 0) +
+        (specs.twinLoopConcealed ? (twinLoop?.concealedPrice ?? 0) : 0)
+      : 0;
 
   let subtotal: number;
   let pageCost: number | undefined;
@@ -226,7 +243,7 @@ export function computeCost(
     pageCost = Math.round(
       (bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity,
     );
-    const bindingRate = base;
+    const bindingRate = base + twinLoopExtra;
     bindingCost = Math.round(bindingRate * quantity);
     subtotal = Math.round(pageCost + bindingCost + finishingPerUnit * quantity);
   } else if (service?.unit.toLowerCase().includes('page')) {
@@ -242,6 +259,39 @@ export function computeCost(
 
   const rushFee = 0;
   const tax = Math.round((subtotal + deliveryFee) * TAX_RATE);
+  const twinLoopTotalSheets =
+    service?.id === 'bind-twin-loop' && totalPages > 0
+      ? (specs.twinLoopPrintSides === 'single'
+          ? totalPages
+          : Math.ceil(totalPages / 2)) + 2
+      : undefined;
+  const twinLoopPitch =
+    twinLoopTotalSheets !== undefined
+      ? totalPages <= 120
+        ? '3:1'
+        : '2:1'
+      : undefined;
+  const twinLoopStackMm =
+    twinLoopTotalSheets !== undefined
+      ? twinLoopTotalSheets * ((specs.paperGsm ?? 75) === 100 ? 0.13 : 0.1) +
+        0.6
+      : undefined;
+  const twinLoopWireSize =
+    twinLoopStackMm === undefined
+      ? undefined
+      : twinLoopStackMm <= 4.5
+        ? '1/4"'
+        : twinLoopStackMm <= 6
+          ? '5/16"'
+          : twinLoopStackMm <= 8
+            ? '3/8"'
+            : twinLoopStackMm <= 10.5
+              ? '1/2"'
+              : twinLoopStackMm <= 13
+                ? '5/8"'
+                : twinLoopStackMm <= 16
+                  ? '3/4"'
+                  : '1"';
 
   const cost: CostBreakdown = {
     subtotal,
@@ -252,6 +302,9 @@ export function computeCost(
     total: 0,
     ...(pageCost !== undefined ? { pageCost } : {}),
     ...(bindingCost !== undefined ? { bindingCost } : {}),
+    ...(twinLoopPitch !== undefined ? { twinLoopPitch } : {}),
+    ...(twinLoopWireSize !== undefined ? { twinLoopWireSize } : {}),
+    ...(twinLoopTotalSheets !== undefined ? { twinLoopTotalSheets } : {}),
   };
   cost.total = recalcTotal(cost);
   return cost;
