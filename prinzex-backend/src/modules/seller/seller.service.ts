@@ -81,9 +81,14 @@ export interface SellerMetadata {
     /** Hard Binding menus are availability-only; no automatic surcharge. */
     hardCoverColors?: string[];
     hardFoilColors?: string[];
-    /** Seller-wide paper menus applied to every enabled service. */
-    paperTypes?: string[];
-    paperSizes?: string[];
+    /** Per-service paper availability and additive prices, keyed by catalogue serviceId. */
+    servicePaperOptions?: Record<
+      string,
+      {
+        paperTypes?: Record<string, number>;
+        paperSizes?: Record<string, number>;
+      }
+    >;
   };
 }
 

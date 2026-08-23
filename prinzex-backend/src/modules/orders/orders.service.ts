@@ -159,14 +159,16 @@ async function loadOrderableService(sellerId: string, sellerServiceId: string) {
 
 function assertPaperOptionAvailable(
   sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
   specifications: { paperType: string; size: string },
 ): void {
-  const overrides = readSellerMetadata(sellerMetadata).pricingOverrides;
-  if (overrides?.paperTypes && !overrides.paperTypes.includes(specifications.paperType)) {
-    throw ApiError.badRequest('This paper type is not offered by the selected store');
+  const options =
+    readSellerMetadata(sellerMetadata).pricingOverrides?.servicePaperOptions?.[serviceId];
+  if (options?.paperTypes && !(specifications.paperType in options.paperTypes)) {
+    throw ApiError.badRequest('This paper type is not offered for the selected service');
   }
-  if (overrides?.paperSizes && !overrides.paperSizes.includes(specifications.size)) {
-    throw ApiError.badRequest('This paper size is not offered by the selected store');
+  if (options?.paperSizes && !(specifications.size in options.paperSizes)) {
+    throw ApiError.badRequest('This paper size is not offered for the selected service');
   }
 }
 
@@ -184,7 +186,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     input.sellerId,
     input.sellerServiceId,
   );
-  assertPaperOptionAvailable(seller.metadata, input.specifications);
+  assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
 
   // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
   // enforced for real at POST /orders (which has deliveryAddressId).
@@ -257,7 +259,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     input.sellerId,
     input.sellerServiceId,
   );
-  assertPaperOptionAvailable(seller.metadata, input.specifications);
+  assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
 
   if (service.serviceId === 'bind-hard') {
     const specs = input.specifications;

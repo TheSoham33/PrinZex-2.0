@@ -54,8 +54,15 @@ export default function SellerPricingPage() {
   >({});
   const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
   const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
-  const [paperTypes, setPaperTypes] = useState<string[]>([]);
-  const [paperSizes, setPaperSizes] = useState<string[]>([]);
+  const [servicePaperOptions, setServicePaperOptions] = useState<
+    Record<
+      string,
+      {
+        paperTypes: Record<string, number>;
+        paperSizes: Record<string, number>;
+      }
+    >
+  >({});
 
   const [editingTier, setEditingTier] = useState<number | null>(null);
   const [tierDraft, setTierDraft] = useState('');
@@ -115,11 +122,27 @@ export default function SellerPricingPage() {
             (color) => color.value,
           ),
       );
-      setPaperTypes(
-        overrides.paperTypes ?? PAPER_TYPES.map((option) => option.value),
+      const defaultPaperTypes = Object.fromEntries(
+        PAPER_TYPES.map((option) => [option.value, 0]),
       );
-      setPaperSizes(
-        overrides.paperSizes ?? PAPER_SIZES.map((option) => option.value),
+      const defaultPaperSizes = Object.fromEntries(
+        PAPER_SIZES.map((option) => [option.value, 0]),
+      );
+      const savedPaperOptions = overrides.servicePaperOptions ?? {};
+      setServicePaperOptions(
+        Object.fromEntries(
+          (data.services || []).map((service: any) => [
+            service.serviceId,
+            {
+              paperTypes:
+                savedPaperOptions[service.serviceId]?.paperTypes ??
+                defaultPaperTypes,
+              paperSizes:
+                savedPaperOptions[service.serviceId]?.paperSizes ??
+                defaultPaperSizes,
+            },
+          ]),
+        ),
       );
     }
   }, [data]);
@@ -204,8 +227,7 @@ export default function SellerPricingPage() {
       coverColor,
       hardCoverColors,
       hardFoilColors,
-      paperTypes,
-      paperSizes,
+      servicePaperOptions,
     });
   };
 
@@ -242,15 +264,6 @@ export default function SellerPricingPage() {
         </p>
       </header>
 
-      <PaperCustomizationOptions
-        paperTypes={paperTypes}
-        paperSizes={paperSizes}
-        onPaperTypesChange={setPaperTypes}
-        onPaperSizesChange={setPaperSizes}
-        onSave={handleSaveOverrides}
-        saving={updateOverridesMutation.isPending}
-      />
-
       {/* Service Rates */}
       <section className="card mt-6 overflow-hidden">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
@@ -274,6 +287,36 @@ export default function SellerPricingPage() {
                   unit: entry.unit,
                 }}
                 onSave={savePrice}
+              />
+
+              <PaperCustomizationOptions
+                serviceName={entry.serviceName}
+                paperTypePrices={
+                  servicePaperOptions[entry.serviceId]?.paperTypes ?? {}
+                }
+                paperSizePrices={
+                  servicePaperOptions[entry.serviceId]?.paperSizes ?? {}
+                }
+                onPaperTypePricesChange={(paperTypes) =>
+                  setServicePaperOptions((current) => ({
+                    ...current,
+                    [entry.serviceId]: {
+                      paperTypes,
+                      paperSizes: current[entry.serviceId]?.paperSizes ?? {},
+                    },
+                  }))
+                }
+                onPaperSizePricesChange={(paperSizes) =>
+                  setServicePaperOptions((current) => ({
+                    ...current,
+                    [entry.serviceId]: {
+                      paperTypes: current[entry.serviceId]?.paperTypes ?? {},
+                      paperSizes,
+                    },
+                  }))
+                }
+                onSave={handleSaveOverrides}
+                saving={updateOverridesMutation.isPending}
               />
 
               {entry.serviceId === 'doc-print' && (

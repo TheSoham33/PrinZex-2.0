@@ -184,7 +184,17 @@ export function mapBackendStoreDetailToFrontend(
     openingTime: openingTime || '09:00',
     closingTime: closingTime || '21:00',
     hours: b.metadata?.hours || synthesizeHours(openingTime, closingTime) || [],
-    services: b.services?.map(mapBackendServiceToFrontend) || [],
+    services:
+      b.services?.map((service: any) => {
+        const mapped = mapBackendServiceToFrontend(service);
+        const paperOptions =
+          pricingOverrides.servicePaperOptions?.[service.serviceId] ?? {};
+        return {
+          ...mapped,
+          paperTypePrices: paperOptions.paperTypes,
+          paperSizePrices: paperOptions.paperSizes,
+        };
+      }) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),
     ratingBreakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }, // Calculate if needed
     availableCoverTypes: pricingOverrides.coverType
@@ -201,12 +211,6 @@ export function mapBackendStoreDetailToFrontend(
       : undefined,
     availableHardFoilColors: Array.isArray(pricingOverrides.hardFoilColors)
       ? pricingOverrides.hardFoilColors
-      : undefined,
-    availablePaperTypes: Array.isArray(pricingOverrides.paperTypes)
-      ? pricingOverrides.paperTypes
-      : undefined,
-    availablePaperSizes: Array.isArray(pricingOverrides.paperSizes)
-      ? pricingOverrides.paperSizes
       : undefined,
   };
 }

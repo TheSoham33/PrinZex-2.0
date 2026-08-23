@@ -39,6 +39,9 @@ export interface ServiceOffering {
   startingPrice: number;
   unit: string;
   description: string;
+  /** Seller-enabled options; values are additive prices for this service. */
+  paperTypePrices?: Record<string, number>;
+  paperSizePrices?: Record<string, number>;
 }
 
 export interface Review {
@@ -71,8 +74,6 @@ export interface StoreDetail extends Store {
   availableCoverColors?: string[];
   availableHardCoverColors?: string[];
   availableHardFoilColors?: string[];
-  availablePaperTypes?: string[];
-  availablePaperSizes?: string[];
 }
 
 export interface OrderSpecifications {
