@@ -39,8 +39,13 @@ export const updatePricingOverrides = async (overrides: {
   coverColor?: Record<string, number>;
   hardCoverColors?: string[];
   hardFoilColors?: string[];
-  paperTypes?: string[];
-  paperSizes?: string[];
+  servicePaperOptions?: Record<
+    string,
+    {
+      paperTypes?: Record<string, number>;
+      paperSizes?: Record<string, number>;
+    }
+  >;
 }): Promise<any> => {
   return apiRequest<any>('/seller/settings/pricing-overrides', {
     method: 'PATCH',

@@ -193,11 +193,15 @@ export function computeCost(
   const totalPages = Math.max(0, specs.totalPages || 0);
 
   const isPerPage = service?.unit.toLowerCase().includes('page') ?? false;
+  const paperOptionExtra =
+    (service?.paperTypePrices?.[specs.paperType] ?? 0) +
+    (service?.paperSizePrices?.[specs.size] ?? 0);
   // A page service's base price IS the B&W page rate; a binding service's base
   // price is the per-document binding rate, so its pages use the seller's
   // page-service rate instead (never the binding price).
-  const bwPageRate = isPerPage ? base : (pageRateFallback ?? 0);
-  const colorPageRate = bwPageRate * 2;
+  const baseBwPageRate = isPerPage ? base : (pageRateFallback ?? 0);
+  const bwPageRate = baseBwPageRate + paperOptionExtra;
+  const colorPageRate = baseBwPageRate * 2 + paperOptionExtra;
 
   const colorPageCount =
     specs.colorOption === 'color'
@@ -231,7 +235,9 @@ export function computeCost(
         finishingPerUnit * quantity,
     );
   } else {
-    subtotal = Math.round(base * quantity + finishingPerUnit * quantity);
+    subtotal = Math.round(
+      (base + paperOptionExtra) * quantity + finishingPerUnit * quantity,
+    );
   }
 
   const rushFee = 0;

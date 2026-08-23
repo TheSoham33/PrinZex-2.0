@@ -303,6 +303,11 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const quantity = input.quantity;
 
   const isPerPage = unit.toLowerCase().includes('page');
+  const servicePaperOptions =
+    overrides.servicePaperOptions?.[input.serviceId ?? ''] ?? {};
+  const paperOptionExtra =
+    (servicePaperOptions.paperTypes?.[specifications.paperType] ?? 0) +
+    (servicePaperOptions.paperSizes?.[specifications.size] ?? 0);
 
   // Seller-set per-page rates, common across all page services. A page is
   // either B&W or colour; every colour option is priced from these two rates.
@@ -310,14 +315,16 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   // (per-page services) or the seller's cheapest page-service rate (binding
   // services). A binding service's basePrice is per-document and must never
   // be used as a per-page rate.
-  const bwRate =
+  const baseBwRate =
     overrides.pageRate?.bw ??
     overrides.colorOption?.bw ??
     (isPerPage ? input.basePrice : input.pageRateFallback ?? 0);
-  const colorRate =
+  const baseColorRate =
     overrides.pageRate?.color ??
     overrides.colorOption?.color ??
-    bwRate * 2;
+    baseBwRate * 2;
+  const bwRate = baseBwRate + paperOptionExtra;
+  const colorRate = baseColorRate + paperOptionExtra;
 
   const split = colorPageSplit(specifications.colorOption, specifications.colorPages, totalPages);
 
@@ -356,7 +363,9 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     );
   } else {
     // ── Per-piece / per-set / per-sqft services: single base rate ────────
-    subtotal = round2(input.basePrice * quantity + finishingCharge * quantity);
+    subtotal = round2(
+      (input.basePrice + paperOptionExtra) * quantity + finishingCharge * quantity,
+    );
   }
 
   const rushFee = RUSH_FEES[input.deliverySpeed];

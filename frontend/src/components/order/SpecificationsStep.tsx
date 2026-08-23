@@ -44,8 +44,6 @@ interface SpecificationsStepProps {
   availableCoverColors?: string[];
   availableHardCoverColors?: string[];
   availableHardFoilColors?: string[];
-  availablePaperTypes?: string[];
-  availablePaperSizes?: string[];
 }
 
 /** `undefined` availability → show all options; otherwise only the offered ones. */
@@ -69,8 +67,6 @@ export default function SpecificationsStep({
   availableCoverColors,
   availableHardCoverColors,
   availableHardFoilColors,
-  availablePaperTypes,
-  availablePaperSizes,
 }: SpecificationsStepProps) {
   const isHardBinding = specs.serviceId === 'bind-hard';
   const isSpiralBinding = specs.serviceId === 'bind-spiral';
@@ -279,8 +275,21 @@ export default function SpecificationsStep({
     availableHardFoilColors,
   );
 
-  const offeredPaperTypes = filterOffered(PAPER_TYPES, availablePaperTypes);
-  const offeredPaperSizes = filterOffered(PAPER_SIZES, availablePaperSizes);
+  const selectedService = services.find(
+    (service) => service.id === specs.serviceId,
+  );
+  const offeredPaperTypes = filterOffered(
+    PAPER_TYPES,
+    selectedService?.paperTypePrices
+      ? Object.keys(selectedService.paperTypePrices)
+      : undefined,
+  );
+  const offeredPaperSizes = filterOffered(
+    PAPER_SIZES,
+    selectedService?.paperSizePrices
+      ? Object.keys(selectedService.paperSizePrices)
+      : undefined,
+  );
 
   // Only show cover-customization options this store actually offers.
   const offeredCoilTypes = filterOffered(SPIRAL_COIL_TYPES, availableCoilTypes);
@@ -569,6 +578,15 @@ export default function SpecificationsStep({
                 </span>
                 <span className="mt-0.5 block text-xs text-slate-500">
                   {type.hint}
+                  {(selectedService?.paperTypePrices?.[type.value] ?? 0) >
+                    0 && (
+                    <strong className="ml-1 text-blue-600">
+                      +
+                      {formatCurrency(
+                        selectedService!.paperTypePrices![type.value],
+                      )}
+                    </strong>
+                  )}
                 </span>
               </button>
             ))}
@@ -598,6 +616,15 @@ export default function SpecificationsStep({
                 </span>
                 <span className="mt-0.5 block text-xs text-slate-500">
                   {size.hint}
+                  {(selectedService?.paperSizePrices?.[size.value] ?? 0) >
+                    0 && (
+                    <strong className="ml-1 text-blue-600">
+                      +
+                      {formatCurrency(
+                        selectedService!.paperSizePrices![size.value],
+                      )}
+                    </strong>
+                  )}
                 </span>
               </button>
             ))}
