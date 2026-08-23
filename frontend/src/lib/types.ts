@@ -161,6 +161,7 @@ export interface CostBreakdown {
   twinLoopPitch?: '3:1' | '2:1';
   twinLoopWireSize?: string;
   twinLoopTotalSheets?: number;
+  billablePages?: number;
 }
 
 export interface Order {
