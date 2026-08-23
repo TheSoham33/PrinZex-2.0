@@ -9,9 +9,14 @@ import { IconPencil } from '@/components/icons';
 interface PricingEditorProps {
   entry: SellerPricingEntry;
   onSave: (serviceId: string, basePrice: number, unit: string) => void;
+  lockUnit?: boolean;
 }
 
-export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
+export default function PricingEditor({
+  entry,
+  onSave,
+  lockUnit = false,
+}: PricingEditorProps) {
   const [editing, setEditing] = useState(false);
   const [price, setPrice] = useState(String(entry.basePrice));
   const [unit, setUnit] = useState(entry.unit);
@@ -21,8 +26,11 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
     if (editing) {
       priceRef.current?.focus();
       priceRef.current?.select();
+      return;
     }
-  }, [editing]);
+    setPrice(String(entry.basePrice));
+    setUnit(entry.unit);
+  }, [editing, entry.basePrice, entry.unit]);
 
   const cancel = () => {
     setPrice(String(entry.basePrice));
@@ -41,7 +49,9 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
     return (
       <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4 last:border-0">
         <div className="min-w-[10rem] flex-1">
-          <p className="text-sm font-medium text-slate-900">{entry.serviceName}</p>
+          <p className="text-sm font-medium text-slate-900">
+            {entry.serviceName}
+          </p>
         </div>
 
         <div className="w-28">
@@ -68,25 +78,35 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
           <label htmlFor={`unit-${entry.serviceId}`} className="label text-xs">
             Unit
           </label>
-          <select
-            id={`unit-${entry.serviceId}`}
-            value={unit}
-            onChange={(event) => setUnit(event.target.value as PricingUnit)}
-            className="input py-2 text-sm"
-          >
-            {PRICING_UNITS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          {lockUnit ? (
+            <div className="input bg-slate-100 py-2 text-sm text-slate-500">
+              {unit}
+            </div>
+          ) : (
+            <select
+              id={`unit-${entry.serviceId}`}
+              value={unit}
+              onChange={(event) => setUnit(event.target.value as PricingUnit)}
+              className="input py-2 text-sm"
+            >
+              {PRICING_UNITS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="flex gap-2">
           <button type="button" onClick={save} className="btn-primary text-xs">
             Save
           </button>
-          <button type="button" onClick={cancel} className="btn-secondary text-xs">
+          <button
+            type="button"
+            onClick={cancel}
+            className="btn-secondary text-xs"
+          >
             Cancel
           </button>
         </div>
@@ -101,7 +121,9 @@ export default function PricingEditor({ entry, onSave }: PricingEditorProps) {
       </p>
       <p className="text-sm font-bold text-slate-900">
         {formatCurrency(entry.basePrice)}
-        <span className="ml-1 text-xs font-normal text-slate-500">{entry.unit}</span>
+        <span className="ml-1 text-xs font-normal text-slate-500">
+          {entry.unit}
+        </span>
       </p>
       <button
         type="button"
