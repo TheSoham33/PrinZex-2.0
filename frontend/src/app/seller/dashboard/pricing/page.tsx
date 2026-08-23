@@ -45,8 +45,12 @@ export default function SellerPricingPage() {
       
       const overrides = (data as any).pricingOverrides || {};
 
+      const documentPrinting = (data.services || []).find(
+        (service: any) => service.serviceId === 'doc-print',
+      );
       setPageRate({
-        bw: String(overrides.pageRate?.bw ?? ''),
+        // The Document Printing base price is the canonical B&W page price.
+        bw: String(documentPrinting?.basePrice ?? overrides.pageRate?.bw ?? ''),
         color: String(overrides.pageRate?.color ?? ''),
       });
 
@@ -86,6 +90,7 @@ export default function SellerPricingPage() {
     mutationFn: updateBulkPrices,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-my-services'] });
       showToast('Price updated');
     },
     onError: (err: any) => showToast(err.message, 'error')
@@ -104,6 +109,7 @@ export default function SellerPricingPage() {
     mutationFn: updatePricingOverrides,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seller-pricing'] });
+      queryClient.invalidateQueries({ queryKey: ['seller-my-services'] });
       showToast('Specifications pricing saved');
     },
     onError: (err: any) => showToast(err.message, 'error')
