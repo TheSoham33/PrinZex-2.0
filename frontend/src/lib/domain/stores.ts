@@ -114,6 +114,37 @@ export const FINISHING_OPTIONS = [
   { value: 'punching', label: 'Hole punching', price: 8 },
 ] as const;
 
+/**
+ * Catalogue serviceId → illustration shown anywhere a service is listed
+ * (store detail picker, /services grid, landing scroll). Shared so every
+ * surface shows the same picture for the same service.
+ */
+export const SERVICE_IMAGE_MAP: Record<string, string> = {
+  'doc-print': '/images/services/color-print.jpg',
+  'doc-xerox': '/images/services/photocopy.jpg',
+  'bulk-booklets': '/images/services/booklets.jpg',
+  'bulk-brochures': '/images/services/brochures.jpg',
+  'bulk-flyers': '/images/services/flyers.jpg',
+  'pack-stickers': '/images/services/stickers.jpg',
+  'pack-labels': '/images/services/stickers.jpg',
+  'pack-boxes': '/images/services/booklets.jpg',
+  'pack-tags': '/images/services/stickers.jpg',
+  'bind-spiral': '/images/services/binding.jpg',
+  'bind-twin-loop': '/images/services/binding.jpg',
+  'bind-hard': '/images/services/binding.jpg',
+  'bind-perfect': '/images/services/binding.jpg',
+  'lf-flex-banner': '/images/services/banners.jpg',
+  'lf-vinyl': '/images/services/vinyl.jpg',
+  'lf-standee': '/images/services/standee.jpg',
+  'spec-canvas': '/images/services/posters.jpg',
+  'spec-mugs': '/images/services/mugs.jpg',
+  'spec-photo-prints': '/images/services/passport-photo.jpg',
+  'spec-tshirts': '/images/services/tshirts.jpg',
+};
+
+/** Shown when a service has no dedicated illustration. */
+export const DEFAULT_SERVICE_IMAGE = '/images/services/xerox.jpg';
+
 export const TAX_RATE = 0.18;
 
 export const COVER_COLORS = [

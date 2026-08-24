@@ -4,30 +4,10 @@ import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
 import Link from 'next/link';
 import { SERVICE_CATEGORIES } from '@/lib/seller-types';
+import { DEFAULT_SERVICE_IMAGE, SERVICE_IMAGE_MAP } from '@/lib/domain/stores';
 import { IconChevronRight } from '@/components/icons';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
 
-const IMAGE_MAP: Record<string, string> = {
-  'doc-print': '/images/services/color-print.jpg',
-  'doc-xerox': '/images/services/photocopy.jpg',
-  'bulk-booklets': '/images/services/booklets.jpg',
-  'bulk-brochures': '/images/services/brochures.jpg',
-  'bulk-flyers': '/images/services/flyers.jpg',
-  'pack-stickers': '/images/services/stickers.jpg',
-  'pack-labels': '/images/services/stickers.jpg',
-  'pack-boxes': '/images/services/booklets.jpg',
-  'pack-tags': '/images/services/stickers.jpg',
-  'bind-spiral': '/images/services/binding.jpg',
-  'bind-hard': '/images/services/binding.jpg',
-  'bind-perfect': '/images/services/binding.jpg',
-  'lf-flex-banner': '/images/services/banners.jpg',
-  'lf-vinyl': '/images/services/vinyl.jpg',
-  'lf-standee': '/images/services/standee.jpg',
-  'spec-canvas': '/images/services/posters.jpg',
-  'spec-mugs': '/images/services/mugs.jpg',
-  'spec-photo-prints': '/images/services/passport-photo.jpg',
-  'spec-tshirts': '/images/services/tshirts.jpg',
-};
 
 export default function AllServicesPage() {
   const ALL_SERVICES = SERVICE_CATEGORIES.flatMap(cat => 
@@ -35,7 +15,7 @@ export default function AllServicesPage() {
       id: s.id,
       name: s.name,
       category: cat.name,
-      image: IMAGE_MAP[s.id] || '/images/services/xerox.jpg'
+      image: SERVICE_IMAGE_MAP[s.id] || DEFAULT_SERVICE_IMAGE
     }))
   );
 
