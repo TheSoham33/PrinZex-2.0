@@ -37,6 +37,15 @@ export interface QuoteSpecifications {
   twinLoopCalendarHanger?: boolean;
   twinLoopConcealed?: boolean;
   twinLoopSafeZoneAcknowledged?: boolean;
+  twinLoopCoverSubmission?: 'embedded' | 'split' | 'mirror';
+  twinLoopFrontPrintSides?: 'outside' | 'both';
+  twinLoopBackPrintSides?: 'outside' | 'both';
+  twinLoopFrontFileUrl?: string;
+  twinLoopBackFileUrl?: string;
+  twinLoopMirrorBack?: 'wire-color' | 'blank-white';
+  twinLoopCoverMaterial?: 'gloss-300' | 'matte-350';
+  twinLoopBleedAcknowledged?: boolean;
+  twinLoopFlipAcknowledged?: boolean;
 }
 
 export interface QuoteInput {
@@ -371,14 +380,21 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   // Twin Loop duplex printing puts two PDF pages on one physical sheet. Per the
   // marketplace pricing model, its inner-page charge follows that physical
   // sheet count rather than the original PDF page count.
+  const twinLoopInnerPages =
+    input.serviceId === 'bind-twin-loop' && specifications.twinLoopCoverSubmission === 'embedded'
+      ? Math.max(0, totalPages - 2)
+      : totalPages;
   const isTwinLoopDuplex =
     input.serviceId === 'bind-twin-loop' && specifications.twinLoopPrintSides === 'double';
-  const billablePages = isTwinLoopDuplex ? Math.ceil(totalPages / 2) : totalPages;
+  const pricedDocumentPages = input.serviceId === 'bind-twin-loop' ? twinLoopInnerPages : totalPages;
+  const billablePages = isTwinLoopDuplex
+    ? Math.ceil(pricedDocumentPages / 2)
+    : pricedDocumentPages;
   const split =
     isTwinLoopDuplex && specifications.colorOption === 'mixed'
       ? (() => {
           const colorSheets = Math.min(
-            countDuplexColorSheets(specifications.colorPages, totalPages),
+            countDuplexColorSheets(specifications.colorPages, pricedDocumentPages),
             billablePages,
           );
           return { bwPages: billablePages - colorSheets, colorPages: colorSheets };
@@ -453,14 +469,12 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
       : undefined;
 
   const twinLoopTotalSheets =
-    input.serviceId === 'bind-twin-loop' && totalPages > 0
-      ? (specifications.twinLoopPrintSides === 'single'
-          ? totalPages
-          : Math.ceil(totalPages / 2)) + 2
+    input.serviceId === 'bind-twin-loop' && twinLoopInnerPages > 0
+      ? billablePages + 2
       : undefined;
   const twinLoopPitch: '3:1' | '2:1' | undefined =
     twinLoopTotalSheets !== undefined
-      ? totalPages <= 120
+      ? twinLoopInnerPages <= 120
         ? '3:1'
         : '2:1'
       : undefined;

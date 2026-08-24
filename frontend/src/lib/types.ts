@@ -125,6 +125,17 @@ export interface OrderSpecifications {
   twinLoopCalendarHanger?: boolean;
   twinLoopConcealed?: boolean;
   twinLoopSafeZoneAcknowledged?: boolean;
+  twinLoopCoverSubmission?: 'embedded' | 'split' | 'mirror';
+  twinLoopFrontPrintSides?: 'outside' | 'both';
+  twinLoopBackPrintSides?: 'outside' | 'both';
+  twinLoopFrontFileUrl?: string;
+  twinLoopFrontFileName?: string;
+  twinLoopBackFileUrl?: string;
+  twinLoopBackFileName?: string;
+  twinLoopMirrorBack?: 'wire-color' | 'blank-white';
+  twinLoopCoverMaterial?: 'gloss-300' | 'matte-350';
+  twinLoopBleedAcknowledged?: boolean;
+  twinLoopFlipAcknowledged?: boolean;
   totalPages?: number;
 }
 

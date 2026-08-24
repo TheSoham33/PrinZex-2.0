@@ -1551,13 +1551,23 @@ export async function updatePricingOverrides(
     throw ApiError.badRequest('Keep at least one Document Printing colour mode enabled');
   }
 
-  if (
-    overrides?.twinLoopOptions &&
-    (Object.keys(overrides.twinLoopOptions.wireColors ?? {}).length === 0 ||
-      Object.keys(overrides.twinLoopOptions.frontCovers ?? {}).length === 0 ||
-      Object.keys(overrides.twinLoopOptions.backCovers ?? {}).length === 0)
-  ) {
-    throw ApiError.badRequest('Twin Loop needs at least one wire, front cover, and back cover option');
+  if (overrides?.twinLoopOptions) {
+    const twinLoop = overrides.twinLoopOptions;
+    if (
+      Object.keys(twinLoop.wireColors ?? {}).length === 0 ||
+      Object.keys(twinLoop.frontCovers ?? {}).length === 0 ||
+      Object.keys(twinLoop.backCovers ?? {}).length === 0
+    ) {
+      throw ApiError.badRequest('Twin Loop needs at least one wire, front cover, and back cover option');
+    }
+    if (
+      !(twinLoop.frontCovers && 'heavy-cardstock' in twinLoop.frontCovers) ||
+      !(twinLoop.backCovers && 'matching-front' in twinLoop.backCovers)
+    ) {
+      throw ApiError.badRequest(
+        'Twin Loop custom artwork requires Heavy Cardstock and Matching Front cover options',
+      );
+    }
   }
 
   const bwRate = overrides?.pageRate?.bw;

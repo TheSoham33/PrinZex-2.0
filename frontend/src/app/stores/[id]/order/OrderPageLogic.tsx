@@ -150,6 +150,15 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           twinLoopCalendarHanger: specs.twinLoopCalendarHanger,
           twinLoopConcealed: specs.twinLoopConcealed,
           twinLoopSafeZoneAcknowledged: specs.twinLoopSafeZoneAcknowledged,
+          twinLoopCoverSubmission: specs.twinLoopCoverSubmission,
+          twinLoopFrontPrintSides: specs.twinLoopFrontPrintSides,
+          twinLoopBackPrintSides: specs.twinLoopBackPrintSides,
+          twinLoopFrontFileUrl: specs.twinLoopFrontFileUrl,
+          twinLoopBackFileUrl: specs.twinLoopBackFileUrl,
+          twinLoopMirrorBack: specs.twinLoopMirrorBack,
+          twinLoopCoverMaterial: specs.twinLoopCoverMaterial,
+          twinLoopBleedAcknowledged: specs.twinLoopBleedAcknowledged,
+          twinLoopFlipAcknowledged: specs.twinLoopFlipAcknowledged,
         },
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
         couponCode: couponCode || undefined,
@@ -231,6 +240,30 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         }
         if (!specs.twinLoopSafeZoneAcknowledged) {
           return 'Please confirm the 10 mm Twin Loop punch-margin safe zone';
+        }
+        if (!specs.twinLoopCoverSubmission) {
+          return 'Please choose how you will submit the Twin Loop cover designs';
+        }
+        if (
+          specs.twinLoopCoverSubmission === 'embedded' &&
+          (specs.totalPages ?? 0) < 3
+        ) {
+          return 'The embedded master PDF must include front cover, inner pages, and back cover';
+        }
+        if (
+          specs.twinLoopCoverSubmission === 'split' &&
+          (!specs.twinLoopFrontFileUrl || !specs.twinLoopBackFileUrl)
+        ) {
+          return 'Please upload the separate front and back cover artwork';
+        }
+        if (!specs.twinLoopCoverMaterial) {
+          return 'Please choose a printable Twin Loop cover material';
+        }
+        if (!specs.twinLoopBleedAcknowledged) {
+          return 'Please confirm the 3 mm cover bleed requirement';
+        }
+        if (!specs.twinLoopFlipAcknowledged) {
+          return 'Please confirm the back-cover 360-degree flip orientation';
         }
       }
       return null;
@@ -315,6 +348,15 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           twinLoopCalendarHanger: specs.twinLoopCalendarHanger,
           twinLoopConcealed: specs.twinLoopConcealed,
           twinLoopSafeZoneAcknowledged: specs.twinLoopSafeZoneAcknowledged,
+          twinLoopCoverSubmission: specs.twinLoopCoverSubmission,
+          twinLoopFrontPrintSides: specs.twinLoopFrontPrintSides,
+          twinLoopBackPrintSides: specs.twinLoopBackPrintSides,
+          twinLoopFrontFileUrl: specs.twinLoopFrontFileUrl,
+          twinLoopBackFileUrl: specs.twinLoopBackFileUrl,
+          twinLoopMirrorBack: specs.twinLoopMirrorBack,
+          twinLoopCoverMaterial: specs.twinLoopCoverMaterial,
+          twinLoopBleedAcknowledged: specs.twinLoopBleedAcknowledged,
+          twinLoopFlipAcknowledged: specs.twinLoopFlipAcknowledged,
         },
         deliveryAddressId: (state.order.address as any)?.id,
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),

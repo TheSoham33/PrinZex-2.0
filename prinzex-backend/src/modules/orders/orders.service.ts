@@ -375,6 +375,32 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     if (specs.twinLoopSafeZoneAcknowledged !== true) {
       throw ApiError.badRequest('Acknowledge the 10 mm Twin Loop punch safe zone');
     }
+    if (!specs.twinLoopCoverSubmission) {
+      throw ApiError.badRequest('Choose how the Twin Loop cover designs are submitted');
+    }
+    if (specs.twinLoopCoverSubmission === 'embedded' && (specs.totalPages ?? 0) < 3) {
+      throw ApiError.badRequest('The master PDF must include front cover, inner pages, and back cover');
+    }
+    if (specs.twinLoopCoverSubmission === 'split') {
+      if (!specs.twinLoopFrontFileUrl || !specs.twinLoopBackFileUrl) {
+        throw ApiError.badRequest('Upload separate front and back cover artwork');
+      }
+      if (!specs.twinLoopFrontPrintSides || !specs.twinLoopBackPrintSides) {
+        throw ApiError.badRequest('Choose single- or double-sided printing for both covers');
+      }
+    }
+    if (specs.twinLoopCoverSubmission === 'mirror' && !specs.twinLoopMirrorBack) {
+      throw ApiError.badRequest('Choose the Twin Loop quick back-cover style');
+    }
+    if (!specs.twinLoopCoverMaterial) {
+      throw ApiError.badRequest('Choose a printable Twin Loop cover material');
+    }
+    if (specs.twinLoopBleedAcknowledged !== true) {
+      throw ApiError.badRequest('Acknowledge the 3 mm cover bleed requirement');
+    }
+    if (specs.twinLoopFlipAcknowledged !== true) {
+      throw ApiError.badRequest('Acknowledge the back-cover flip orientation rule');
+    }
   }
 
   // SAME_DAY only when the store actually delivers to the address pincode.

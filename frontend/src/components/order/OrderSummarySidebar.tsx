@@ -139,7 +139,10 @@ export default function OrderSummarySidebar({
                     </p>
                     <p className="capitalize">
                       {specs.twinLoopPrintSides}-sided ·{' '}
-                      {specs.twinLoopFrontCover}
+                      {specs.twinLoopCoverSubmission} covers
+                    </p>
+                    <p className="capitalize">
+                      {specs.twinLoopCoverMaterial?.replace('-', ' ')}
                     </p>
                     {cost.twinLoopPitch && (
                       <p>

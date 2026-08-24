@@ -79,6 +79,13 @@ export function createInitialState(
         twinLoopCalendarHanger: false,
         twinLoopConcealed: false,
         twinLoopSafeZoneAcknowledged: false,
+        twinLoopCoverSubmission: 'embedded',
+        twinLoopFrontPrintSides: 'outside',
+        twinLoopBackPrintSides: 'outside',
+        twinLoopMirrorBack: 'wire-color',
+        twinLoopCoverMaterial: 'gloss-300',
+        twinLoopBleedAcknowledged: false,
+        twinLoopFlipAcknowledged: false,
       },
       file: null,
       specialInstructions: '',
@@ -237,19 +244,26 @@ export function computeCost(
   const bwPageRate = baseBwPageRate + paperOptionExtra;
   const colorPageRate = baseBwPageRate * 2 + paperOptionExtra;
 
+  const twinLoopInnerPages =
+    service?.id === 'bind-twin-loop' &&
+    specs.twinLoopCoverSubmission === 'embedded'
+      ? Math.max(0, totalPages - 2)
+      : totalPages;
   const isTwinLoopDuplex =
     service?.id === 'bind-twin-loop' && specs.twinLoopPrintSides === 'double';
+  const pricedDocumentPages =
+    service?.id === 'bind-twin-loop' ? twinLoopInnerPages : totalPages;
   const billablePages = isTwinLoopDuplex
-    ? Math.ceil(totalPages / 2)
-    : totalPages;
+    ? Math.ceil(pricedDocumentPages / 2)
+    : pricedDocumentPages;
   const colorPageCount =
     specs.colorOption === 'color'
       ? billablePages
       : specs.colorOption === 'mixed'
         ? Math.min(
             isTwinLoopDuplex
-              ? countDuplexColorSheets(specs.colorPages, totalPages)
-              : countColorPages(specs.colorPages, totalPages),
+              ? countDuplexColorSheets(specs.colorPages, pricedDocumentPages)
+              : countColorPages(specs.colorPages, pricedDocumentPages),
             billablePages,
           )
         : 0;
@@ -296,14 +310,12 @@ export function computeCost(
   const rushFee = 0;
   const tax = Math.round((subtotal + deliveryFee) * TAX_RATE);
   const twinLoopTotalSheets =
-    service?.id === 'bind-twin-loop' && totalPages > 0
-      ? (specs.twinLoopPrintSides === 'single'
-          ? totalPages
-          : Math.ceil(totalPages / 2)) + 2
+    service?.id === 'bind-twin-loop' && twinLoopInnerPages > 0
+      ? billablePages + 2
       : undefined;
   const twinLoopPitch =
     twinLoopTotalSheets !== undefined
-      ? totalPages <= 120
+      ? twinLoopInnerPages <= 120
         ? '3:1'
         : '2:1'
       : undefined;
