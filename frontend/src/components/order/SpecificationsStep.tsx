@@ -74,6 +74,10 @@ export default function SpecificationsStep({
   const isTwinLoopBinding = specs.serviceId === 'bind-twin-loop';
   const isCustomizableBinding = isHardBinding || isSpiralBinding;
 
+  // Seller-configured minimum order quantity for the selected service.
+  const minQuantity =
+    services.find((entry) => entry.id === specs.serviceId)?.minQuantity ?? 1;
+
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -590,12 +594,20 @@ export default function SpecificationsStep({
         <select
           id="service"
           value={specs.serviceId}
-          onChange={(event) =>
+          onChange={(event) => {
+            const nextServiceId = event.target.value;
+            const nextMin =
+              services.find((entry) => entry.id === nextServiceId)
+                ?.minQuantity ?? 1;
             dispatch({
               type: 'SET_SPEC',
-              payload: { serviceId: event.target.value },
-            })
-          }
+              payload: {
+                serviceId: nextServiceId,
+                // The service's minimum becomes the default and the floor.
+                quantity: Math.max(nextMin, specs.quantity),
+              },
+            });
+          }}
           className="input"
         >
           <option value="">Choose a service…</option>
@@ -700,10 +712,13 @@ export default function SpecificationsStep({
               onClick={() =>
                 dispatch({
                   type: 'SET_SPEC',
-                  payload: { quantity: Math.max(1, specs.quantity - 1) },
+                  payload: {
+                    quantity: Math.max(minQuantity, specs.quantity - 1),
+                  },
                 })
               }
-              className="btn-secondary h-11 w-11 shrink-0 p-0 text-lg"
+              disabled={specs.quantity <= minQuantity}
+              className="btn-secondary h-11 w-11 shrink-0 p-0 text-lg disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Decrease quantity"
             >
               −
@@ -711,14 +726,17 @@ export default function SpecificationsStep({
             <input
               id="quantity"
               type="number"
-              min={1}
+              min={minQuantity}
               max={10000}
               value={specs.quantity}
               onChange={(event) =>
                 dispatch({
                   type: 'SET_SPEC',
                   payload: {
-                    quantity: Math.max(1, Number(event.target.value) || 1),
+                    quantity: Math.max(
+                      minQuantity,
+                      Number(event.target.value) || minQuantity,
+                    ),
                   },
                 })
               }
@@ -738,6 +756,11 @@ export default function SpecificationsStep({
               +
             </button>
           </div>
+          {minQuantity > 1 && (
+            <p className="mt-1.5 text-xs font-medium text-amber-600">
+              Minimum order for this service: {minQuantity}
+            </p>
+          )}
         </section>
 
         <section>

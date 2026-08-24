@@ -157,6 +157,18 @@ async function loadOrderableService(sellerId: string, sellerServiceId: string) {
   };
 }
 
+/** Enforce the seller-configured minimum order quantity for the service. */
+function assertMinimumOrderQuantity(
+  service: { serviceName: string; minQuantity: number },
+  quantity: number,
+): void {
+  if (quantity < service.minQuantity) {
+    throw ApiError.badRequest(
+      `Minimum order quantity for ${service.serviceName} is ${service.minQuantity}`,
+    );
+  }
+}
+
 function assertDocumentColorModeAvailable(
   sellerMetadata: Prisma.JsonValue | null,
   serviceId: string,
@@ -247,6 +259,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     input.sellerId,
     input.sellerServiceId,
   );
+  assertMinimumOrderQuantity(service, input.quantity);
   assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
   assertDocumentColorModeAvailable(
     seller.metadata,
@@ -330,6 +343,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     input.sellerId,
     input.sellerServiceId,
   );
+  assertMinimumOrderQuantity(service, input.quantity);
   assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
   assertDocumentColorModeAvailable(
     seller.metadata,

@@ -54,6 +54,8 @@ export interface SellerPricingEntry {
   serviceName: string;
   basePrice: number;
   unit: string;
+  /** Minimum order quantity the customer must place (default 1). */
+  minQuantity?: number;
 }
 
 

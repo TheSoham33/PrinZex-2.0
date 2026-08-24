@@ -218,8 +218,13 @@ export default function SellerPricingPage() {
     onError: (err: any) => showToast(err.message, 'error'),
   });
 
-  const savePrice = (serviceId: string, basePrice: number, unit: string) => {
-    updatePriceMutation.mutate([{ serviceId, basePrice, unit }]);
+  const savePrice = (
+    serviceId: string,
+    basePrice: number,
+    unit: string,
+    minQuantity: number,
+  ) => {
+    updatePriceMutation.mutate([{ serviceId, basePrice, unit, minQuantity }]);
   };
 
   const toggleServiceCustomizations = (serviceId: string) => {
@@ -337,6 +342,7 @@ export default function SellerPricingPage() {
                   serviceName: entry.serviceName,
                   basePrice: Number(entry.basePrice),
                   unit: entry.unit,
+                  minQuantity: entry.minQuantity ?? 1,
                 }}
                 onSave={savePrice}
                 expanded={expandedServices.includes(entry.serviceId)}

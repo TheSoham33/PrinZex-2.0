@@ -73,6 +73,11 @@ export default function ServiceCard({ service, selected, onSelect }: ServiceCard
           </p>
         </div>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">{service.description}</p>
+        {(service.minQuantity ?? 1) > 1 && (
+          <p className="mt-1.5 text-xs font-semibold text-amber-600">
+            Min. order: {service.minQuantity}
+          </p>
+        )}
       </div>
     </button>
   );

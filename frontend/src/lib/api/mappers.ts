@@ -118,6 +118,10 @@ export function mapBackendServiceToFrontend(s: any): ServiceOffering {
   return {
     id: s.serviceId || s.id,
     name: normalizeServiceName(s.serviceId, s.serviceName),
+    minQuantity:
+      typeof s.minQuantity === 'number' && s.minQuantity > 1
+        ? s.minQuantity
+        : undefined,
     icon: 'file', // Map category to icon
     startingPrice: Number(s.basePrice),
     unit: s.unit || 'per page',
