@@ -26,6 +26,23 @@ async function bootstrap(): Promise<void> {
   const server: Server = http.createServer(app);
   initSocketServer(server);
 
+  // Friendly diagnostics for the most common dev-machine failure: a stale
+  // dev-server process (nodemon/tsx orphan) still holding the port.
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      logger.error(
+        `Port ${env.PORT} is already in use — another process (usually a previous ` +
+          `dev-server run that did not shut down) is holding it. Free the port and restart. ` +
+          `Windows: netstat -ano | findstr :${env.PORT}  then  taskkill /PID <pid> /F. ` +
+          `macOS/Linux: lsof -ti :${env.PORT} | xargs kill -9.`,
+        { port: env.PORT, code: error.code },
+      );
+    } else {
+      logger.error('HTTP server failed to start', { error: error.stack ?? error.message });
+    }
+    process.exit(1);
+  });
+
   server.listen(env.PORT, () => {
     logger.info(`PrinZex API + realtime listening on http://localhost:${env.PORT}`, {
       port: env.PORT,
