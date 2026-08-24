@@ -16,15 +16,17 @@ export function deliveryEtaLabel(distanceKm: number): string {
 
 /**
  * Canonical display names for services whose stored name may still be the old
- * one (e.g. rows seeded before the "Printing" → "Document Printing" rename).
+ * one (e.g. rows seeded before the "Printing" → "Document Printing" rename,
+ * or before "Hard Binding" became "Hard Binding / Thesis Binding").
  * Guarantees the correct label is shown even if the database hasn't been
  * migrated yet.
  */
 const SERVICE_NAME_OVERRIDES: Record<string, string> = {
   'doc-print': 'Document Printing',
+  'bind-hard': 'Hard Binding / Thesis Binding',
 };
 
-function normalizeServiceName(
+export function normalizeServiceName(
   serviceId: string | undefined,
   serviceName: string,
 ): string {

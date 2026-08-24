@@ -1,4 +1,5 @@
 import { apiRequest } from './client';
+import { normalizeServiceName } from './mappers';
 
 export const fetchInventory = async (params: any = {}): Promise<any[]> => {
   return apiRequest<any>('/seller/inventory', { params });
@@ -15,7 +16,16 @@ export interface PricingInfo {
 }
 
 export const fetchSellerPricing = async (): Promise<PricingInfo> => {
-  return apiRequest<PricingInfo>('/seller/pricing');
+  const res = await apiRequest<PricingInfo>('/seller/pricing');
+  // Older DB rows may still carry the pre-rename service label; show the
+  // canonical name (e.g. "Hard Binding / Thesis Binding").
+  return {
+    ...res,
+    services: (res.services ?? []).map((service) => ({
+      ...service,
+      serviceName: normalizeServiceName(service.serviceId, service.serviceName),
+    })),
+  };
 };
 
 export const updateBulkPrices = async (prices: Array<{ serviceId: string; basePrice: number; unit: string }>): Promise<any> => {

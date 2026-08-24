@@ -109,7 +109,7 @@ export const PAPER_SIZES = [
 export const FINISHING_OPTIONS = [
   { value: 'lamination', label: 'Lamination', price: 15 },
   { value: 'spiral-binding', label: 'Spiral binding', price: 40 },
-  { value: 'hard-binding', label: 'Hard binding', price: 120 },
+  { value: 'hard-binding', label: 'Hard / Thesis binding', price: 120 },
   { value: 'stapling', label: 'Stapling', price: 5 },
   { value: 'punching', label: 'Hole punching', price: 8 },
 ] as const;

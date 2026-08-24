@@ -34,7 +34,7 @@ export default function HardBindingCustomizationOptions({
     <div className="space-y-5 border-t border-slate-100 bg-blue-50/40 px-4 py-4">
       <div>
         <h3 className="text-sm font-bold text-slate-900">
-          Hard Binding customization options
+          Hard Binding / Thesis Binding customization options
         </h3>
         <p className="mt-0.5 text-xs text-slate-500">
           Select the cover fabrics and foil font colours customers can choose.
@@ -104,7 +104,7 @@ export default function HardBindingCustomizationOptions({
           }
           className="btn-primary py-1.5 text-xs"
         >
-          {saving ? 'Saving...' : 'Save Hard Binding options'}
+          {saving ? 'Saving...' : 'Save binding options'}
         </button>
       </div>
     </div>

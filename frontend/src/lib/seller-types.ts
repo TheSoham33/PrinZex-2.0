@@ -146,7 +146,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     services: [
       { id: 'bind-spiral', name: 'Spiral Binding' },
       { id: 'bind-twin-loop', name: 'Twin Loop Binding' },
-      { id: 'bind-hard', name: 'Hard Binding' },
+      { id: 'bind-hard', name: 'Hard Binding / Thesis Binding' },
       { id: 'bind-perfect', name: 'Perfect Binding' },
     ],
   },
