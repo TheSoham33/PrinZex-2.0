@@ -1,14 +1,8 @@
+import type { CatalogEntry } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
 import { DEFAULT_CATALOG } from './catalog.defaults';
 import { CATALOG_GROUP_SCHEMAS } from './catalog.schemas';
-
-export interface CatalogEntryDto {
-  key: string;
-  label: string;
-  data: unknown;
-  updatedAt: Date;
-}
 
 /**
  * Insert defaults for any catalogue group the database doesn't know yet.
@@ -30,13 +24,13 @@ export async function ensureCatalogDefaults(): Promise<void> {
 }
 
 /** All groups keyed by their id — the shape every frontend surface consumes. */
-export async function getCatalog(): Promise<Record<string, CatalogEntryDto>> {
+export async function getCatalog(): Promise<Record<string, CatalogEntry>> {
   await ensureCatalogDefaults();
   const rows = await prisma.catalogEntry.findMany();
   return Object.fromEntries(rows.map((row) => [row.key, row]));
 }
 
-export async function getCatalogEntry(key: string): Promise<CatalogEntryDto> {
+export async function getCatalogEntry(key: string): Promise<CatalogEntry> {
   await ensureCatalogDefaults();
   const row = await prisma.catalogEntry.findUnique({ where: { key } });
   if (!row) {
@@ -49,7 +43,7 @@ export async function getCatalogEntry(key: string): Promise<CatalogEntryDto> {
 export async function replaceCatalogEntry(
   key: string,
   input: { label?: string; data: unknown },
-): Promise<CatalogEntryDto> {
+): Promise<CatalogEntry> {
   const group = DEFAULT_CATALOG[key];
   if (!group) {
     throw ApiError.notFound(`Catalogue group "${key}" not found`);
