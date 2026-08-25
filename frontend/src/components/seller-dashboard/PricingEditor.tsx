@@ -8,7 +8,12 @@ import { IconChevronDown, IconChevronUp, IconPencil } from '@/components/icons';
 
 interface PricingEditorProps {
   entry: SellerPricingEntry;
-  onSave: (serviceId: string, basePrice: number, unit: string) => void;
+  onSave: (
+    serviceId: string,
+    basePrice: number,
+    unit: string,
+    minQuantity: number,
+  ) => void;
   expanded?: boolean;
   onToggle?: () => void;
 }
@@ -22,6 +27,7 @@ export default function PricingEditor({
   const [editing, setEditing] = useState(false);
   const [price, setPrice] = useState(String(entry.basePrice));
   const [unit, setUnit] = useState(entry.unit);
+  const [minQuantity, setMinQuantity] = useState(String(entry.minQuantity ?? 1));
   const priceRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -34,13 +40,15 @@ export default function PricingEditor({
   const cancel = () => {
     setPrice(String(entry.basePrice));
     setUnit(entry.unit);
+    setMinQuantity(String(entry.minQuantity ?? 1));
     setEditing(false);
   };
 
   const save = () => {
     const parsed = Number(price);
     if (!Number.isFinite(parsed) || parsed < 0) return;
-    onSave(entry.serviceId, parsed, unit);
+    const parsedMinQty = Math.max(1, Math.floor(Number(minQuantity) || 1));
+    onSave(entry.serviceId, parsed, unit, parsedMinQty);
     setEditing(false);
   };
 
@@ -91,6 +99,25 @@ export default function PricingEditor({
           </select>
         </div>
 
+        <div className="w-24">
+          <label htmlFor={`min-qty-${entry.serviceId}`} className="label text-xs">
+            Min. qty
+          </label>
+          <input
+            id={`min-qty-${entry.serviceId}`}
+            type="number"
+            min={1}
+            step={1}
+            value={minQuantity}
+            onChange={(event) => setMinQuantity(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') save();
+              if (event.key === 'Escape') cancel();
+            }}
+            className="input py-2 text-sm"
+          />
+        </div>
+
         <div className="flex gap-2">
           <button type="button" onClick={save} className="btn-primary text-xs">
             Save
@@ -118,6 +145,11 @@ export default function PricingEditor({
           {entry.unit}
         </span>
       </p>
+      {(entry.minQuantity ?? 1) > 1 && (
+        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+          Min. {entry.minQuantity}
+        </span>
+      )}
       <button
         type="button"
         onClick={() => setEditing(true)}

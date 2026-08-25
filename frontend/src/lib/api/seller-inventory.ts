@@ -28,7 +28,7 @@ export const fetchSellerPricing = async (): Promise<PricingInfo> => {
   };
 };
 
-export const updateBulkPrices = async (prices: Array<{ serviceId: string; basePrice: number; unit: string }>): Promise<any> => {
+export const updateBulkPrices = async (prices: Array<{ serviceId: string; basePrice: number; unit: string; minQuantity?: number }>): Promise<any> => {
   return apiRequest<any>('/seller/pricing/bulk', {
     method: 'PATCH',
     body: JSON.stringify(prices),

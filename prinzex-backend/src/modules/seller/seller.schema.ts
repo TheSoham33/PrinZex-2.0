@@ -51,12 +51,14 @@ export const createServiceBody = z.object({
   serviceName: z.string().trim().min(1).max(160),
   basePrice: positiveMoney,
   unit: z.string().trim().min(1).max(40),
+  minQuantity: z.number().int().min(1).max(100000).default(1),
 });
 
 export const updateServiceBody = z
   .object({
     basePrice: positiveMoney.optional(),
     unit: z.string().trim().min(1).max(40).optional(),
+    minQuantity: z.number().int().min(1).max(100000).optional(),
     isActive: z.boolean().optional(),
   })
   .refine((value) => Object.values(value).some((field) => field !== undefined), {
@@ -72,6 +74,7 @@ export const bulkPricingBody = z
       serviceId: z.string().min(1),
       basePrice: positiveMoney,
       unit: z.string().trim().min(1).max(40),
+      minQuantity: z.number().int().min(1).max(100000).optional(),
     }),
   )
   .min(1, 'Provide at least one service price update');

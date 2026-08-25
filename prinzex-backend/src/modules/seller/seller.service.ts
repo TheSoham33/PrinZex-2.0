@@ -483,6 +483,7 @@ export async function updateService(
   const data: Prisma.SellerServiceUpdateInput = {};
   if (input.basePrice !== undefined) data.basePrice = input.basePrice;
   if (input.unit !== undefined) data.unit = input.unit;
+  if (input.minQuantity !== undefined) data.minQuantity = input.minQuantity;
   if (input.isActive !== undefined) data.isActive = input.isActive;
 
   const service = await prisma.$transaction(async (tx) => {
@@ -590,7 +591,13 @@ export async function bulkUpdatePrices(
       input.map((entry) =>
         tx.sellerService.update({
           where: { id: entry.serviceId },
-          data: { basePrice: entry.basePrice, unit: entry.unit },
+          data: {
+            basePrice: entry.basePrice,
+            unit: entry.unit,
+            ...(entry.minQuantity !== undefined
+              ? { minQuantity: entry.minQuantity }
+              : {}),
+          },
         }),
       ),
     );

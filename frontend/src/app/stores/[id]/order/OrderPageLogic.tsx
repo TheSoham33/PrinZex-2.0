@@ -53,7 +53,13 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   const [state, dispatch] = useReducer(
     orderReducer,
-    createInitialState(store.id, store.name, serviceParam),
+    createInitialState(
+      store.id,
+      store.name,
+      serviceParam,
+      store.services.find((entry) => entry.id === serviceParam)?.minQuantity ??
+        1,
+    ),
   );
 
   const queryClient = useQueryClient();
@@ -207,6 +213,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       if (!specs.size) return 'Please choose a size';
       if (!specs.quantity || specs.quantity < 1)
         return 'Quantity must be at least 1';
+      if (specs.quantity < (service?.minQuantity ?? 1))
+        return `Minimum order quantity for this service is ${service?.minQuantity}`;
       if (!state.order.file) return 'Please upload the file you want printed';
       if (specs.serviceId === 'bind-hard') {
         if (!specs.coverColor)

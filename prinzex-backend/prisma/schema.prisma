@@ -270,6 +270,8 @@ model SellerService {
   serviceName  String
   basePrice    Decimal  @db.Decimal(10, 2)
   unit         String // "per page", "per piece"
+  /// Minimum order quantity a customer must place for this service.
+  minQuantity  Int      @default(1)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 

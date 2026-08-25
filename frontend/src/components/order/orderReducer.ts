@@ -46,6 +46,7 @@ export function createInitialState(
   storeId: string,
   storeName: string,
   serviceId: string,
+  minQuantity = 1,
 ): OrderState {
   return {
     step: 1,
@@ -57,7 +58,7 @@ export function createInitialState(
         serviceId,
         paperType: 'standard',
         size: 'A4',
-        quantity: 1,
+        quantity: Math.max(1, minQuantity),
         colorOption: 'bw',
         finishing: [],
         // Binding defaults — applied for every new job.
