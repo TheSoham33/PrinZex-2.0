@@ -169,6 +169,18 @@ function assertMinimumOrderQuantity(
   }
 }
 
+/** Enforce the seller-configured minimum PDF page count for the service. */
+function assertMinimumPageCount(
+  service: { serviceName: string; minPages: number | null },
+  totalPages: number,
+): void {
+  if (service.minPages && totalPages < service.minPages) {
+    throw ApiError.badRequest(
+      `Minimum page count for ${service.serviceName} is ${service.minPages} pages`,
+    );
+  }
+}
+
 function assertDocumentColorModeAvailable(
   sellerMetadata: Prisma.JsonValue | null,
   serviceId: string,
@@ -260,6 +272,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     input.sellerServiceId,
   );
   assertMinimumOrderQuantity(service, input.quantity);
+  assertMinimumPageCount(service, input.specifications.totalPages ?? 0);
   assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
   assertDocumentColorModeAvailable(
     seller.metadata,
@@ -344,6 +357,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     input.sellerServiceId,
   );
   assertMinimumOrderQuantity(service, input.quantity);
+  assertMinimumPageCount(service, input.specifications.totalPages ?? 0);
   assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
   assertDocumentColorModeAvailable(
     seller.metadata,

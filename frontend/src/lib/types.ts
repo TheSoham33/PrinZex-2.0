@@ -41,6 +41,8 @@ export interface ServiceOffering {
   description: string;
   /** Seller-enforced minimum order quantity (defaults to 1 when absent). */
   minQuantity?: number;
+  /** Seller-enforced minimum PDF page count for this service (unset = no minimum). */
+  minPages?: number;
   /** Seller-enabled options; values are additive prices for this service. */
   paperTypePrices?: Record<string, number>;
   paperSizePrices?: Record<string, number>;
