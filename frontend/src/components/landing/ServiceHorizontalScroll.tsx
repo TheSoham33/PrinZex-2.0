@@ -3,15 +3,17 @@
 import Link from 'next/link';
 import { useRef } from 'react';
 import { IconArrowLeft, IconArrowRight } from '@/components/icons';
-import { SERVICE_CATEGORIES } from '@/lib/seller-types';
+import { SERVICE_CATEGORIES as SERVICE_CATEGORIES_FALLBACK } from '@/lib/seller-types';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import { DEFAULT_SERVICE_IMAGE, SERVICE_IMAGE_MAP } from '@/lib/domain/stores';
 
 
 export default function ServiceHorizontalScroll() {
+  const serviceCategories = useCatalogOptions('service-categories', SERVICE_CATEGORIES_FALLBACK);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Flatten all services into a single array
-  const ALL_SERVICES = SERVICE_CATEGORIES.flatMap(cat => 
+  const ALL_SERVICES = serviceCategories.flatMap(cat => 
     cat.services.map(s => ({
       id: s.id,
       name: s.name,

@@ -2,10 +2,11 @@
 
 import type { Dispatch, SetStateAction } from 'react';
 import {
-  COVER_COLORS,
-  SPIRAL_COIL_TYPES,
-  SPIRAL_COVER_TYPES,
+  COVER_COLORS as COVER_COLORS_FALLBACK,
+  SPIRAL_COIL_TYPES as SPIRAL_COIL_TYPES_FALLBACK,
+  SPIRAL_COVER_TYPES as SPIRAL_COVER_TYPES_FALLBACK,
 } from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 
 type PriceOption = { price: string; enabled: boolean };
@@ -119,6 +120,9 @@ export default function SpiralBindingCustomizationPricing({
   onSave,
   saving,
 }: SpiralBindingCustomizationPricingProps) {
+  const coverColors = useCatalogOptions('cover-colors', COVER_COLORS_FALLBACK);
+  const spiralCoilTypes = useCatalogOptions('spiral-coil-types', SPIRAL_COIL_TYPES_FALLBACK);
+  const spiralCoverTypes = useCatalogOptions('spiral-cover-types', SPIRAL_COVER_TYPES_FALLBACK);
   return (
     <div className="space-y-5 border-t border-slate-100 bg-blue-50/40 px-4 py-4">
       <div>
@@ -133,21 +137,21 @@ export default function SpiralBindingCustomizationPricing({
       <OptionGrid
         title="Cover types"
         description="Set the extra charge for each Spiral Binding cover type."
-        options={SPIRAL_COVER_TYPES}
+        options={spiralCoverTypes}
         values={coverTypeOptions}
         setValues={setCoverTypeOptions}
       />
       <OptionGrid
         title="Coil types"
         description="Set the extra charge for each available spiral coil."
-        options={SPIRAL_COIL_TYPES}
+        options={spiralCoilTypes}
         values={coilOptions}
         setValues={setCoilOptions}
       />
       <OptionGrid
         title="Cover colours"
         description="Set the extra charge for each available cover colour."
-        options={COVER_COLORS}
+        options={coverColors}
         values={coverColorOptions}
         setValues={setCoverColorOptions}
         showColorSwatch

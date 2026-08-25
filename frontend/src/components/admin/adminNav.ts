@@ -11,6 +11,7 @@ import {
   IconTruck,
   IconUsers,
   IconWallet,
+  IconTag,
 } from '@/components/icons';
 
 export interface AdminNavItem {
@@ -29,6 +30,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: '/admin/orders', label: 'Orders', icon: IconPackage, permission: 'canManageOrders' },
   { href: '/admin/payouts', label: 'Payouts', icon: IconWallet, permission: 'canManagePayouts' },
   { href: '/admin/content', label: 'Content', icon: IconFileEdit, permission: 'canManageContent' },
+  { href: '/admin/catalog', label: 'Catalogue', icon: IconTag, permission: 'canManageCatalog' },
   { href: '/admin/support', label: 'Support', icon: IconHeadphones, permission: 'canManageOrders' },
   { href: '/admin/settings', label: 'Settings', icon: IconSettings, permission: 'canManageAdmins' },
 ];

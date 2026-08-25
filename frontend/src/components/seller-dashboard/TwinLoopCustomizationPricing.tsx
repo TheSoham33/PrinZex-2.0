@@ -1,10 +1,11 @@
 'use client';
 
 import {
-  TWIN_LOOP_BACK_COVERS,
-  TWIN_LOOP_FRONT_COVERS,
-  TWIN_LOOP_WIRE_COLORS,
+  TWIN_LOOP_WIRE_COLORS as TWIN_LOOP_WIRE_COLORS_FALLBACK,
+  TWIN_LOOP_FRONT_COVERS as TWIN_LOOP_FRONT_COVERS_FALLBACK,
+  TWIN_LOOP_BACK_COVERS as TWIN_LOOP_BACK_COVERS_FALLBACK,
 } from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 
 export interface TwinLoopPricingState {
@@ -104,6 +105,9 @@ export default function TwinLoopCustomizationPricing({
   onSave,
   saving,
 }: Props) {
+  const wireColorsOptions = useCatalogOptions('twin-loop-wire-colors', TWIN_LOOP_WIRE_COLORS_FALLBACK);
+  const frontCoverOptions = useCatalogOptions('twin-loop-front-covers', TWIN_LOOP_FRONT_COVERS_FALLBACK);
+  const backCoverOptions = useCatalogOptions('twin-loop-back-covers', TWIN_LOOP_BACK_COVERS_FALLBACK);
   return (
     <div className="space-y-5 border-t border-slate-100 bg-blue-50/40 px-4 py-4">
       <div>
@@ -121,7 +125,7 @@ export default function TwinLoopCustomizationPricing({
           Wire colours
         </h4>
         <div className="grid gap-3 sm:grid-cols-2">
-          {TWIN_LOOP_WIRE_COLORS.map((option) => {
+          {wireColorsOptions.map((option) => {
             const enabled = option.value in value.wireColors;
             return (
               <PriceRow
@@ -154,7 +158,7 @@ export default function TwinLoopCustomizationPricing({
           Front covers
         </h4>
         <div className="grid gap-3 sm:grid-cols-2">
-          {TWIN_LOOP_FRONT_COVERS.map((option) => {
+          {frontCoverOptions.map((option) => {
             const enabled = option.value in value.frontCovers;
             return (
               <PriceRow
@@ -193,7 +197,7 @@ export default function TwinLoopCustomizationPricing({
           Back covers
         </h4>
         <div className="grid gap-3 sm:grid-cols-2">
-          {TWIN_LOOP_BACK_COVERS.map((option) => {
+          {backCoverOptions.map((option) => {
             const enabled = option.value in value.backCovers;
             return (
               <PriceRow

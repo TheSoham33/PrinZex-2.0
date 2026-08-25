@@ -285,6 +285,16 @@ model SellerService {
   @@index([categoryId])
 }
 
+/// Admin-managed catalogue groups (services, paper types/sizes, customization
+/// option lists). One JSON document per group key; sellers and customers read
+/// the same rows so an admin edit propagates everywhere without a deploy.
+model CatalogEntry {
+  key       String   @id
+  label     String
+  data      Json
+  updatedAt DateTime @updatedAt
+}
+
 model SellerBankDetails {
   id                String   @id @default(cuid())
   sellerId          String   @unique

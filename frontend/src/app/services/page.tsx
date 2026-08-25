@@ -3,14 +3,16 @@
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
 import Link from 'next/link';
-import { SERVICE_CATEGORIES } from '@/lib/seller-types';
+import { SERVICE_CATEGORIES as SERVICE_CATEGORIES_FALLBACK } from '@/lib/seller-types';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import { DEFAULT_SERVICE_IMAGE, SERVICE_IMAGE_MAP } from '@/lib/domain/stores';
 import { IconChevronRight } from '@/components/icons';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
 
 
 export default function AllServicesPage() {
-  const ALL_SERVICES = SERVICE_CATEGORIES.flatMap(cat => 
+  const serviceCategories = useCatalogOptions('service-categories', SERVICE_CATEGORIES_FALLBACK);
+  const ALL_SERVICES = serviceCategories.flatMap(cat => 
     cat.services.map(s => ({
       id: s.id,
       name: s.name,

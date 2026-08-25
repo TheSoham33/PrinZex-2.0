@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { PDFDocument } from 'pdf-lib';
-import { TWIN_LOOP_WIRE_COLORS } from '@/lib/domain/stores';
+import { TWIN_LOOP_WIRE_COLORS as TWIN_LOOP_WIRE_COLORS_FALLBACK } from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import type { OrderSpecifications, ServiceOffering } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import {
@@ -239,10 +240,11 @@ export default function TwinLoopCustomizationPanel({
   dispatch,
 }: Props) {
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const twinLoopWireColors = useCatalogOptions('twin-loop-wire-colors', TWIN_LOOP_WIRE_COLORS_FALLBACK);
   const config = service?.twinLoopOptions;
   const wireColors = useMemo(
-    () => offered(TWIN_LOOP_WIRE_COLORS, config?.wireColors),
-    [config?.wireColors],
+    () => offered(twinLoopWireColors, config?.wireColors),
+    [twinLoopWireColors, config?.wireColors],
   );
 
   useEffect(() => {
@@ -270,7 +272,7 @@ export default function TwinLoopCustomizationPanel({
   const pitch = innerPages <= 120 ? '3:1' : '2:1';
   const stackMm =
     totalSheets * ((specs.paperGsm ?? 75) === 100 ? 0.13 : 0.1) + 0.6;
-  const selectedWire = TWIN_LOOP_WIRE_COLORS.find(
+  const selectedWire = twinLoopWireColors.find(
     (option) => option.value === specs.twinLoopWireColor,
   );
   const wireSize =
