@@ -91,7 +91,7 @@ export interface StoreDetail extends Store {
 
 export interface OrderSpecifications {
   serviceId: string;
-  paperType: 'standard' | 'premium' | 'glossy' | 'matte' | '';
+  paperType: 'standard' | 'digital' | 'premium' | 'glossy' | 'matte' | '';
   size: 'A4' | 'A3' | 'A2' | 'custom' | '';
   quantity: number;
   colorOption: 'color' | 'bw' | 'mixed';

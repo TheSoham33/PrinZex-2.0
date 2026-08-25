@@ -75,6 +75,12 @@ export const PAPER_TYPES = [
     multiplier: 1,
   },
   {
+    value: 'digital',
+    label: 'Digital Paper',
+    hint: '90 GSM smooth digital print paper',
+    multiplier: 1.2,
+  },
+  {
     value: 'premium',
     label: 'Premium',
     hint: '100 GSM thick paper',
