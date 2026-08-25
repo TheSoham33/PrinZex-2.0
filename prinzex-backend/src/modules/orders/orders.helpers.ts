@@ -94,25 +94,6 @@ export const FINISHING_UPCHARGES: Record<string, number> = {
   cutting: 15,
 };
 
-export const PAPER_TYPE_MULTIPLIERS: Record<string, number> = {
-  standard: 1.0,
-  premium: 1.4,
-  glossy: 1.8,
-  matte: 1.6,
-};
-
-export const PAPER_SIZE_MULTIPLIERS: Record<string, number> = {
-  A4: 1.0,
-  A3: 1.9,
-  A2: 3.4,
-  custom: 2.2,
-};
-
-export const COLOR_OPTION_MULTIPLIERS: Record<string, number> = {
-  bw: 1.0,
-  color: 2.0,
-};
-
 // These are the ONLY customer-facing delivery charges and must match the
 // DELIVERY_SPEEDS costs shown on the store page and at checkout.
 // Standard and pickup are free; express/same-day carry a flat premium.

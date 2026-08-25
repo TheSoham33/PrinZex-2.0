@@ -16,7 +16,13 @@ const hintOption = z.object({
   hint: z.string().trim().max(200).optional(),
 });
 
-/** Paper types / sizes — additionally carry a pricing multiplier. */
+/**
+ * Paper types / sizes — carry a relative price factor (baseline option = 1).
+ * ponytail: the multiplier is informational today — computeQuote prices paper
+ * via the seller's absolute ₹ add-ons, so editing it changes no totals.
+ * Upgrade path: use it as the fallback rate factor in computeQuote for
+ * options a seller hasn't priced explicitly.
+ */
 const multiplierOption = hintOption.extend({
   multiplier: z.number().positive().max(100),
 });

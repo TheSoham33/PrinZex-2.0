@@ -30,7 +30,6 @@ interface GroupSpec {
   key: string;
   kind: 'rows' | 'services';
   description: string;
-  firstColumnLabel: string; // "value" heading meaning for this group
   fields: FieldSpec[];
 }
 
@@ -39,14 +38,12 @@ const GROUPS: GroupSpec[] = [
     key: 'service-categories',
     kind: 'services',
     description: 'Services sellers can offer, grouped by category.',
-    firstColumnLabel: 'ID',
     fields: [],
   },
   {
     key: 'paper-types',
     kind: 'rows',
     description: 'Paper stocks offered to customers and sellers.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text', placeholder: 'e.g. recycled' },
       { key: 'label', label: 'Label', kind: 'text', placeholder: 'e.g. Recycled Paper' },
@@ -58,7 +55,6 @@ const GROUPS: GroupSpec[] = [
     key: 'paper-sizes',
     kind: 'rows',
     description: 'Sheet sizes offered to customers and sellers.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text', placeholder: 'e.g. A5' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -70,7 +66,6 @@ const GROUPS: GroupSpec[] = [
     key: 'finishing-options',
     kind: 'rows',
     description: 'Optional finishing add-ons with a fixed per-unit price.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -81,7 +76,6 @@ const GROUPS: GroupSpec[] = [
     key: 'cover-types',
     kind: 'rows',
     description: 'Cover materials for binding services.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -92,7 +86,6 @@ const GROUPS: GroupSpec[] = [
     key: 'spiral-coil-types',
     kind: 'rows',
     description: 'Coil choices for Spiral Binding.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -103,7 +96,6 @@ const GROUPS: GroupSpec[] = [
     key: 'spiral-cover-types',
     kind: 'rows',
     description: 'Cover sheet choices for Spiral Binding.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -114,7 +106,6 @@ const GROUPS: GroupSpec[] = [
     key: 'cover-colors',
     kind: 'rows',
     description: 'Hard binding cover fabrics (swatch class/hex drive the UI).',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -126,7 +117,6 @@ const GROUPS: GroupSpec[] = [
     key: 'cover-text-colors',
     kind: 'rows',
     description: 'Foil text colours for Hard Binding.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -138,7 +128,6 @@ const GROUPS: GroupSpec[] = [
     key: 'twin-loop-wire-colors',
     kind: 'rows',
     description: 'Twin Loop wire colours (premium flag shows the badge).',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -150,7 +139,6 @@ const GROUPS: GroupSpec[] = [
     key: 'twin-loop-front-covers',
     kind: 'rows',
     description: 'Twin Loop front cover sheets.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
@@ -161,7 +149,6 @@ const GROUPS: GroupSpec[] = [
     key: 'twin-loop-back-covers',
     kind: 'rows',
     description: 'Twin Loop back cover sheets.',
-    firstColumnLabel: 'Value',
     fields: [
       { key: 'value', label: 'Value', kind: 'text' },
       { key: 'label', label: 'Label', kind: 'text' },
