@@ -272,6 +272,8 @@ model SellerService {
   unit         String // "per page", "per piece"
   /// Minimum order quantity a customer must place for this service.
   minQuantity  Int      @default(1)
+  /// Minimum PDF page count required when ordering this service (null = no page minimum).
+  minPages     Int?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 

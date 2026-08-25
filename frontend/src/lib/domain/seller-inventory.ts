@@ -56,6 +56,8 @@ export interface SellerPricingEntry {
   unit: string;
   /** Minimum order quantity the customer must place (default 1). */
   minQuantity?: number;
+  /** Minimum PDF page count required to order (null/undefined = no minimum). */
+  minPages?: number | null;
 }
 
 

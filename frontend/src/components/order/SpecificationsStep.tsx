@@ -16,6 +16,7 @@ import type {
   UploadedFile,
 } from '@/lib/types';
 import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
+import { useToast } from '@/components/seller-dashboard/Toast';
 import type { OrderAction } from './orderReducer';
 import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
 import {
@@ -74,10 +75,14 @@ export default function SpecificationsStep({
   const isTwinLoopBinding = specs.serviceId === 'bind-twin-loop';
   const isCustomizableBinding = isHardBinding || isSpiralBinding;
 
-  // Seller-configured minimum order quantity for the selected service.
-  const minQuantity =
-    services.find((entry) => entry.id === specs.serviceId)?.minQuantity ?? 1;
+  // Seller-configured minimum order quantity / page count for the service.
+  const selectedService = services.find(
+    (entry) => entry.id === specs.serviceId,
+  );
+  const minQuantity = selectedService?.minQuantity ?? 1;
+  const minPages = selectedService?.minPages ?? 0;
 
+  const { showToast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -110,6 +115,18 @@ export default function SpecificationsStep({
         ignoreEncryption: true,
       });
       const totalPages = pdfDoc.getPageCount();
+
+      // Seller page minimum: reject the PDF instead of attaching it.
+      if (minPages > 0 && totalPages < minPages) {
+        const serviceName = selectedService?.name ?? 'this service';
+        const message = `Minimum page count should be ${minPages} for ${serviceName}. Your PDF has only ${totalPages} page${totalPages === 1 ? '' : 's'}.`;
+        showToast(message, 'error');
+        setLocalError(message);
+        if (inputRef.current) inputRef.current.value = '';
+        setProcessing(false);
+        return;
+      }
+
       const previewUrl = URL.createObjectURL(selected);
 
       dispatch({
@@ -281,9 +298,6 @@ export default function SpecificationsStep({
     availableHardFoilColors,
   );
 
-  const selectedService = services.find(
-    (service) => service.id === specs.serviceId,
-  );
   const colorChoices = useMemo(() => {
     const availableColorModes =
       selectedService?.id === 'doc-print'
@@ -461,6 +475,11 @@ export default function SpecificationsStep({
               ? 'Upload inner content PDF'
               : 'Upload master PDF'
             : 'Upload your file'}{' '}
+          {minPages > 0 && (
+            <span className="ml-1 text-xs font-semibold normal-case text-amber-600">
+              (min. {minPages} pages)
+            </span>
+          )}
           <span className="text-red-500">*</span>
         </label>
 

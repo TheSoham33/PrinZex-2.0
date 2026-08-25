@@ -122,6 +122,10 @@ export function mapBackendServiceToFrontend(s: any): ServiceOffering {
       typeof s.minQuantity === 'number' && s.minQuantity > 1
         ? s.minQuantity
         : undefined,
+    minPages:
+      typeof s.minPages === 'number' && s.minPages > 0
+        ? s.minPages
+        : undefined,
     icon: 'file', // Map category to icon
     startingPrice: Number(s.basePrice),
     unit: s.unit || 'per page',

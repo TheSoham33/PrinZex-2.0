@@ -215,6 +215,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         return 'Quantity must be at least 1';
       if (specs.quantity < (service?.minQuantity ?? 1))
         return `Minimum order quantity for this service is ${service?.minQuantity}`;
+      if (service?.minPages && (specs.totalPages ?? 0) < service.minPages)
+        return `Minimum page count should be ${service.minPages} for ${service.name}`;
       if (!state.order.file) return 'Please upload the file you want printed';
       if (specs.serviceId === 'bind-hard') {
         if (!specs.coverColor)
