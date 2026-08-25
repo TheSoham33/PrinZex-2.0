@@ -31,13 +31,17 @@ export default function ManageServicesPage() {
     queryFn: fetchSellerServices,
   });
 
-  const [localPrices, setLocalPrices] = useState<Record<string, { price: string; unit: string }>>({});
+  const [localPrices, setLocalPrices] = useState<Record<string, { price: string; unit: string; minQty: string }>>({});
 
   useEffect(() => {
     if (myServices.length > 0) {
-      const prices: Record<string, { price: string; unit: string }> = {};
+      const prices: Record<string, { price: string; unit: string; minQty: string }> = {};
       myServices.forEach(s => {
-        prices[s.serviceId] = { price: String(s.basePrice), unit: s.unit };
+        prices[s.serviceId] = {
+          price: String(s.basePrice),
+          unit: s.unit,
+          minQty: String(s.minQuantity ?? 1),
+        };
       });
       setLocalPrices(prev => ({ ...prev, ...prices }));
     }
@@ -121,7 +125,8 @@ export default function ManageServicesPage() {
       id: existing.id,
       data: {
         basePrice: Number(local.price),
-        unit: local.unit
+        unit: local.unit,
+        minQuantity: Math.max(1, Math.floor(Number(local.minQty) || 1))
       }
     });
   };
@@ -175,11 +180,12 @@ export default function ManageServicesPage() {
                   {category.services.map((service) => {
                     const myService = myServices.find(s => s.serviceId === service.id);
                     const isSelected = Boolean(myService?.isActive);
-                    const local = localPrices[service.id] || { price: '0', unit: 'per page' };
-                    const isChanged = isSelected && myService && (
-                      String(myService.basePrice) !== local.price || 
-                      myService.unit !== local.unit
-                    );
+                    const local = localPrices[service.id] || { price: '0', unit: 'per page', minQty: '1' };
+                      const isChanged = isSelected && myService && (
+                        String(myService.basePrice) !== local.price || 
+                        myService.unit !== local.unit ||
+                        String(myService.minQuantity ?? 1) !== local.minQty
+                      );
 
                     return (
                       <div key={service.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
@@ -231,6 +237,23 @@ export default function ManageServicesPage() {
                                   <option key={unit} value={unit}>{unit}</option>
                                 ))}
                               </select>
+                            </div>
+
+                            <div className="w-24">
+                              <label className="sr-only">Minimum order quantity</label>
+                              <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={local.minQty}
+                                placeholder="Min. qty"
+                                title="Minimum order quantity for this service"
+                                onChange={(e) => setLocalPrices(prev => ({
+                                  ...prev,
+                                  [service.id]: { ...local, minQty: e.target.value }
+                                }))}
+                                className="input py-1.5 text-xs"
+                              />
                             </div>
 
                             <button
