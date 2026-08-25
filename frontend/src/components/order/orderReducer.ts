@@ -228,6 +228,8 @@ export function computeCost(
   /** Seller's cheapest per-page rate — used for binding services, whose own
    *  starting price is per-document (never a per-page rate). */
   pageRateFallback?: number,
+  /** Admin-catalogue finishing list; falls back to the shipped constant. */
+  finishingOptions: ReadonlyArray<{ value: string; price: number }> = FINISHING_OPTIONS,
 ): CostBreakdown {
   const base = service?.startingPrice ?? 0;
   const quantity = Math.max(1, specs.quantity || 1);
@@ -271,7 +273,7 @@ export function computeCost(
   const bwPageCount = billablePages - colorPageCount;
 
   const finishingPerUnit = specs.finishing.reduce((sum, key) => {
-    const option = FINISHING_OPTIONS.find((entry) => entry.value === key);
+    const option = finishingOptions.find((entry) => entry.value === key);
     return sum + (option?.price ?? 0);
   }, 0);
 

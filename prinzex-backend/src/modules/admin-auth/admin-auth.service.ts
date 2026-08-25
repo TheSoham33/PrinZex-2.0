@@ -55,6 +55,8 @@ export const ADMIN_PERMISSIONS = [
   'coupons.manage',
   'content.view',
   'content.manage',
+  'catalog.view',
+  'catalog.manage',
   'support.view',
   'support.manage',
   'analytics.view',
@@ -83,7 +85,7 @@ const ROLE_PERMISSIONS: Record<string, readonly AdminPermission[]> = {
   ],
   SUPPORT_AGENT: ['dashboard.view', 'users.view', 'orders.view', 'support.view', 'support.manage'],
   FINANCE_MANAGER: ['dashboard.view', 'users.view', 'orders.view', 'payouts.view', 'payouts.manage', 'analytics.view'],
-  CONTENT_MANAGER: ['dashboard.view', 'content.view', 'content.manage', 'coupons.view', 'coupons.manage'],
+  CONTENT_MANAGER: ['dashboard.view', 'content.view', 'content.manage', 'catalog.view', 'catalog.manage', 'coupons.view', 'coupons.manage'],
 };
 
 /** Build the granular boolean map + frontend compatibility flags. */
@@ -99,6 +101,7 @@ export function buildPermissions(adminRole: string): Record<string, boolean> {
     canManageOrders: map['orders.view'] || map['orders.manage'] || map['support.view'],
     canManagePayouts: map['payouts.view'] || map['payouts.manage'],
     canManageContent: map['content.view'] || map['content.manage'],
+    canManageCatalog: map['catalog.view'] || map['catalog.manage'],
     canManageAdmins: map['admins.view'] || map['admins.manage'],
   };
 }

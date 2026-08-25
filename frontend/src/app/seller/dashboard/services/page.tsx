@@ -8,7 +8,8 @@ import {
   updateSellerService, 
   deleteSellerService 
 } from '@/lib/api/seller-services';
-import { SERVICE_CATEGORIES, PRICING_UNITS } from '@/lib/seller-types';
+import { SERVICE_CATEGORIES as SERVICE_CATEGORIES_FALLBACK, PRICING_UNITS } from '@/lib/seller-types';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { 
@@ -23,6 +24,7 @@ import {
 
 export default function ManageServicesPage() {
   const { showToast } = useToast();
+  const serviceCategories = useCatalogOptions('service-categories', SERVICE_CATEGORIES_FALLBACK);
   const queryClient = useQueryClient();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['documents']);
 
@@ -149,7 +151,7 @@ export default function ManageServicesPage() {
       </header>
 
       <div className="space-y-4">
-        {SERVICE_CATEGORIES.map((category) => {
+        {serviceCategories.map((category) => {
           const isExpanded = expandedCategories.includes(category.id);
           const selectedInCategory = category.services.filter(s => 
             myServices.some(my => my.serviceId === s.id && my.isActive)

@@ -1,6 +1,10 @@
 'use client';
 
-import { PAPER_SIZES, PAPER_TYPES } from '@/lib/domain/stores';
+import {
+  PAPER_TYPES as PAPER_TYPES_FALLBACK,
+  PAPER_SIZES as PAPER_SIZES_FALLBACK,
+} from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 
 interface PaperCustomizationOptionsProps {
@@ -102,6 +106,8 @@ export default function PaperCustomizationOptions({
   onSave,
   saving,
 }: PaperCustomizationOptionsProps) {
+  const paperTypes = useCatalogOptions('paper-types', PAPER_TYPES_FALLBACK);
+  const paperSizes = useCatalogOptions('paper-sizes', PAPER_SIZES_FALLBACK);
   return (
     <div className="space-y-5 border-t border-slate-100 bg-blue-50/40 px-4 py-4">
       <div>
@@ -116,13 +122,13 @@ export default function PaperCustomizationOptions({
 
       <OptionEditor
         title="Paper types"
-        options={PAPER_TYPES}
+        options={paperTypes}
         prices={paperTypePrices}
         onChange={onPaperTypePricesChange}
       />
       <OptionEditor
         title="Paper sizes"
-        options={PAPER_SIZES}
+        options={paperSizes}
         prices={paperSizePrices}
         onChange={onPaperSizePricesChange}
       />

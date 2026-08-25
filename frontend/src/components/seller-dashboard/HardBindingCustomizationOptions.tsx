@@ -1,6 +1,10 @@
 'use client';
 
-import { COVER_COLORS, COVER_TEXT_COLORS } from '@/lib/domain/stores';
+import {
+  COVER_COLORS as COVER_COLORS_FALLBACK,
+  COVER_TEXT_COLORS as COVER_TEXT_COLORS_FALLBACK,
+} from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 
 interface HardBindingCustomizationOptionsProps {
@@ -26,7 +30,9 @@ export default function HardBindingCustomizationOptions({
   onSave,
   saving,
 }: HardBindingCustomizationOptionsProps) {
-  const foilOptions = COVER_TEXT_COLORS.filter(
+  const coverColorOptions = useCatalogOptions('cover-colors', COVER_COLORS_FALLBACK);
+  const coverTextColorOptions = useCatalogOptions('cover-text-colors', COVER_TEXT_COLORS_FALLBACK);
+  const foilOptions = coverTextColorOptions.filter(
     (color) => color.value !== 'white',
   );
 
@@ -46,7 +52,7 @@ export default function HardBindingCustomizationOptions({
           Cover fabrics
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
-          {COVER_COLORS.map((color) => {
+          {coverColorOptions.map((color) => {
             const enabled = coverColors.includes(color.value);
             return (
               <div key={color.value} className="flex items-center justify-between gap-3">

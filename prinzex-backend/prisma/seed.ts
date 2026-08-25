@@ -1066,6 +1066,15 @@ async function seedSupportTickets(
 }
 
 // ─── MAIN ──────────────────────────────────────────────────────────────────
+/** Admin-editable customization catalogue (services, paper, option groups). */
+async function seedCatalog(): Promise<void> {
+  const { ensureCatalogDefaults } = await import(
+    '../src/modules/catalog/catalog.service'
+  );
+  await ensureCatalogDefaults();
+  console.log('✔ Catalogue defaults ensured');
+}
+
 async function main(): Promise<void> {
   console.log('Seeding PostgreSQL…');
   await wipe();
@@ -1079,6 +1088,7 @@ async function main(): Promise<void> {
   await seedReviews(orders, deliveryBoys, sellers);
   await seedCoupons();
   await seedSupportTickets(customers, orders, admin.id);
+  await seedCatalog();
 
   console.log('✔ PostgreSQL seed complete:');
   console.log(`   admins=1 customers=${customers.length} sellers=${sellers.length} deliveryBoys=${deliveryBoys.length} orders=${orders.length}`);

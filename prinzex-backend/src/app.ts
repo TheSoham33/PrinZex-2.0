@@ -24,6 +24,10 @@ import {
   deliveryRouter,
 } from './modules/delivery/delivery.routes';
 import { trackingRouter } from './modules/tracking/tracking.routes';
+import {
+  adminCatalogRouter,
+  publicCatalogRouter,
+} from './modules/catalog/catalog.routes';
 import { paymentsRouter, paymentsWebhookRouter, walletRouter } from './modules/payments/payments.routes';
 import { adminFinancialsRouter, adminPayoutsRouter } from './modules/payouts/payouts.routes';
 import { adminUsersRouter } from './modules/admin/users/admin-users.routes';
@@ -167,10 +171,15 @@ export function createApp(): Express {
   adminRouter.use('/admins', adminAdminsRouter);
   adminRouter.use('/reviews', adminReviewsRouter);
   adminRouter.use('/activity-log', adminLogsRouter);
+  adminRouter.use('/catalog', adminCatalogRouter);
   app.use('/api/admin', adminRouter);
 
   // Public storefront content — NO auth (homepage banners, FAQ page).
   app.use('/api/content', publicContentRouter);
+
+  // Public customization catalogue — services, paper types/sizes and all
+  // customization option groups (admin edits live in the CatalogEntry table).
+  app.use('/api/catalog', publicCatalogRouter);
 
   // Chat history — REST half of the /chat socket namespace (customers + sellers).
   app.use('/api/chat', chatRouter);

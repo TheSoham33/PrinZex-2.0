@@ -1,15 +1,16 @@
 'use client';
 
 import {
-  COVER_COLORS,
-  COVER_TEXT_COLORS,
-  COVER_TYPES,
-  SPIRAL_COIL_TYPES,
-  SPIRAL_COVER_TYPES,
-  FINISHING_OPTIONS,
-  PAPER_SIZES,
-  PAPER_TYPES,
+  COVER_COLORS as COVER_COLORS_FALLBACK,
+  COVER_TEXT_COLORS as COVER_TEXT_COLORS_FALLBACK,
+  COVER_TYPES as COVER_TYPES_FALLBACK,
+  SPIRAL_COIL_TYPES as SPIRAL_COIL_TYPES_FALLBACK,
+  SPIRAL_COVER_TYPES as SPIRAL_COVER_TYPES_FALLBACK,
+  FINISHING_OPTIONS as FINISHING_OPTIONS_FALLBACK,
+  PAPER_SIZES as PAPER_SIZES_FALLBACK,
+  PAPER_TYPES as PAPER_TYPES_FALLBACK,
 } from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
 import type {
   OrderSpecifications,
   ServiceOffering,
@@ -70,6 +71,14 @@ export default function SpecificationsStep({
   availableHardCoverColors,
   availableHardFoilColors,
 }: SpecificationsStepProps) {
+  const coverColors = useCatalogOptions('cover-colors', COVER_COLORS_FALLBACK);
+  const coverTextColors = useCatalogOptions('cover-text-colors', COVER_TEXT_COLORS_FALLBACK);
+  const coverTypes = useCatalogOptions('cover-types', COVER_TYPES_FALLBACK);
+  const spiralCoilTypes = useCatalogOptions('spiral-coil-types', SPIRAL_COIL_TYPES_FALLBACK);
+  const spiralCoverTypes = useCatalogOptions('spiral-cover-types', SPIRAL_COVER_TYPES_FALLBACK);
+  const finishingOptions = useCatalogOptions('finishing-options', FINISHING_OPTIONS_FALLBACK);
+  const paperSizes = useCatalogOptions('paper-sizes', PAPER_SIZES_FALLBACK);
+  const paperTypes = useCatalogOptions('paper-types', PAPER_TYPES_FALLBACK);
   const isHardBinding = specs.serviceId === 'bind-hard';
   const isSpiralBinding = specs.serviceId === 'bind-spiral';
   const isTwinLoopBinding = specs.serviceId === 'bind-twin-loop';
@@ -287,14 +296,14 @@ export default function SpecificationsStep({
             10,
         )
       : 0;
-  const selectedCoverColor = COVER_COLORS.find(
+  const selectedCoverColor = coverColors.find(
     (color) => color.value === specs.coverColor,
   );
-  const selectedFoilColor = COVER_TEXT_COLORS.find(
+  const selectedFoilColor = coverTextColors.find(
     (color) => color.value === specs.coverTextColor,
   );
   const hardBindingFoilColors = filterOffered(
-    COVER_TEXT_COLORS.filter((color) => color.value !== 'white'),
+    coverTextColors.filter((color) => color.value !== 'white'),
     availableHardFoilColors,
   );
 
@@ -335,27 +344,27 @@ export default function SpecificationsStep({
     ];
   }, [selectedService?.id, selectedService?.availableColorModes]);
   const offeredPaperTypes = filterOffered(
-    PAPER_TYPES,
+    paperTypes,
     selectedService?.paperTypePrices
       ? Object.keys(selectedService.paperTypePrices)
       : undefined,
   );
   const offeredPaperSizes = filterOffered(
-    PAPER_SIZES,
+    paperSizes,
     selectedService?.paperSizePrices
       ? Object.keys(selectedService.paperSizePrices)
       : undefined,
   );
 
   // Only show cover-customization options this store actually offers.
-  const offeredCoilTypes = filterOffered(SPIRAL_COIL_TYPES, availableCoilTypes);
+  const offeredCoilTypes = filterOffered(spiralCoilTypes, availableCoilTypes);
   const offeredCoverTypes = filterOffered(
-    isSpiralBinding ? SPIRAL_COVER_TYPES : COVER_TYPES,
+    isSpiralBinding ? spiralCoverTypes : coverTypes,
     availableCoverTypes,
   );
   const offeredCoverColors = isHardBinding
-    ? filterOffered(COVER_COLORS, availableHardCoverColors)
-    : filterOffered(COVER_COLORS, availableCoverColors);
+    ? filterOffered(coverColors, availableHardCoverColors)
+    : filterOffered(coverColors, availableCoverColors);
 
   // Hide seller-disabled Document Printing modes and move stale selections to
   // the first mode still offered. Mixed pages require both B&W and colour.
@@ -980,7 +989,7 @@ export default function SpecificationsStep({
                 <div className="flex flex-wrap gap-3">
                   {(isHardBinding
                     ? hardBindingFoilColors
-                    : COVER_TEXT_COLORS
+                    : coverTextColors
                   ).map((color) => (
                     <button
                       key={color.value}
@@ -1566,7 +1575,7 @@ export default function SpecificationsStep({
       <section>
         <p className="label">Finishing (optional)</p>
         <div className="flex flex-wrap gap-2.5">
-          {FINISHING_OPTIONS.map((option) => {
+          {finishingOptions.map((option) => {
             const active = specs.finishing.includes(option.value);
             return (
               <button

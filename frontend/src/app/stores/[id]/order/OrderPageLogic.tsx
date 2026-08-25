@@ -32,6 +32,8 @@ import {
   IconLock,
   IconShoppingCart,
 } from '@/components/icons';
+import { useCatalogOptions } from '@/lib/api/catalog';
+import { FINISHING_OPTIONS as FINISHING_OPTIONS_FALLBACK } from '@/lib/domain/stores';
 
 const TOTAL_STEPS = 3;
 
@@ -47,6 +49,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     }
   }, [store.isOpen, store.id, router]);
 
+  const finishingOptionsCatalog = useCatalogOptions('finishing-options', FINISHING_OPTIONS_FALLBACK);
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get('service') ?? '';
   const token = useAppSelector((state) => state.auth.accessToken);
@@ -193,7 +196,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // estimate so the summary resets immediately instead of showing stale prices.
   const cost = useMemo(() => {
     if (token && quoteData && !quoteLoading) return quoteData;
-    return computeCost(specs, service, 0, 0, pageRateFallback);
+    return computeCost(specs, service, 0, 0, pageRateFallback, finishingOptionsCatalog);
   }, [token, quoteData, quoteLoading, specs, service, pageRateFallback]);
 
   useEffect(() => {
