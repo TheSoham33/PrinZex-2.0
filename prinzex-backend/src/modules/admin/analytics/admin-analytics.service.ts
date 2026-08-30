@@ -11,9 +11,10 @@ import {
 import type { AnalyticsQuery, SellerRankingQuery } from './admin-analytics.routes';
 
 /**
- * Platform analytics. Heavy numbers come from the DATABASE (Prisma aggregate/
- * groupBy for KPIs, $queryRaw + DATE_TRUNC for time series) — never in-memory
- * summation over loaded rows.
+ * Platform analytics. Heavy numbers come from the DATABASE — KPIs, order
+ * breakdowns and seller rankings run inside PL/pgSQL-shaped functions
+ * (admin_analytics_*, see migrations/…_admin_analytics_functions), plain time
+ * series via $queryRaw + DATE_TRUNC — never in-memory summation over rows.
  */
 
 function startOfToday(): Date {
@@ -75,59 +76,26 @@ export async function getKpi(range: { startDate?: Date; endDate?: Date }): Promi
   const monthStart = range.startDate ?? startOfMonth();
   const monthEnd = range.endDate ?? nextMonth(monthStart);
 
-  const [
-    totalCustomers,
-    newCustomersThisMonth,
-    totalApprovedSellers,
-    pendingSellersCount,
-    totalOrdersToday,
-    totalOrdersThisMonth,
-    revenueToday,
-    revenueMonth,
-    activeDeliveries,
-    openSupportTickets,
-    averageOrderValueAgg,
-    commissionMonth,
-  ] = await Promise.all([
-    prisma.user.count({ where: { role: 'CUSTOMER' } }),
-    prisma.user.count({ where: { role: 'CUSTOMER', createdAt: { gte: monthStart, lt: monthEnd } } }),
-    prisma.seller.count({ where: { status: 'APPROVED' } }),
-    prisma.seller.count({ where: { status: 'PENDING' } }),
-    prisma.order.count({ where: { createdAt: { gte: today, lt: tomorrow } } }),
-    prisma.order.count({ where: { createdAt: { gte: monthStart, lt: monthEnd } } }),
-    prisma.order.aggregate({
-      where: { status: 'delivered', createdAt: { gte: today, lt: tomorrow } },
-      _sum: { total: true },
-    }),
-    prisma.order.aggregate({
-      where: { status: 'delivered', createdAt: { gte: monthStart, lt: monthEnd } },
-      _sum: { total: true },
-    }),
-    prisma.delivery.count({ where: { status: 'out_for_delivery' } }),
-    prisma.supportTicket.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
-    prisma.order.aggregate({
-      where: { status: 'delivered', createdAt: { gte: monthStart, lt: monthEnd } },
-      _avg: { total: true },
-    }),
-    prisma.order.aggregate({
-      where: { status: 'delivered', createdAt: { gte: monthStart, lt: monthEnd } },
-      _sum: { commissionAmount: true },
-    }),
-  ]);
+  // All 12 KPI numbers from one database call (see
+  // migrations/…_admin_analytics_functions). Date windows are computed here
+  // so server-local TZ semantics stay exactly as before.
+  const [row] = await prisma.$queryRaw<Array<{ admin_analytics_kpi: string }>>`
+    SELECT admin_analytics_kpi(${today}, ${tomorrow}, ${monthStart}, ${monthEnd})`;
+  const n = JSON.parse(row?.admin_analytics_kpi ?? '{}') as Record<string, number>;
 
   const kpi: AdminKpi = {
-    totalCustomers,
-    newCustomersThisMonth,
-    totalApprovedSellers,
-    pendingSellersCount,
-    totalOrdersToday,
-    totalOrdersThisMonth,
-    totalRevenueToday: roundMoney(Number(revenueToday._sum.total ?? 0)),
-    totalRevenueThisMonth: roundMoney(Number(revenueMonth._sum.total ?? 0)),
-    activeDeliveries,
-    openSupportTickets,
-    averageOrderValue: roundMoney(Number(averageOrderValueAgg._avg.total ?? 0)),
-    platformCommissionThisMonth: roundMoney(Number(commissionMonth._sum.commissionAmount ?? 0)),
+    totalCustomers: Number(n.totalCustomers ?? 0),
+    newCustomersThisMonth: Number(n.newCustomersThisMonth ?? 0),
+    totalApprovedSellers: Number(n.totalApprovedSellers ?? 0),
+    pendingSellersCount: Number(n.pendingSellersCount ?? 0),
+    totalOrdersToday: Number(n.totalOrdersToday ?? 0),
+    totalOrdersThisMonth: Number(n.totalOrdersThisMonth ?? 0),
+    totalRevenueToday: roundMoney(n.totalRevenueToday ?? 0),
+    totalRevenueThisMonth: roundMoney(n.totalRevenueThisMonth ?? 0),
+    activeDeliveries: Number(n.activeDeliveries ?? 0),
+    openSupportTickets: Number(n.openSupportTickets ?? 0),
+    averageOrderValue: roundMoney(n.averageOrderValue ?? 0),
+    platformCommissionThisMonth: roundMoney(n.platformCommissionThisMonth ?? 0),
   };
 
   await setCache(cacheKey, kpi, REDIS_TTL.CACHE_ADMIN); // 60s
@@ -180,75 +148,54 @@ export async function getRevenueAnalytics(query: AnalyticsQuery): Promise<Revenu
 
 // ── GET /api/admin/analytics/orders ────────────────────────────────────────
 
-interface OrderVolumeRow {
-  bucket: Date;
-  status: string;
-  count: number;
-}
-
 export interface OrderAnalytics {
   volume: Array<{ date: Date; orders: number; byStatus: Record<string, number> }>;
   topSellers: Array<{ sellerId: string; storeName: string; orders: number }>;
   topServices: Array<{ serviceName: string; orders: number }>;
 }
 
+/** Shape of the admin_analytics_orders() JSON payload (ISO bucket strings). */
+interface OrderAnalyticsPayload {
+  volume: Array<{ bucket: string; status: string; count: number | string }>;
+  topSellers: Array<{ sellerId: string; storeName: string | null; orders: number | string }>;
+  topServices: Array<{ serviceName: string; orders: number | string }>;
+}
+
 export async function getOrderAnalytics(query: AnalyticsQuery): Promise<OrderAnalytics> {
   const since = periodStart(query.period);
 
-  // Volume + status distribution — grouped in SQL.
-  const volumeRows = await prisma.$queryRaw<OrderVolumeRow[]>`
-    SELECT
-      DATE_TRUNC(${Prisma.sql`${query.groupBy}`}, "createdAt") AS bucket,
-      status,
-      COUNT(*)::int AS count
-    FROM "Order"
-    WHERE "createdAt" >= ${since}
-    GROUP BY 1, 2
-    ORDER BY 1 ASC`;
+  // Volume series + top sellers + top services in one database call; store
+  // names are joined in SQL instead of a second round trip.
+  const [row] = await prisma.$queryRaw<Array<{ admin_analytics_orders: string }>>`
+    SELECT admin_analytics_orders(${since}, ${query.groupBy})`;
+  const payload = JSON.parse(
+    row?.admin_analytics_orders ?? '{"volume":[],"topSellers":[],"topServices":[]}',
+  ) as OrderAnalyticsPayload;
 
   // Merge SQL-grouped rows into per-bucket shape (tiny result set: ≤ 90 buckets
   // × ~8 statuses — the aggregation itself already happened in Postgres).
   const byBucket = new Map<string, { date: Date; orders: number; byStatus: Record<string, number> }>();
-  for (const row of volumeRows) {
-    const key = row.bucket.toISOString();
-    const bucket = byBucket.get(key) ?? { date: row.bucket, orders: 0, byStatus: {} };
-    bucket.orders += Number(row.count);
-    bucket.byStatus[row.status] = Number(row.count);
+  for (const v of payload.volume) {
+    const date = new Date(v.bucket);
+    const key = date.toISOString();
+    const bucket = byBucket.get(key) ?? { date, orders: 0, byStatus: {} };
+    bucket.orders += Number(v.count);
+    bucket.byStatus[v.status] = Number(v.count);
     byBucket.set(key, bucket);
   }
   const volume = [...byBucket.values()].sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  // Top 5 sellers by order count (database groupBy).
-  const topSellerRows = await prisma.order.groupBy({
-    by: ['sellerId'],
-    where: { createdAt: { gte: since } },
-    _count: { id: true },
-    orderBy: { _count: { id: 'desc' } },
-    take: 5,
-  });
-  const topSellersData = await prisma.seller.findMany({
-    where: { id: { in: topSellerRows.map((row) => row.sellerId) } },
-    select: { id: true, storeName: true },
-  });
-  const storeNameById = new Map(topSellersData.map((seller) => [seller.id, seller.storeName]));
-
-  // Top 5 services by order count (database groupBy on order lines).
-  const topServiceRows = await prisma.orderItem.groupBy({
-    by: ['serviceName'],
-    where: { order: { createdAt: { gte: since } } },
-    _count: { orderId: true },
-    orderBy: { _count: { orderId: 'desc' } },
-    take: 5,
-  });
-
   return {
     volume,
-    topSellers: topSellerRows.map((row) => ({
+    topSellers: payload.topSellers.map((row) => ({
       sellerId: row.sellerId,
-      storeName: storeNameById.get(row.sellerId) ?? '(unknown store)',
-      orders: row._count.id,
+      storeName: row.storeName ?? '(unknown store)',
+      orders: Number(row.orders),
     })),
-    topServices: topServiceRows.map((row) => ({ serviceName: row.serviceName, orders: row._count.orderId })),
+    topServices: payload.topServices.map((row) => ({
+      serviceName: row.serviceName,
+      orders: Number(row.orders),
+    })),
   };
 }
 
@@ -331,37 +278,34 @@ export async function getSellerRanking(query: SellerRankingQuery): Promise<Pagin
     return buildPaginatedResponse(data, total, { page: query.page, limit: query.limit });
   }
 
-  // Revenue / orders ranking — sorted + paginated AT THE DATABASE via groupBy.
-  const totalRows = await prisma.$queryRaw<Array<{ sellers: number }>>`
-    SELECT COUNT(DISTINCT "sellerId")::int AS sellers FROM "Order" WHERE status = 'delivered'`;
-  const total = Number(totalRows[0]?.sellers ?? 0);
+  // Revenue / orders ranking — grouped, joined, sorted and paginated inside
+  // admin_analytics_seller_ranking() (one call instead of three).
+  interface RankingPayload {
+    total: number | string;
+    data: Array<{
+      sellerId: string;
+      storeName: string | null;
+      city: string | null;
+      revenue: number | string;
+      orders: number | string;
+      rating: number | string;
+      completionRate: number | string;
+    }>;
+  }
+  const [row] = await prisma.$queryRaw<Array<{ admin_analytics_seller_ranking: string }>>`
+    SELECT admin_analytics_seller_ranking(${take}, ${skip}, ${query.sort})`;
+  const payload = JSON.parse(
+    row?.admin_analytics_seller_ranking ?? '{"total":0,"data":[]}',
+  ) as RankingPayload;
 
-  const grouped = await prisma.order.groupBy({
-    by: ['sellerId'],
-    where: { status: 'delivered' },
-    _sum: { total: true },
-    _count: { id: true },
-    orderBy: query.sort === 'revenue' ? { _sum: { total: 'desc' } } : { _count: { id: 'desc' } },
-    skip,
-    take,
-  });
-  const sellers = await prisma.seller.findMany({
-    where: { id: { in: grouped.map((row) => row.sellerId) } },
-    select: { id: true, storeName: true, city: true, averageRating: true, completionRate: true },
-  });
-  const sellerById = new Map(sellers.map((seller) => [seller.id, seller]));
-
-  const data: SellerRankingEntry[] = grouped.map((row) => {
-    const seller = sellerById.get(row.sellerId);
-    return {
-      sellerId: row.sellerId,
-      storeName: seller?.storeName ?? '(unknown store)',
-      city: seller?.city ?? '(unknown)',
-      revenue: roundMoney(Number(row._sum.total ?? 0)),
-      orders: row._count.id,
-      rating: Number(seller?.averageRating ?? 0),
-      completionRate: Number(seller?.completionRate ?? 0),
-    };
-  });
-  return buildPaginatedResponse(data, total, { page: query.page, limit: query.limit });
+  const data: SellerRankingEntry[] = payload.data.map((r) => ({
+    sellerId: r.sellerId,
+    storeName: r.storeName ?? '(unknown store)',
+    city: r.city ?? '(unknown)',
+    revenue: roundMoney(Number(r.revenue ?? 0)),
+    orders: Number(r.orders ?? 0),
+    rating: Number(r.rating ?? 0),
+    completionRate: Number(r.completionRate ?? 0),
+  }));
+  return buildPaginatedResponse(data, Number(payload.total), { page: query.page, limit: query.limit });
 }

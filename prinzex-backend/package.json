@@ -2,7 +2,7 @@
   "name": "prinzex-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "PrinZex \u2014 multi-vendor printing marketplace backend (Node.js + Express + Prisma + Mongoose + Redis)",
+  "description": "PrinZex — multi-vendor printing marketplace backend (Node.js + Express + Prisma + Mongoose + Redis)",
   "main": "dist/server.js",
   "license": "MIT",
   "engines": {
@@ -69,6 +69,7 @@
     "eslint-config-prettier": "^9.1.0",
     "jest": "^29.7.0",
     "nodemon": "^3.1.7",
+    "pg-mem": "^3.0.14",
     "prettier": "^3.3.3",
     "prisma": "^5.22.0",
     "socket.io-client": "^4.8.3",
