@@ -55,6 +55,8 @@ export interface ServiceOffering {
     hangerPrice?: number;
     concealedPrice?: number;
   };
+  /** Seller-configured quantity pricing slabs: "from qty, ₹rate per piece". */
+  quantitySlabs?: { qty: number; rate: number }[];
 }
 
 export interface Review {
@@ -140,6 +142,19 @@ export interface OrderSpecifications {
   twinLoopCoverMaterial?: 'gloss-300' | 'matte-350';
   twinLoopBleedAcknowledged?: boolean;
   twinLoopFlipAcknowledged?: boolean;
+  // Business Cards customization.
+  cardShape?: string;
+  cardPaper?: string;
+  cardSize?: string;
+  cardCorners?: string;
+  cardPrintSides?: 'single' | 'double';
+  cardDesignSource?: 'template' | 'upload';
+  cardTemplate?: string;
+  cardFrontFileUrl?: string;
+  cardFrontFileName?: string;
+  cardBackFileUrl?: string;
+  cardBackFileName?: string;
+  cardProofApproved?: boolean;
   totalPages?: number;
 }
 

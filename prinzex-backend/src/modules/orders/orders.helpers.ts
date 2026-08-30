@@ -1,5 +1,6 @@
 import type { DeliverySpeed, Prisma } from '@prisma/client';
 import { prisma } from '../../config/database';
+import { pickSlabRate } from './pricing.slabs';
 import { ApiError } from '../../utils/ApiError';
 
 /**
@@ -333,10 +334,10 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   // is chosen the page count is set and pricing scales with it.
   const totalPages = Math.max(0, specifications.totalPages || 0);
   const quantity = input.quantity;
+  const slabRate = pickSlabRate(overrides.quantitySlabs?.[input.serviceId ?? ''], quantity);
 
   const isPerPage = unit.toLowerCase().includes('page');
-  const servicePaperOptions =
-    overrides.servicePaperOptions?.[input.serviceId ?? ''] ?? {};
+  const servicePaperOptions = overrides.servicePaperOptions?.[input.serviceId ?? ''] ?? {};
   const paperOptionExtra =
     (servicePaperOptions.paperTypes?.[specifications.paperType] ?? 0) +
     (servicePaperOptions.paperSizes?.[specifications.size] ?? 0);
@@ -350,11 +351,8 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const baseBwRate =
     overrides.pageRate?.bw ??
     overrides.colorOption?.bw ??
-    (isPerPage ? input.basePrice : input.pageRateFallback ?? 0);
-  const baseColorRate =
-    overrides.pageRate?.color ??
-    overrides.colorOption?.color ??
-    baseBwRate * 2;
+    (isPerPage ? input.basePrice : (input.pageRateFallback ?? 0));
+  const baseColorRate = overrides.pageRate?.color ?? overrides.colorOption?.color ?? baseBwRate * 2;
   const bwRate = baseBwRate + paperOptionExtra;
   const colorRate = baseColorRate + paperOptionExtra;
 
@@ -367,10 +365,9 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
       : totalPages;
   const isTwinLoopDuplex =
     input.serviceId === 'bind-twin-loop' && specifications.twinLoopPrintSides === 'double';
-  const pricedDocumentPages = input.serviceId === 'bind-twin-loop' ? twinLoopInnerPages : totalPages;
-  const billablePages = isTwinLoopDuplex
-    ? Math.ceil(pricedDocumentPages / 2)
-    : pricedDocumentPages;
+  const pricedDocumentPages =
+    input.serviceId === 'bind-twin-loop' ? twinLoopInnerPages : totalPages;
+  const billablePages = isTwinLoopDuplex ? Math.ceil(pricedDocumentPages / 2) : pricedDocumentPages;
   const split =
     isTwinLoopDuplex && specifications.colorOption === 'mixed'
       ? (() => {
@@ -380,11 +377,7 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
           );
           return { bwPages: billablePages - colorSheets, colorPages: colorSheets };
         })()
-      : colorPageSplit(
-          specifications.colorOption,
-          specifications.colorPages,
-          billablePages,
-        );
+      : colorPageSplit(specifications.colorOption, specifications.colorPages, billablePages);
 
   let subtotal: number;
   let pageCost: number | undefined;
@@ -415,11 +408,10 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
         ? (twinLoop.wireColors?.[specifications.twinLoopWireColor ?? ''] ?? 0) +
           (twinLoop.frontCovers?.[specifications.twinLoopFrontCover ?? ''] ?? 0) +
           (twinLoop.backCovers?.[specifications.twinLoopBackCover ?? ''] ?? 0) +
-          (specifications.twinLoopCalendarHanger ? twinLoop.hangerPrice ?? 0 : 0) +
-          (specifications.twinLoopConcealed ? twinLoop.concealedPrice ?? 0 : 0)
+          (specifications.twinLoopCalendarHanger ? (twinLoop.hangerPrice ?? 0) : 0) +
+          (specifications.twinLoopConcealed ? (twinLoop.concealedPrice ?? 0) : 0)
         : 0;
-    const bindingRate =
-      input.basePrice + spiralCustomizationRate + twinLoopCustomizationRate;
+    const bindingRate = input.basePrice + spiralCustomizationRate + twinLoopCustomizationRate;
 
     bindingCost = round2(bindingRate * quantity);
     subtotal = round2(pageCost + bindingCost + finishingCharge * quantity);
@@ -429,11 +421,13 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
       (bwRate * split.bwPages + colorRate * split.colorPages) * quantity +
         finishingCharge * quantity,
     );
+  } else if (slabRate !== undefined) {
+    // ── Slab-priced services (Business Cards): per-piece rate from the
+    //    seller's quantity tiers — replaces the base price. ───────────────
+    subtotal = round2(slabRate * quantity + finishingCharge * quantity);
   } else {
     // ── Per-piece / per-set / per-sqft services: single base rate ────────
-    subtotal = round2(
-      (input.basePrice + paperOptionExtra) * quantity + finishingCharge * quantity,
-    );
+    subtotal = round2((input.basePrice + paperOptionExtra) * quantity + finishingCharge * quantity);
   }
 
   const rushFee = RUSH_FEES[input.deliverySpeed];
@@ -443,22 +437,13 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const total = round2(subtotal + rushFee + deliveryFee + tax - input.discount);
   const spineWidthMm =
     input.serviceId === 'bind-hard' && totalPages > 0
-      ? Math.max(
-          2,
-          round2((totalPages / 2) * (specifications.paperGsm === 100 ? 0.13 : 0.1)),
-        )
+      ? Math.max(2, round2((totalPages / 2) * (specifications.paperGsm === 100 ? 0.13 : 0.1)))
       : undefined;
 
   const twinLoopTotalSheets =
-    input.serviceId === 'bind-twin-loop' && twinLoopInnerPages > 0
-      ? billablePages + 2
-      : undefined;
+    input.serviceId === 'bind-twin-loop' && twinLoopInnerPages > 0 ? billablePages + 2 : undefined;
   const twinLoopPitch: '3:1' | '2:1' | undefined =
-    twinLoopTotalSheets !== undefined
-      ? twinLoopInnerPages <= 120
-        ? '3:1'
-        : '2:1'
-      : undefined;
+    twinLoopTotalSheets !== undefined ? (twinLoopInnerPages <= 120 ? '3:1' : '2:1') : undefined;
   const twinLoopStackMm =
     twinLoopTotalSheets !== undefined
       ? twinLoopTotalSheets * (specifications.paperGsm === 100 ? 0.13 : 0.1) + 0.6

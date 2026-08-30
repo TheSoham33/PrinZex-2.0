@@ -120,6 +120,54 @@ export const FINISHING_OPTIONS = [
   { value: 'punching', label: 'Hole punching', price: 8 },
 ] as const;
 
+// ── Business Cards (fall back for the DB-managed card-* catalogue groups) ──
+
+export const CARD_SHAPES = [
+  { value: 'rectangle', label: 'Standard (Rectangle)', hint: 'Classic business card outline' },
+  { value: 'classic', label: 'Classic', hint: 'Softly rounded silhouette' },
+  { value: 'square', label: 'Square', hint: 'Modern square format' },
+  { value: 'leaf', label: 'Leaf', hint: 'Two opposite rounded corners' },
+  { value: 'oval', label: 'Oval', hint: 'Fully curved edges' },
+  { value: 'circle', label: 'Circle', hint: 'Round die-cut card' },
+] as const;
+
+export const CARD_PAPERS = [
+  { value: 'glossy', label: 'Glossy', hint: 'Shiny coated stock' },
+  { value: 'matte', label: 'Matte', hint: 'Smooth non-reflective stock' },
+  { value: 'velvet', label: 'Velvet Touch', hint: 'Soft-touch lamination' },
+  { value: 'premium-plus-glossy', label: 'Premium Plus Glossy', hint: 'Thick high-shine stock' },
+  { value: 'non-tearable', label: 'Non-Tearable', hint: 'Waterproof synthetic stock' },
+  { value: 'spot-uv', label: 'Spot UV', hint: 'Raised gloss highlights' },
+  { value: 'pearl', label: 'Pearl', hint: 'Shimmer metallic stock' },
+  { value: 'kraft', label: 'Kraft', hint: 'Natural brown recycled stock' },
+  { value: 'diamond', label: 'Diamond', hint: 'Glitter finish stock' },
+  { value: 'raised-foil', label: 'Raised Foil', hint: 'Embossed metallic accents' },
+  { value: 'magnetic', label: 'Magnetic', hint: 'Fridge-magnet backing' },
+  { value: 'transparent', label: 'Transparent', hint: 'Frosted plastic stock' },
+] as const;
+
+export const CARD_SIZES = [
+  { value: 'standard', label: 'Standard', hint: '89 × 51 mm' },
+  { value: 'square', label: 'Square', hint: '65 × 65 mm' },
+  { value: 'mini', label: 'Mini', hint: '85 × 45 mm' },
+] as const;
+
+export const CARD_CORNERS: ReadonlyArray<{
+  value: string;
+  label: string;
+  hint: string;
+  /** Shapes this corner style cannot be combined with (e.g. round dies). */
+  incompatibleWith?: string[];
+}> = [
+  { value: 'standard', label: 'Standard', hint: 'Square-cut corners' },
+  { value: 'rounded', label: 'Rounded', hint: 'Cut for a smooth finish', incompatibleWith: ['circle', 'oval', 'leaf'] },
+];
+
+export const CARD_PRINT_SIDES = [
+  { value: 'single', label: 'Single-sided', hint: 'Design on the front only' },
+  { value: 'double', label: 'Double-sided', hint: 'Design on front and back' },
+] as const;
+
 /**
  * Catalogue serviceId → illustration shown anywhere a service is listed
  * (store detail picker, /services grid, landing scroll). Shared so every
@@ -131,6 +179,7 @@ export const SERVICE_IMAGE_MAP: Record<string, string> = {
   'bulk-booklets': '/images/services/booklets.jpg',
   'bulk-brochures': '/images/services/brochures.jpg',
   'bulk-flyers': '/images/services/flyers.jpg',
+  'cards-business': '/images/services/business-cards.jpg',
   'pack-stickers': '/images/services/stickers.jpg',
   'pack-labels': '/images/services/labels.jpg',
   'pack-boxes': '/images/services/boxes.jpg',

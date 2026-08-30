@@ -16,7 +16,7 @@ import { IconPlus, IconTrash, IconRefreshCw } from '@/components/icons';
  * flow without a deploy.
  */
 
-type FieldKind = 'text' | 'number' | 'checkbox';
+type FieldKind = 'text' | 'number' | 'checkbox' | 'list';
 
 interface FieldSpec {
   key: string;
@@ -155,6 +155,57 @@ const GROUPS: GroupSpec[] = [
       { key: 'hint', label: 'Hint', kind: 'text', optional: true },
     ],
   },
+  {
+    key: 'card-shapes',
+    kind: 'rows',
+    description: 'Business card die-cut shapes.',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+      { key: 'hint', label: 'Hint', kind: 'text', optional: true },
+    ],
+  },
+  {
+    key: 'card-papers',
+    kind: 'rows',
+    description: 'Card paper stocks and textures.',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+      { key: 'hint', label: 'Hint', kind: 'text', optional: true },
+    ],
+  },
+  {
+    key: 'card-sizes',
+    kind: 'rows',
+    description: 'Business card cut sizes.',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+      { key: 'hint', label: 'Hint', kind: 'text', optional: true, placeholder: '89 × 51 mm' },
+    ],
+  },
+  {
+    key: 'card-corners',
+    kind: 'rows',
+    description: 'Corner styles; incompatibleWith lists shapes that reject it.',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+      { key: 'hint', label: 'Hint', kind: 'text', optional: true },
+      { key: 'incompatibleWith', label: 'Incompatible shapes (comma-separated)', kind: 'list', optional: true },
+    ],
+  },
+  {
+    key: 'card-print-sides',
+    kind: 'rows',
+    description: 'Single / double-sided card printing choices.',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+      { key: 'hint', label: 'Hint', kind: 'text', optional: true },
+    ],
+  },
 ];
 
 type Row = Record<string, unknown>;
@@ -246,6 +297,14 @@ export default function AdminCatalogPage() {
       }
       if (field.kind === 'checkbox') {
         if (raw !== undefined) cleaned[field.key] = Boolean(raw);
+        return;
+      }
+      if (field.kind === 'list') {
+        const items = String(raw ?? '')
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+        if (items.length > 0) cleaned[field.key] = items;
         return;
       }
       const text = String(raw ?? '').trim();
@@ -365,7 +424,13 @@ export default function AdminCatalogPage() {
                           type={field.kind === 'number' ? 'number' : 'text'}
                           step={field.kind === 'number' ? '0.1' : undefined}
                           min={field.kind === 'number' ? 0 : undefined}
-                          value={String(row[field.key] ?? '')}
+                          value={
+                            field.kind === 'list'
+                              ? Array.isArray(row[field.key])
+                                ? (row[field.key] as string[]).join(', ')
+                                : ''
+                              : String(row[field.key] ?? '')
+                          }
                           placeholder={field.placeholder ?? field.label}
                           title={field.label}
                           onChange={(event) =>

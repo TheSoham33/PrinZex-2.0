@@ -214,6 +214,7 @@ export function mapBackendStoreDetailToFrontend(
             service.serviceId === 'bind-twin-loop'
               ? pricingOverrides.twinLoopOptions
               : undefined,
+          quantitySlabs: pricingOverrides.quantitySlabs?.[service.serviceId],
         };
       }) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),

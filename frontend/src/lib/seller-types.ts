@@ -129,6 +129,12 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
     ],
   },
   {
+    id: 'cards',
+    name: 'Cards',
+    description: 'Business cards and card printing',
+    services: [{ id: 'cards-business', name: 'Business Cards' }],
+  },
+  {
     id: 'packaging',
     name: 'Packaging & labels',
     description: 'Product labels, stickers and boxes',

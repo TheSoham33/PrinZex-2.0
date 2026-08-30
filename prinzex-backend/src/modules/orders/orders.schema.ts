@@ -50,6 +50,20 @@ export const specificationsSchema = z.object({
   twinLoopCoverMaterial: z.enum(['gloss-300', 'matte-350']).optional(),
   twinLoopBleedAcknowledged: z.boolean().optional(),
   twinLoopFlipAcknowledged: z.boolean().optional(),
+  // Business Cards customization — shapes/papers/sizes/corners validated
+  // against the catalogue card-* groups; slabs price the quantity.
+  cardShape: z.string().trim().min(1).optional(),
+  cardPaper: z.string().trim().min(1).optional(),
+  cardSize: z.string().trim().min(1).optional(),
+  cardCorners: z.string().trim().min(1).optional(),
+  cardPrintSides: z.enum(['single', 'double']).optional(),
+  cardDesignSource: z.enum(['template', 'upload']).optional(),
+  cardTemplate: z.string().trim().max(80).optional(),
+  cardFrontFileUrl: z.string().max(2048).optional(),
+  cardFrontFileName: z.string().trim().max(255).optional(),
+  cardBackFileUrl: z.string().max(2048).optional(),
+  cardBackFileName: z.string().trim().max(255).optional(),
+  cardProofApproved: z.boolean().optional(),
 });
 
 // ── POST /api/orders/quote ────────────────────────────────────────────────

@@ -34,6 +34,12 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
         ],
       },
       {
+        id: 'cards',
+        name: 'Cards',
+        description: 'Business cards and card printing',
+        services: [{ id: 'cards-business', name: 'Business Cards' }],
+      },
+      {
         id: 'packaging',
         name: 'Packaging & labels',
         description: 'Product labels, stickers and boxes',
@@ -82,7 +88,12 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
     label: 'Paper types',
     data: [
       { value: 'standard', label: 'Standard', hint: '70 GSM everyday paper', multiplier: 1 },
-      { value: 'digital', label: 'Digital Paper', hint: '90 GSM smooth digital print paper', multiplier: 1.2 },
+      {
+        value: 'digital',
+        label: 'Digital Paper',
+        hint: '90 GSM smooth digital print paper',
+        multiplier: 1.2,
+      },
       { value: 'premium', label: 'Premium', hint: '100 GSM thick paper', multiplier: 1.4 },
       { value: 'glossy', label: 'Glossy', hint: 'Shiny photo finish', multiplier: 1.8 },
       { value: 'matte', label: 'Matte', hint: 'Non-reflective finish', multiplier: 1.6 },
@@ -164,17 +175,100 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
   'twin-loop-front-covers': {
     label: 'Twin Loop front covers',
     data: [
-      { value: 'clear-gloss', label: 'Clear Gloss Acetate / PVC', hint: 'Transparent; first printed page remains visible' },
-      { value: 'frosted-matte', label: 'Frosted / Matte Polypropylene', hint: 'Semi-opaque and scratch resistant' },
-      { value: 'heavy-cardstock', label: 'Heavy Cardstock (300+ GSM)', hint: 'Printable artwork with matte or gloss lamination' },
+      {
+        value: 'clear-gloss',
+        label: 'Clear Gloss Acetate / PVC',
+        hint: 'Transparent; first printed page remains visible',
+      },
+      {
+        value: 'frosted-matte',
+        label: 'Frosted / Matte Polypropylene',
+        hint: 'Semi-opaque and scratch resistant',
+      },
+      {
+        value: 'heavy-cardstock',
+        label: 'Heavy Cardstock (300+ GSM)',
+        hint: 'Printable artwork with matte or gloss lamination',
+      },
     ],
   },
   'twin-loop-back-covers': {
     label: 'Twin Loop back covers',
     data: [
-      { value: 'matching-front', label: 'Matching Front', hint: 'Use the same style as the selected front cover' },
-      { value: 'vinyl-black', label: 'Heavy Vinyl / Leatherette — Black', hint: 'Rigid textured backing sheet' },
-      { value: 'vinyl-navy', label: 'Heavy Vinyl / Leatherette — Navy', hint: 'Rigid textured backing sheet' },
+      {
+        value: 'matching-front',
+        label: 'Matching Front',
+        hint: 'Use the same style as the selected front cover',
+      },
+      {
+        value: 'vinyl-black',
+        label: 'Heavy Vinyl / Leatherette — Black',
+        hint: 'Rigid textured backing sheet',
+      },
+      {
+        value: 'vinyl-navy',
+        label: 'Heavy Vinyl / Leatherette — Navy',
+        hint: 'Rigid textured backing sheet',
+      },
+    ],
+  },
+  'card-shapes': {
+    label: 'Card shapes',
+    data: [
+      { value: 'rectangle', label: 'Standard (Rectangle)', hint: 'Classic business card outline' },
+      { value: 'classic', label: 'Classic', hint: 'Softly rounded silhouette' },
+      { value: 'square', label: 'Square', hint: 'Modern square format' },
+      { value: 'leaf', label: 'Leaf', hint: 'Two opposite rounded corners' },
+      { value: 'oval', label: 'Oval', hint: 'Fully curved edges' },
+      { value: 'circle', label: 'Circle', hint: 'Round die-cut card' },
+    ],
+  },
+  'card-papers': {
+    label: 'Card paper & texture',
+    data: [
+      { value: 'glossy', label: 'Glossy', hint: 'Shiny coated stock' },
+      { value: 'matte', label: 'Matte', hint: 'Smooth non-reflective stock' },
+      { value: 'velvet', label: 'Velvet Touch', hint: 'Soft-touch lamination' },
+      {
+        value: 'premium-plus-glossy',
+        label: 'Premium Plus Glossy',
+        hint: 'Thick high-shine stock',
+      },
+      { value: 'non-tearable', label: 'Non-Tearable', hint: 'Waterproof synthetic stock' },
+      { value: 'spot-uv', label: 'Spot UV', hint: 'Raised gloss highlights' },
+      { value: 'pearl', label: 'Pearl', hint: 'Shimmer metallic stock' },
+      { value: 'kraft', label: 'Kraft', hint: 'Natural brown recycled stock' },
+      { value: 'diamond', label: 'Diamond', hint: 'Glitter finish stock' },
+      { value: 'raised-foil', label: 'Raised Foil', hint: 'Embossed metallic accents' },
+      { value: 'magnetic', label: 'Magnetic', hint: 'Fridge-magnet backing' },
+      { value: 'transparent', label: 'Transparent', hint: 'Frosted plastic stock' },
+    ],
+  },
+  'card-sizes': {
+    label: 'Card sizes',
+    data: [
+      { value: 'standard', label: 'Standard', hint: '89 × 51 mm' },
+      { value: 'square', label: 'Square', hint: '65 × 65 mm' },
+      { value: 'mini', label: 'Mini', hint: '85 × 45 mm' },
+    ],
+  },
+  'card-corners': {
+    label: 'Card corners',
+    data: [
+      { value: 'standard', label: 'Standard', hint: 'Square-cut corners' },
+      {
+        value: 'rounded',
+        label: 'Rounded',
+        hint: 'Cut for a smooth finish',
+        incompatibleWith: ['circle', 'oval', 'leaf'],
+      },
+    ],
+  },
+  'card-print-sides': {
+    label: 'Card print sides',
+    data: [
+      { value: 'single', label: 'Single-sided', hint: 'Design on the front only' },
+      { value: 'double', label: 'Double-sided', hint: 'Design on front and back' },
     ],
   },
 };
