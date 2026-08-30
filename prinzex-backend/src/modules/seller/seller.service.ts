@@ -8,12 +8,7 @@ import { OrderTimelineModel } from '../../models/mongo/Order.model';
 import type { DeliveryAddressSnapshot, OrderItemSpecifications, OrderStatus } from '../../types';
 import { ApiError } from '../../utils/ApiError';
 import { emitNotificationNew, emitOrderStatusChanged } from '../../realtime/realtime.emitters';
-import {
-  getCache,
-  setCache,
-  invalidateCache,
-  invalidateCachePattern,
-} from '../../utils/cache';
+import { getCache, setCache, invalidateCache, invalidateCachePattern } from '../../utils/cache';
 import { sendTeamInviteEmail } from '../../utils/email';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import {
@@ -101,6 +96,11 @@ export interface SellerMetadata {
       hangerPrice?: number;
       concealedPrice?: number;
     };
+    /** Quantity slab pricing per service (Business Cards): [{ qty, rate }]
+     *  meaning "from qty pieces, each piece costs ₹rate". The per-piece rate
+     *  falls as quantity grows; the service's slab price replaces its base
+     *  price when the customer orders. */
+    quantitySlabs?: Record<string, { qty: number; rate: number }[]>;
   };
 }
 
@@ -112,10 +112,7 @@ export function readSellerMetadata(json: Prisma.JsonValue | null): SellerMetadat
 }
 
 /** Keep Document Printing's base price and the seller-wide B&W page rate identical. */
-function metadataWithDocumentBwRate(
-  json: Prisma.JsonValue | null,
-  bw: number,
-): SellerMetadata {
+function metadataWithDocumentBwRate(json: Prisma.JsonValue | null, bw: number): SellerMetadata {
   const metadata = readSellerMetadata(json);
   return {
     ...metadata,
@@ -426,7 +423,10 @@ export async function listServices(sellerId: string): Promise<ServiceGroup[]> {
   return groupServicesByCategory(services);
 }
 
-export async function createService(sellerId: string, input: CreateServiceInput): Promise<SellerService> {
+export async function createService(
+  sellerId: string,
+  input: CreateServiceInput,
+): Promise<SellerService> {
   const duplicate = await prisma.sellerService.findUnique({
     where: { sellerId_serviceId: { sellerId, serviceId: input.serviceId } },
   });
@@ -461,7 +461,10 @@ export async function createService(sellerId: string, input: CreateServiceInput)
   return service;
 }
 
-async function findOwnedServiceOrThrow(sellerId: string, serviceId: string): Promise<SellerService> {
+async function findOwnedServiceOrThrow(
+  sellerId: string,
+  serviceId: string,
+): Promise<SellerService> {
   // The id is the row PK; ownership is enforced by the scoping check (404,
   // never 403 — don't confirm the row exists for other sellers).
   const service = await prisma.sellerService.findFirst({
@@ -559,10 +562,10 @@ export async function getPricing(sellerId: string): Promise<PricingInfo> {
     prisma.seller.findUnique({ where: { id: sellerId }, select: { metadata: true } }),
   ]);
   const metadata = readSellerMetadata(seller?.metadata ?? null);
-  return { 
-    services, 
+  return {
+    services,
     bulkDiscountTiers: metadata.bulkDiscountTiers ?? [],
-    pricingOverrides: metadata.pricingOverrides ?? {}
+    pricingOverrides: metadata.pricingOverrides ?? {},
   };
 }
 
@@ -595,12 +598,8 @@ export async function bulkUpdatePrices(
           data: {
             basePrice: entry.basePrice,
             unit: entry.unit,
-            ...(entry.minQuantity !== undefined
-              ? { minQuantity: entry.minQuantity }
-              : {}),
-            ...(entry.minPages !== undefined
-              ? { minPages: entry.minPages }
-              : {}),
+            ...(entry.minQuantity !== undefined ? { minQuantity: entry.minQuantity } : {}),
+            ...(entry.minPages !== undefined ? { minPages: entry.minPages } : {}),
           },
         }),
       ),
@@ -712,7 +711,10 @@ export async function updateInventoryItem(
   return prisma.sellerInventory.update({ where: { id: itemId }, data });
 }
 
-export async function deleteInventoryItem(sellerId: string, itemId: string): Promise<{ deleted: true }> {
+export async function deleteInventoryItem(
+  sellerId: string,
+  itemId: string,
+): Promise<{ deleted: true }> {
   await findOwnedInventoryItemOrThrow(sellerId, itemId);
   await prisma.sellerInventory.delete({ where: { id: itemId } });
   return { deleted: true };
@@ -720,7 +722,13 @@ export async function deleteInventoryItem(sellerId: string, itemId: string): Pro
 
 export interface LowStockAlertResult {
   count: number;
-  items: Array<{ id: string; name: string; currentStock: number; lowStockThreshold: number; unit: string }>;
+  items: Array<{
+    id: string;
+    name: string;
+    currentStock: number;
+    lowStockThreshold: number;
+    unit: string;
+  }>;
 }
 
 export async function getLowStockAlerts(sellerId: string): Promise<LowStockAlertResult> {
@@ -805,7 +813,10 @@ export async function updateTeamMember(
   return prisma.sellerTeamMember.update({ where: { id: memberId }, data });
 }
 
-export async function deleteTeamMember(sellerId: string, memberId: string): Promise<{ deleted: true }> {
+export async function deleteTeamMember(
+  sellerId: string,
+  memberId: string,
+): Promise<{ deleted: true }> {
   await findOwnedTeamMemberOrThrow(sellerId, memberId);
   await prisma.sellerTeamMember.delete({ where: { id: memberId } });
   return { deleted: true };
@@ -871,7 +882,8 @@ export function computeOverview(
   const totalRevenue = round2(orders.reduce((sum, order) => sum + Number(order.total), 0));
   const delivered = orders.filter((order) => order.status === 'delivered');
   const onTime = delivered.filter(
-    (order) => order.delivery?.deliveredAt != null && order.delivery.deliveredAt <= order.estimatedDelivery,
+    (order) =>
+      order.delivery?.deliveredAt != null && order.delivery.deliveredAt <= order.estimatedDelivery,
   );
 
   return {
@@ -971,7 +983,10 @@ export function bucketRevenueByDay(
   return [...buckets.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function getRevenueByDay(sellerId: string, period: AnalyticsPeriod): Promise<DailyRevenue[]> {
+export async function getRevenueByDay(
+  sellerId: string,
+  period: AnalyticsPeriod,
+): Promise<DailyRevenue[]> {
   const range = resolvePeriod(period);
   const orders = await prisma.order.findMany({
     where: {
@@ -1128,7 +1143,13 @@ export interface SellerOrderDetail {
     specifications: Prisma.JsonValue;
     fileUrl: string | null;
   }>;
-  timeline: Array<{ status: string; label?: string; timestamp: Date; note?: string; updatedBy: string }>;
+  timeline: Array<{
+    status: string;
+    label?: string;
+    timestamp: Date;
+    note?: string;
+    updatedBy: string;
+  }>;
 }
 
 async function findOwnedOrderOrThrow(sellerId: string, orderId: string) {
@@ -1142,7 +1163,10 @@ async function findOwnedOrderOrThrow(sellerId: string, orderId: string) {
   return order;
 }
 
-export async function getOrderDetail(sellerId: string, orderId: string): Promise<SellerOrderDetail> {
+export async function getOrderDetail(
+  sellerId: string,
+  orderId: string,
+): Promise<SellerOrderDetail> {
   const order = await findOwnedOrderOrThrow(sellerId, orderId);
   const mongoDoc = await OrderTimelineModel.findOne({ orderId: order.id });
 
@@ -1233,7 +1257,12 @@ async function notifyCustomerOrderUpdate(
     data: { orderId, status },
     channel: ['push'],
   });
-  emitNotificationNew('customer', customerId, { type: 'order_update', title, body, data: { orderId, status } }); // step 9
+  emitNotificationNew('customer', customerId, {
+    type: 'order_update',
+    title,
+    body,
+    data: { orderId, status },
+  }); // step 9
 }
 
 export async function updateOrderStatus(
@@ -1499,9 +1528,9 @@ export async function updateStoreHours(
   };
 
   // Sync root opening/closing fields with Monday's hours for basic DB filtering/sorting
-  const monday = input.hours.find(h => h.day.toLowerCase() === 'monday');
+  const monday = input.hours.find((h) => h.day.toLowerCase() === 'monday');
   const updateData: Prisma.SellerUpdateInput = {
-    metadata: metadata as Prisma.InputJsonValue
+    metadata: metadata as Prisma.InputJsonValue,
   };
 
   if (monday && !monday.closed) {
@@ -1569,7 +1598,9 @@ export async function updatePricingOverrides(
       Object.keys(twinLoop.frontCovers ?? {}).length === 0 ||
       Object.keys(twinLoop.backCovers ?? {}).length === 0
     ) {
-      throw ApiError.badRequest('Twin Loop needs at least one wire, front cover, and back cover option');
+      throw ApiError.badRequest(
+        'Twin Loop needs at least one wire, front cover, and back cover option',
+      );
     }
     if (
       !(twinLoop.frontCovers && 'heavy-cardstock' in twinLoop.frontCovers) ||
@@ -1584,6 +1615,24 @@ export async function updatePricingOverrides(
   const bwRate = overrides?.pageRate?.bw;
   if (bwRate !== undefined && (!Number.isFinite(bwRate) || bwRate <= 0)) {
     throw ApiError.badRequest('B&W page price must be greater than 0');
+  }
+
+  for (const [serviceId, slabs] of Object.entries(overrides?.quantitySlabs ?? {})) {
+    if (!Array.isArray(slabs) || slabs.length === 0) {
+      throw ApiError.badRequest(`Quantity slabs for ${serviceId} need at least one entry`);
+    }
+    for (const slab of slabs) {
+      if (
+        !Number.isInteger(slab.qty) ||
+        slab.qty < 1 ||
+        !Number.isFinite(slab.rate) ||
+        slab.rate <= 0
+      ) {
+        throw ApiError.badRequest(
+          `Quantity slabs for ${serviceId} need whole quantities and rates above 0`,
+        );
+      }
+    }
   }
 
   const metadata: SellerMetadata = {

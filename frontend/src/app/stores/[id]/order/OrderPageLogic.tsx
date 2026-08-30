@@ -168,6 +168,18 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           twinLoopCoverMaterial: specs.twinLoopCoverMaterial,
           twinLoopBleedAcknowledged: specs.twinLoopBleedAcknowledged,
           twinLoopFlipAcknowledged: specs.twinLoopFlipAcknowledged,
+          cardShape: specs.cardShape,
+          cardPaper: specs.cardPaper,
+          cardSize: specs.cardSize,
+          cardCorners: specs.cardCorners,
+          cardPrintSides: specs.cardPrintSides,
+          cardDesignSource: specs.cardDesignSource,
+          cardTemplate: specs.cardTemplate,
+          cardFrontFileUrl: specs.cardFrontFileUrl,
+          cardFrontFileName: specs.cardFrontFileName,
+          cardBackFileUrl: specs.cardBackFileUrl,
+          cardBackFileName: specs.cardBackFileName,
+          cardProofApproved: specs.cardProofApproved,
         },
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
         couponCode: couponCode || undefined,
@@ -220,7 +232,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         return `Minimum order quantity for this service is ${service?.minQuantity}`;
       if (service?.minPages && (specs.totalPages ?? 0) < service.minPages)
         return `Minimum page count should be ${service.minPages} for ${service.name}`;
-      if (!state.order.file) return 'Please upload the file you want printed';
+      if (!state.order.file && specs.serviceId !== 'cards-business')
+        return 'Please upload the file you want printed';
       if (specs.serviceId === 'bind-hard') {
         if (!specs.coverColor)
           return 'Please choose a hard cover fabric colour';
@@ -277,6 +290,29 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         }
         if (!specs.twinLoopFlipAcknowledged) {
           return 'Please confirm the back-cover 360-degree flip orientation';
+        }
+      }
+      if (specs.serviceId === 'cards-business') {
+        if (!specs.cardShape) return 'Please choose the card shape';
+        if (!specs.cardPaper) return 'Please choose the card paper / texture';
+        if (!specs.cardSize) return 'Please choose the card size';
+        if (!specs.cardCorners) return 'Please choose the corners';
+        if (!specs.cardPrintSides) {
+          return 'Please choose single or double-sided printing';
+        }
+        if (specs.cardDesignSource === 'template' && !specs.cardTemplate) {
+          return 'Please pick a ready template';
+        }
+        if (specs.cardDesignSource === 'upload') {
+          if (!specs.cardFrontFileUrl) {
+            return 'Please upload your front card design';
+          }
+          if (specs.cardPrintSides === 'double' && !specs.cardBackFileUrl) {
+            return 'Please upload your back design or switch to single-sided';
+          }
+        }
+        if (!specs.cardProofApproved) {
+          return 'Please approve the Business Card proof';
         }
       }
       return null;
@@ -370,6 +406,18 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           twinLoopCoverMaterial: specs.twinLoopCoverMaterial,
           twinLoopBleedAcknowledged: specs.twinLoopBleedAcknowledged,
           twinLoopFlipAcknowledged: specs.twinLoopFlipAcknowledged,
+          cardShape: specs.cardShape,
+          cardPaper: specs.cardPaper,
+          cardSize: specs.cardSize,
+          cardCorners: specs.cardCorners,
+          cardPrintSides: specs.cardPrintSides,
+          cardDesignSource: specs.cardDesignSource,
+          cardTemplate: specs.cardTemplate,
+          cardFrontFileUrl: specs.cardFrontFileUrl,
+          cardFrontFileName: specs.cardFrontFileName,
+          cardBackFileUrl: specs.cardBackFileUrl,
+          cardBackFileName: specs.cardBackFileName,
+          cardProofApproved: specs.cardProofApproved,
         },
         deliveryAddressId: (state.order.address as any)?.id,
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),

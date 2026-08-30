@@ -54,7 +54,13 @@ const serviceCategories = z.array(
   }),
 );
 
+/** Corners-style options — may declare shapes they can't combine with. */
+const hintOptionWithIncompatible = hintOption.extend({
+  incompatibleWith: z.array(keyString).optional(),
+});
+
 const hintOptions = z.array(hintOption);
+const hintOptionsWithIncompatible = z.array(hintOptionWithIncompatible);
 const multiplierOptions = z.array(multiplierOption);
 const finishingOptions = z.array(finishingOption);
 const swatchOptions = z.array(swatchOption);
@@ -72,6 +78,11 @@ export const CATALOG_GROUP_SCHEMAS: Record<string, z.ZodType<unknown>> = {
   'twin-loop-wire-colors': swatchOptions,
   'twin-loop-front-covers': hintOptions,
   'twin-loop-back-covers': hintOptions,
+  'card-shapes': hintOptions,
+  'card-papers': hintOptions,
+  'card-sizes': hintOptions,
+  'card-corners': hintOptionsWithIncompatible,
+  'card-print-sides': hintOptions,
 };
 
 export const catalogKeyParam = z.object({

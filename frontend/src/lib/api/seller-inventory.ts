@@ -64,6 +64,7 @@ export const updatePricingOverrides = async (overrides: {
     hangerPrice?: number;
     concealedPrice?: number;
   };
+  quantitySlabs?: Record<string, { qty: number; rate: number }[]>;
 }): Promise<any> => {
   return apiRequest<any>('/seller/settings/pricing-overrides', {
     method: 'PATCH',

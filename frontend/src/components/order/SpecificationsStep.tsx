@@ -20,6 +20,7 @@ import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import type { OrderAction } from './orderReducer';
 import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
+import BusinessCardCustomizationPanel from './BusinessCardCustomizationPanel';
 import {
   IconAlertCircle,
   IconUpload,
@@ -82,6 +83,7 @@ export default function SpecificationsStep({
   const isHardBinding = specs.serviceId === 'bind-hard';
   const isSpiralBinding = specs.serviceId === 'bind-spiral';
   const isTwinLoopBinding = specs.serviceId === 'bind-twin-loop';
+  const isBusinessCard = specs.serviceId === 'cards-business';
   const isCustomizableBinding = isHardBinding || isSpiralBinding;
 
   // Seller-configured minimum order quantity / page count for the service.
@@ -477,7 +479,7 @@ export default function SpecificationsStep({
         </p>
       )}
 
-      <section className="space-y-4">
+      <section className={`space-y-4 ${isBusinessCard ? 'hidden' : ''}`}>
         <label className="label">
           {isTwinLoopBinding
             ? specs.twinLoopCoverSubmission === 'split'
@@ -633,6 +635,16 @@ export default function SpecificationsStep({
                 serviceId: nextServiceId,
                 // The service's minimum becomes the default and the floor.
                 quantity: Math.max(nextMin, specs.quantity),
+                // Business Cards price via quantity slabs, and their panel owns
+                // paper/size/quantity — feed the shared plumbing safe defaults.
+                ...(nextServiceId === 'cards-business'
+                  ? {
+                      paperType: 'standard',
+                      size: 'custom',
+                      cardPrintSides: specs.cardPrintSides ?? 'single',
+                      cardDesignSource: specs.cardDesignSource ?? 'upload',
+                    }
+                  : {}),
               },
             });
           }}
@@ -648,7 +660,7 @@ export default function SpecificationsStep({
         </select>
       </section>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className={`grid gap-6 sm:grid-cols-2 ${isBusinessCard ? 'hidden' : ''}`}>
         <section>
           <p className="label">
             Paper type <span className="text-red-500">*</span>
@@ -729,7 +741,7 @@ export default function SpecificationsStep({
         </section>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className={`grid gap-6 sm:grid-cols-2 ${isBusinessCard ? 'hidden' : ''}`}>
         <section>
           <label htmlFor="quantity" className="label">
             Quantity <span className="text-red-500">*</span>
@@ -791,7 +803,7 @@ export default function SpecificationsStep({
           )}
         </section>
 
-        <section>
+        <section className={isBusinessCard ? 'hidden' : ''}>
           <p className="label">
             Colour <span className="text-red-500">*</span>
           </p>
@@ -853,6 +865,14 @@ export default function SpecificationsStep({
 
       {isTwinLoopBinding && (
         <TwinLoopCustomizationPanel
+          specs={specs}
+          service={selectedService}
+          dispatch={dispatch}
+        />
+      )}
+
+      {isBusinessCard && (
+        <BusinessCardCustomizationPanel
           specs={specs}
           service={selectedService}
           dispatch={dispatch}
@@ -1572,7 +1592,7 @@ export default function SpecificationsStep({
         </section>
       )}
 
-      <section>
+      <section className={isBusinessCard ? 'hidden' : ''}>
         <p className="label">Finishing (optional)</p>
         <div className="flex flex-wrap gap-2.5">
           {finishingOptions.map((option) => {

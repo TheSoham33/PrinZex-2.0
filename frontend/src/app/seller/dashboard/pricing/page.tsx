@@ -26,6 +26,10 @@ import {
 import PricingEditor from '@/components/seller-dashboard/PricingEditor';
 import HardBindingCustomizationOptions from '@/components/seller-dashboard/HardBindingCustomizationOptions';
 import PaperCustomizationOptions from '@/components/seller-dashboard/PaperCustomizationOptions';
+import QuantitySlabEditor, {
+  toSlabs,
+  type SlabDraft,
+} from '@/components/seller-dashboard/QuantitySlabEditor';
 import SpiralBindingCustomizationPricing from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
 import TwinLoopCustomizationPricing, {
   type TwinLoopPricingState,
@@ -73,6 +77,9 @@ export default function SellerPricingPage() {
         paperSizes: Record<string, number>;
       }
     >
+  >({});
+  const [quantitySlabs, setQuantitySlabs] = useState<
+    Record<string, SlabDraft[]>
   >({});
   const [twinLoopOptions, setTwinLoopOptions] = useState<TwinLoopPricingState>({
     wireColors: {},
@@ -162,6 +169,19 @@ export default function SellerPricingPage() {
                 savedPaperOptions[service.serviceId]?.paperSizes ??
                 defaultPaperSizes,
             },
+          ]),
+        ),
+      );
+
+      const savedSlabs = overrides.quantitySlabs ?? {};
+      setQuantitySlabs(
+        Object.fromEntries(
+          (data.services || []).map((service: any) => [
+            service.serviceId,
+            ((savedSlabs[service.serviceId] ?? []) as { qty: number; rate: number }[]).map((slab) => ({
+              qty: String(slab.qty),
+              rate: String(slab.rate),
+            })),
           ]),
         ),
       );
@@ -285,6 +305,11 @@ export default function SellerPricingPage() {
       hardFoilColors,
       servicePaperOptions,
       twinLoopOptions,
+      quantitySlabs: Object.fromEntries(
+        Object.entries(quantitySlabs)
+          .map(([serviceId, rows]) => [serviceId, toSlabs(rows)])
+          .filter(([, rows]) => rows.length > 0),
+      ),
     });
   };
 
@@ -385,6 +410,21 @@ export default function SellerPricingPage() {
                     onSave={handleSaveOverrides}
                     saving={updateOverridesMutation.isPending}
                   />
+
+                  {entry.serviceId === 'cards-business' && (
+                    <QuantitySlabEditor
+                      serviceName={entry.serviceName}
+                      rows={quantitySlabs[entry.serviceId] ?? []}
+                      onChange={(rows) =>
+                        setQuantitySlabs((current) => ({
+                          ...current,
+                          [entry.serviceId]: rows,
+                        }))
+                      }
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
+                  )}
 
                   {entry.serviceId === 'doc-print' && (
                     <div className="border-t border-slate-100 bg-blue-50/40 px-4 py-4">

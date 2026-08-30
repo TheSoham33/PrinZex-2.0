@@ -33,6 +33,17 @@ export type OrderAction =
   | { type: 'SET_STEP'; payload: number }
   | { type: 'SET_ERROR'; payload: string | null };
 
+/** Same "from qty → per-piece rate" picker as backend pricing.slabs. */
+export function pickSlabRate(
+  slabs: { qty: number; rate: number }[] | undefined,
+  quantity: number,
+): number | undefined {
+  if (!slabs?.length) return undefined;
+  const sorted = [...slabs].sort((a, b) => a.qty - b.qty);
+  const tier = [...sorted].reverse().find((s) => quantity >= s.qty) ?? sorted[0];
+  return tier.rate;
+}
+
 export const EMPTY_COST: CostBreakdown = {
   subtotal: 0,
   rushFee: 0,
@@ -278,6 +289,7 @@ export function computeCost(
   }, 0);
 
   const isBinding = Boolean(service?.id?.startsWith('bind-'));
+  const slabRate = pickSlabRate(service?.quantitySlabs, quantity);
   const twinLoop = service?.twinLoopOptions;
   const twinLoopExtra =
     service?.id === 'bind-twin-loop'
@@ -304,6 +316,10 @@ export function computeCost(
       (bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity +
         finishingPerUnit * quantity,
     );
+  } else if (slabRate !== undefined) {
+    // Slab-priced services (Business Cards): per-piece rate from the seller's
+    // quantity tiers — mirrors the backend quote branch.
+    subtotal = Math.round(slabRate * quantity + finishingPerUnit * quantity);
   } else {
     subtotal = Math.round(
       (base + paperOptionExtra) * quantity + finishingPerUnit * quantity,
