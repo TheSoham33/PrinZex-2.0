@@ -287,11 +287,11 @@ interface StageViewProps {
   marker?: 'data-stage-side' | 'data-preview-side';
 }
 
-const HANDLES: { corner: ResizeCorner; style: CSSProperties; cursor: string }[] = [
-  { corner: 'nw', style: { left: -5, top: -5 }, cursor: 'nwse-resize' },
-  { corner: 'ne', style: { right: -5, top: -5 }, cursor: 'nesw-resize' },
-  { corner: 'sw', style: { left: -5, bottom: -5 }, cursor: 'nesw-resize' },
-  { corner: 'se', style: { right: -5, bottom: -5 }, cursor: 'nwse-resize' },
+const HANDLE_CURSORS: { corner: ResizeCorner; cursor: string }[] = [
+  { corner: 'nw', cursor: 'nwse-resize' },
+  { corner: 'ne', cursor: 'nesw-resize' },
+  { corner: 'sw', cursor: 'nesw-resize' },
+  { corner: 'se', cursor: 'nwse-resize' },
 ];
 
 function StageView({
@@ -312,6 +312,12 @@ function StageView({
   const bleedOff = BLEED_MM * S;
   const radius = shapeStyle(shape, rounded).borderRadius;
   const bleedPx = BLEED_MM * S;
+  /**
+   * Rendered heights of text blocks (their model `h` only tracks the first
+   * line) so the selection chrome hugs multi-line text correctly. Written by
+   * ref callbacks after layout; one frame of lag, never user-visible.
+   */
+  const measuredHeights = useRef<Record<string, number>>({});
   return (
     <div
       {...{ [marker]: side }}
@@ -335,7 +341,6 @@ function StageView({
         }}
       >
         {doc.elements.map((el) => {
-          const selected = interactive && el.id === selectedId;
           const box: CSSProperties = {
             position: 'absolute',
             left: (BLEED_MM + el.x) * S,
@@ -350,6 +355,13 @@ function StageView({
               key={el.id}
               data-el-id={el.id}
               style={box}
+              ref={
+                el.kind === 'text'
+                  ? (node) => {
+                      if (node) measuredHeights.current[el.id] = node.offsetHeight;
+                    }
+                  : undefined
+              }
               onPointerDown={
                 interactive
                   ? (event) => {
@@ -410,22 +422,6 @@ function StageView({
                     />
                   );
                 })()}
-              {selected && (
-                <>
-                  <div className="pointer-events-none absolute -inset-px border border-blue-500" />
-                  {HANDLES.map(({ corner, style, cursor }) => (
-                    <span
-                      key={corner}
-                      onPointerDown={(event) => {
-                        event.stopPropagation();
-                        onHandleDown?.(event, el.id, corner);
-                      }}
-                      className="absolute z-10 h-2.5 w-2.5 rounded-[2px] border border-blue-500 bg-white"
-                      style={{ ...style, cursor, touchAction: 'none' }}
-                    />
-                  ))}
-                </>
-              )}
             </div>
           );
         })}
@@ -463,6 +459,47 @@ function StageView({
           backgroundClip: 'padding-box',
         }}
       />
+
+      {/* Selection chrome lives OUTSIDE the clipped artwork layer so handles
+          stay grabbable even when an element spans the whole bleed box (e.g.
+          a seeded full-bleed template/upload), whose corners would otherwise
+          be cut off by overflow-hidden. Text height uses the measured rendered
+          height (model `h` tracks only the first line). */}
+      {interactive &&
+        selectedId &&
+        (() => {
+          const el = doc.elements.find((item) => item.id === selectedId);
+          if (!el) return null;
+          const x = bleedOff + el.x * S;
+          const y = bleedOff + el.y * S;
+          const w = el.w * S;
+          const h =
+            el.kind === 'text' ? (measuredHeights.current[el.id] ?? el.h * S) : el.h * S;
+          return (
+            <>
+              <div
+                className="pointer-events-none absolute border border-blue-500"
+                style={{ left: x, top: y, width: w, height: h }}
+              />
+              {HANDLE_CURSORS.map(({ corner, cursor }) => (
+                <span
+                  key={corner}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    onHandleDown?.(event, el.id, corner);
+                  }}
+                  className="absolute z-10 h-3 w-3 rounded-[3px] border border-blue-500 bg-white shadow-sm"
+                  style={{
+                    left: corner === 'nw' || corner === 'sw' ? x - 6 : x + w - 6,
+                    top: corner === 'nw' || corner === 'ne' ? y - 6 : y + h - 6,
+                    cursor,
+                    touchAction: 'none',
+                  }}
+                />
+              ))}
+            </>
+          );
+        })()}
     </div>
   );
 }
