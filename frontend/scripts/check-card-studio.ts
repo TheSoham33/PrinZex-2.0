@@ -57,6 +57,20 @@ assert.equal(el.w, MIN_SIZE_MM);
 el = clampElement(shape({ x: 100 }), STANDARD);
 assert.equal(el.x, STANDARD.w + BLEED_MM - 20);
 
+/* Oversized elements PAN under the cover-clamp: free inside the covering
+   range, pinned at the bleed edges, never exposing a blank strip. */
+const big = shape({ x: -3, y: -3, w: 120, h: 57 });
+let pan = clampElement(big, STANDARD);
+assert.equal(pan.x, -BLEED_MM); // near edge pinned
+pan = clampElement({ ...big, x: -20 }, STANDARD);
+assert.equal(pan.x, -20); // inside the covering range — kept as dragged
+pan = clampElement({ ...big, x: -40 }, STANDARD);
+assert.equal(pan.x, STANDARD.w + BLEED_MM - 120); // = -28: far edge pinned
+pan = clampElement({ ...big, x: 10 }, STANDARD);
+assert.equal(pan.x, -BLEED_MM); // would expose background on the left
+pan = clampElement(shape({ x: 5, w: STANDARD.w + 2 * BLEED_MM }), STANDARD);
+assert.equal(pan.x, -BLEED_MM); // exactly bleed-size locks in place
+
 /* Move + clamp composition. */
 el = moveElementBy(shape({ x: 5, y: 5 }), 1000, -1000, STANDARD);
 assert.equal(el.x, STANDARD.w + BLEED_MM - 20);

@@ -130,7 +130,21 @@ export const uid = (): string =>
 
 /* ---------------------------- Element editing --------------------------- */
 
-/** Keep an element fully inside the bleed box so it can print somewhere. */
+/**
+ * Keep an element printable. Smaller-than-bleed elements may roam anywhere
+ * inside the bleed box. Elements that cover the whole bleed box (a seeded
+ * full-bleed template/upload, or anything enlarged past it) may PAN, but
+ * only within the range where they still cover it — that's how the customer
+ * frames the crop, and it guarantees no blank sliver at a cut edge.
+ */
+const clampAxis = (pos: number, elSize: number, cardSize: number): number => {
+  const nearEdge = -BLEED_MM;
+  const farEdge = cardSize + BLEED_MM - elSize;
+  return farEdge >= nearEdge
+    ? Math.min(Math.max(pos, nearEdge), farEdge) // fits inside the bleed box
+    : Math.min(Math.max(pos, farEdge), nearEdge); // oversized: keep covering
+};
+
 export function clampElement<T extends StudioElement>(el: T, size: { w: number; h: number }): T {
   const w = Math.max(MIN_SIZE_MM, el.w);
   const h = Math.max(MIN_SIZE_MM, el.h);
@@ -138,8 +152,8 @@ export function clampElement<T extends StudioElement>(el: T, size: { w: number; 
     ...el,
     w,
     h,
-    x: Math.min(Math.max(el.x, -BLEED_MM), size.w + BLEED_MM - w),
-    y: Math.min(Math.max(el.y, -BLEED_MM), size.h + BLEED_MM - h),
+    x: clampAxis(el.x, w, size.w),
+    y: clampAxis(el.y, h, size.h),
   };
 }
 
