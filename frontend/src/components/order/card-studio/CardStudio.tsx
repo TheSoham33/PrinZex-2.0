@@ -12,8 +12,9 @@
  * ponytail ceilings (known, deliberate):
  *  - No rotation, snapping or multi-select. Upgrade path: add `rotation` to
  *    ElementBase and rotate via CSS transform + ctx.rotate in export.ts.
- *  - Images sit cover-fit in their box; no in-box crop panning. Upgrade:
- *    store an {ox, oy, zoom} crop per image element.
+ *  - Oversized elements pan under a cover-clamp (must keep covering the
+ *    bleed box) — free off-edge overhang is intentionally not offered, so a
+ *    design can never print with an accidental blank sliver.
  *  - Undo tracks structure (add/move/resize/delete), not keystrokes — text
  *    and style tweaks mutate live. Upgrade: debounced snapshots per edit.
  *  - Pinch zoom not handled (buttons only).
