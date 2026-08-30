@@ -57,12 +57,17 @@ export const specificationsSchema = z.object({
   cardSize: z.string().trim().min(1).optional(),
   cardCorners: z.string().trim().min(1).optional(),
   cardPrintSides: z.enum(['single', 'double']).optional(),
-  cardDesignSource: z.enum(['template', 'upload']).optional(),
+  cardDesignSource: z.enum(['template', 'upload', 'editor']).optional(),
   cardTemplate: z.string().trim().max(80).optional(),
   cardFrontFileUrl: z.string().max(2048).optional(),
   cardFrontFileName: z.string().trim().max(255).optional(),
   cardBackFileUrl: z.string().max(2048).optional(),
   cardBackFileName: z.string().trim().max(255).optional(),
+  // Serialized design-studio docs for re-editing later. They embed uploaded
+  // images as data URLs (studio caps uploads at 2 MB → ≈2.7M base64 chars),
+  // hence the generous but finite size cap.
+  cardStudioFront: z.string().max(3_000_000).optional(),
+  cardStudioBack: z.string().max(3_000_000).optional(),
   cardProofApproved: z.boolean().optional(),
 });
 

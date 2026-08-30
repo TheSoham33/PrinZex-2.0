@@ -148,12 +148,15 @@ export interface OrderSpecifications {
   cardSize?: string;
   cardCorners?: string;
   cardPrintSides?: 'single' | 'double';
-  cardDesignSource?: 'template' | 'upload';
+  cardDesignSource?: 'template' | 'upload' | 'editor';
   cardTemplate?: string;
   cardFrontFileUrl?: string;
   cardFrontFileName?: string;
   cardBackFileUrl?: string;
   cardBackFileName?: string;
+  /** Serialized card-studio docs (see card-studio/model.ts) for re-editing. */
+  cardStudioFront?: string;
+  cardStudioBack?: string;
   cardProofApproved?: boolean;
   totalPages?: number;
 }

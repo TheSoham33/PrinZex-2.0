@@ -179,6 +179,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           cardFrontFileName: specs.cardFrontFileName,
           cardBackFileUrl: specs.cardBackFileUrl,
           cardBackFileName: specs.cardBackFileName,
+          cardStudioFront: specs.cardStudioFront,
+          cardStudioBack: specs.cardStudioBack,
           cardProofApproved: specs.cardProofApproved,
         },
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
@@ -311,6 +313,12 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
             return 'Please upload your back design or switch to single-sided';
           }
         }
+        if (specs.cardDesignSource === 'editor' && !specs.cardFrontFileUrl) {
+          return 'Please design your card in the studio and hit Save design';
+        }
+        if (!specs.cardDesignSource) {
+          return 'Please choose a design source';
+        }
         if (!specs.cardProofApproved) {
           return 'Please approve the Business Card proof';
         }
@@ -417,6 +425,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           cardFrontFileName: specs.cardFrontFileName,
           cardBackFileUrl: specs.cardBackFileUrl,
           cardBackFileName: specs.cardBackFileName,
+          cardStudioFront: specs.cardStudioFront,
+          cardStudioBack: specs.cardStudioBack,
           cardProofApproved: specs.cardProofApproved,
         },
         deliveryAddressId: (state.order.address as any)?.id,
