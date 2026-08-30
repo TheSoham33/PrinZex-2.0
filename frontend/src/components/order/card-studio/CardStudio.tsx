@@ -113,6 +113,9 @@ export interface StudioResult {
   /** Serialized docs (model.ts JSON) so the design can be re-opened later. */
   frontDoc: string;
   backDoc: string;
+  /** False when the back was never seeded nor touched — panel must keep the
+   *  previously uploaded back file (e.g. a PDF the studio can't rasterize). */
+  backChanged: boolean;
 }
 
 interface Props {
@@ -514,6 +517,10 @@ export default function CardStudio({
   const openedSnapshot = useRef(
     `${serializeDoc(docsRef.current.front)}|${serializeDoc(docsRef.current.back)}`,
   );
+  // First-render snapshot of the back doc — compared at save time to decide
+  // whether the back export should replace the customer's existing back file.
+  const backSeededAs = useRef<string | null>(null);
+  if (backSeededAs.current === null) backSeededAs.current = serializeDoc(docsRef.current.back);
   const dirty = `${serializeDoc(docs.front)}|${serializeDoc(docs.back)}` !== openedSnapshot.current;
 
   const doc = docs[side];
@@ -783,6 +790,7 @@ export default function CardStudio({
         backFile,
         frontDoc: serializeDoc(docs.front),
         backDoc: serializeDoc(docs.back),
+        backChanged: serializeDoc(docs.back) !== backSeededAs.current,
       });
     } finally {
       setSaving(false);

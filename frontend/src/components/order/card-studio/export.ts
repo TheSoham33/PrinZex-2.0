@@ -19,6 +19,29 @@ import {
 
 export type IconResolver = (el: IconElement) => SVGSVGElement | null;
 
+/**
+ * Read any same-origin/blob image URL into a capped data URL so it can live
+ * inside a serialized studio doc (blob URLs die with the tab, and the order
+ * API caps spec fields). Capping at the export width loses nothing the
+ * 300-DPI print would have kept.
+ */
+export async function toCappedDataUrl(url: string, maxWidthPx: number): Promise<string> {
+  const blob = await (await fetch(url)).blob();
+  if (!blob.type.startsWith('image/')) {
+    throw new Error('Only image designs can be edited in the studio');
+  }
+  const bitmap = await createImageBitmap(blob);
+  const scale = Math.min(1, maxWidthPx / bitmap.width);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D is unavailable in this browser');
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return canvas.toDataURL(blob.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.92);
+}
+
 const loadImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const img = new Image();

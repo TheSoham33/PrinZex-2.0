@@ -13,6 +13,7 @@ import {
   addElement,
   clampElement,
   createDoc,
+  docFromImage,
   duplicateElement,
   exportPixels,
   moveElementBy,
@@ -183,5 +184,16 @@ const flood = JSON.stringify({
   })),
 });
 assert.equal(parseDoc(flood)?.elements.length, 100);
+
+/* Template/upload seeding: full-bleed base image covering trim + bleed. */
+const seeded = docFromImage('data:image/png;base64,x', 'template t2', STANDARD);
+assert.equal(seeded.elements.length, 1);
+const seedEl = seeded.elements[0] as ImageElement;
+assert.equal(seedEl.kind, 'image');
+assert.equal(seedEl.x, -BLEED_MM);
+assert.equal(seedEl.y, -BLEED_MM);
+assert.equal(seedEl.w, STANDARD.w + 2 * BLEED_MM);
+assert.equal(seedEl.h, STANDARD.h + 2 * BLEED_MM);
+assert.deepEqual(parseDoc(serializeDoc(seeded))?.elements[0], seedEl);
 
 console.log('card-studio model checks: OK');

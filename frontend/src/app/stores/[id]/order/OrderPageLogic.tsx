@@ -313,9 +313,6 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
             return 'Please upload your back design or switch to single-sided';
           }
         }
-        if (specs.cardDesignSource === 'editor' && !specs.cardFrontFileUrl) {
-          return 'Please design your card in the studio and hit Save design';
-        }
         if (!specs.cardDesignSource) {
           return 'Please choose a design source';
         }
