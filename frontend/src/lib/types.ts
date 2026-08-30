@@ -148,7 +148,7 @@ export interface OrderSpecifications {
   cardSize?: string;
   cardCorners?: string;
   cardPrintSides?: 'single' | 'double';
-  cardDesignSource?: 'template' | 'upload' | 'editor';
+  cardDesignSource?: 'template' | 'upload';
   cardTemplate?: string;
   cardFrontFileUrl?: string;
   cardFrontFileName?: string;

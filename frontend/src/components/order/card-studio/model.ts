@@ -100,6 +100,30 @@ export interface StudioDoc {
 
 export const createDoc = (): StudioDoc => ({ background: '#ffffff', elements: [] });
 
+/**
+ * Seed a doc with an existing design (picked template / uploaded artwork)
+ * stretched full-bleed so it prints to the cut edge.
+ */
+export const docFromImage = (
+  url: string,
+  name: string,
+  size: { w: number; h: number },
+): StudioDoc => ({
+  background: '#ffffff',
+  elements: [
+    {
+      id: uid(),
+      kind: 'image',
+      url,
+      name,
+      x: -BLEED_MM,
+      y: -BLEED_MM,
+      w: size.w + 2 * BLEED_MM,
+      h: size.h + 2 * BLEED_MM,
+    },
+  ],
+});
+
 let idCounter = 0;
 export const uid = (): string =>
   `el-${Date.now().toString(36)}-${(idCounter++).toString(36)}`;

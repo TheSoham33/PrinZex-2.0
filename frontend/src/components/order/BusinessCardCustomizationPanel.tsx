@@ -16,11 +16,18 @@ import {
   IconFileText,
   IconPencil,
   IconTrash,
-  IconType,
   IconUpload,
 } from '@/components/icons';
 import CardStudio, { type StudioResult } from './card-studio/CardStudio';
-import { SIZE_ASPECT, shapeStyle } from './card-studio/model';
+import {
+  SIZE_ASPECT,
+  docFromImage,
+  exportPixels,
+  serializeDoc,
+  shapeStyle,
+  sizeMm,
+} from './card-studio/model';
+import { toCappedDataUrl } from './card-studio/export';
 import type { OrderAction } from './orderReducer';
 
 interface Props {
@@ -31,6 +38,9 @@ interface Props {
 
 const ACCEPTED = '.pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg';
 const TEMPLATES = ['t1', 't2', 't3', 't4'];
+
+const isPdfFile = (url?: string, name?: string): boolean =>
+  Boolean(name?.toLowerCase().endsWith('.pdf') || url?.toLowerCase().endsWith('.pdf'));
 
 /** Subtle material tint layered over the design so previews read texture. */
 const PAPER_OVERLAY: Record<string, string | undefined> = {
@@ -189,10 +199,12 @@ export default function BusinessCardCustomizationPanel({
 
   const setDesignFile = (side: 'front' | 'back', file: File) => {
     const url = URL.createObjectURL(file);
+    // A fresh upload invalidates that side's studio doc (it was seeded from,
+    // or last saved against, the previous file).
     setSpec(
       side === 'front'
-        ? { cardFrontFileUrl: url, cardFrontFileName: file.name, cardProofApproved: false }
-        : { cardBackFileUrl: url, cardBackFileName: file.name, cardProofApproved: false },
+        ? { cardFrontFileUrl: url, cardFrontFileName: file.name, cardStudioFront: undefined, cardProofApproved: false }
+        : { cardBackFileUrl: url, cardBackFileName: file.name, cardStudioBack: undefined, cardProofApproved: false },
     );
   };
 
@@ -201,8 +213,8 @@ export default function BusinessCardCustomizationPanel({
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     setSpec(
       side === 'front'
-        ? { cardFrontFileUrl: undefined, cardFrontFileName: undefined, cardProofApproved: false }
-        : { cardBackFileUrl: undefined, cardBackFileName: undefined, cardProofApproved: false },
+        ? { cardFrontFileUrl: undefined, cardFrontFileName: undefined, cardStudioFront: undefined, cardProofApproved: false }
+        : { cardBackFileUrl: undefined, cardBackFileName: undefined, cardStudioBack: undefined, cardProofApproved: false },
     );
   };
 
@@ -213,37 +225,124 @@ export default function BusinessCardCustomizationPanel({
   const overlay = PAPER_OVERLAY[specs.cardPaper ?? ''];
 
   const [studioOpen, setStudioOpen] = useState(false);
+  const [studioBusy, setStudioBusy] = useState(false);
+  const [studioSeed, setStudioSeed] = useState<{ front: string | null; back: string | null }>({
+    front: null,
+    back: null,
+  });
 
-  /** Studio exported a fresh 300-DPI PNG per side — adopt them like uploads. */
-  const handleStudioSave = (result: StudioResult) => {
-    for (const url of [specs.cardFrontFileUrl, specs.cardBackFileUrl]) {
-      if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+  /**
+   * Open the design studio on top of the chosen source: the picked template or
+   * the uploaded artwork becomes the doc's full-bleed base image (capped to
+   * export resolution and stored as a data URL so the doc survives reloads).
+   * Previously saved studio docs take precedence over the raw design.
+   */
+  const openStudio = async () => {
+    setStudioBusy(true);
+    try {
+      const size = sizeMm(specs.cardSize);
+      const capWidth = exportPixels(size).w;
+      const seed: { front: string | null; back: string | null } = {
+        front: specs.cardStudioFront ?? null,
+        back: specs.cardStudioBack ?? null,
+      };
+      if (!seed.front) {
+        const url =
+          specs.cardDesignSource === 'template'
+            ? `/images/templates/business-cards/${specs.cardTemplate}.jpg`
+            : specs.cardFrontFileUrl;
+        if (url && !isPdfFile(url, specs.cardFrontFileName)) {
+          seed.front = serializeDoc(
+            docFromImage(
+              await toCappedDataUrl(url, capWidth),
+              specs.cardFrontFileName ?? 'card design',
+              size,
+            ),
+          );
+        }
+      }
+      if (
+        !seed.back &&
+        specs.cardBackFileUrl &&
+        !isPdfFile(specs.cardBackFileUrl, specs.cardBackFileName)
+      ) {
+        seed.back = serializeDoc(
+          docFromImage(
+            await toCappedDataUrl(specs.cardBackFileUrl, capWidth),
+            specs.cardBackFileName ?? 'card back',
+            size,
+          ),
+        );
+      }
+      setStudioSeed(seed);
+      setStudioOpen(true);
+    } catch {
+      window.alert(
+        'Could not open this design in the studio. PDF artwork cannot be edited — upload it as PNG/JPG, or keep it as-is.',
+      );
+    } finally {
+      setStudioBusy(false);
     }
-    setSpec({
-      cardDesignSource: 'editor',
+  };
+
+  /**
+   * Adopt the studio's 300-DPI exports. The back file is replaced only when
+   * the customer actually seeded or edited it there — an untouched raw back
+   * (e.g. an uploaded PDF) must survive a front-only edit.
+   */
+  const handleStudioSave = (result: StudioResult) => {
+    if (specs.cardFrontFileUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(specs.cardFrontFileUrl);
+    }
+    const patch: Partial<OrderSpecifications> = {
       cardFrontFileUrl: URL.createObjectURL(result.frontFile),
       cardFrontFileName: result.frontFile.name,
       cardStudioFront: result.frontDoc,
       cardStudioBack: result.backDoc,
       cardProofApproved: false,
-      ...(result.backFile
-        ? {
-            cardBackFileUrl: URL.createObjectURL(result.backFile),
-            cardBackFileName: result.backFile.name,
-          }
-        : { cardBackFileUrl: undefined, cardBackFileName: undefined }),
-    });
+    };
+    if (result.backChanged && result.backFile) {
+      if (specs.cardBackFileUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(specs.cardBackFileUrl);
+      }
+      patch.cardBackFileUrl = URL.createObjectURL(result.backFile);
+      patch.cardBackFileName = result.backFile.name;
+    }
+    setSpec(patch);
     setStudioOpen(false);
   };
 
+  /** Template flow only: drop studio edits so the raw template shows again. */
+  const revertToRawTemplate = () => {
+    for (const url of [specs.cardFrontFileUrl, specs.cardBackFileUrl]) {
+      if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    }
+    setSpec({
+      cardFrontFileUrl: undefined,
+      cardFrontFileName: undefined,
+      cardBackFileUrl: undefined,
+      cardBackFileName: undefined,
+      cardStudioFront: undefined,
+      cardStudioBack: undefined,
+      cardProofApproved: false,
+    });
+  };
+
   const previewFor = (side: 'front' | 'back') => {
+    // A saved studio doc means the exported PNG is the design of record —
+    // show it instead of the raw template/upload it was seeded from.
     const url =
       side === 'front'
-        ? specs.cardDesignSource === 'template'
-          ? `/images/templates/business-cards/${specs.cardTemplate}.jpg`
-          : specs.cardFrontFileUrl
+        ? specs.cardStudioFront && specs.cardFrontFileUrl
+          ? specs.cardFrontFileUrl
+          : specs.cardDesignSource === 'template'
+            ? `/images/templates/business-cards/${specs.cardTemplate}.jpg`
+            : specs.cardFrontFileUrl
         : specs.cardBackFileUrl;
-    const isPdf = url?.toLowerCase().endsWith('.pdf') || url?.startsWith('blob:') && (side === 'front' ? specs.cardFrontFileName : specs.cardBackFileName)?.toLowerCase().endsWith('.pdf');
+    const isPdf = isPdfFile(
+      url,
+      side === 'front' ? specs.cardFrontFileName : specs.cardBackFileName,
+    );
     return { url: isPdf ? undefined : url, isPdf };
   };
 
@@ -415,12 +514,11 @@ export default function BusinessCardCustomizationPanel({
         <p className="label">
           Design source <span className="text-red-500">*</span>
         </p>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {(
             [
-              { value: 'template', label: 'Browse ready templates', hint: 'Pick from common layouts and add your details' },
-              { value: 'upload', label: 'Upload your own design', hint: 'Print-ready artwork at 300 DPI' },
-              { value: 'editor', label: 'Design online', hint: 'Make your card in our free studio — no artwork needed' },
+              { value: 'template', label: 'Browse ready templates', hint: 'Pick a layout, then add your details in the design studio' },
+              { value: 'upload', label: 'Upload your own design', hint: 'Print-ready artwork at 300 DPI — editable in the studio' },
             ] as const
           ).map((option) => (
             <button
@@ -440,92 +538,109 @@ export default function BusinessCardCustomizationPanel({
         </div>
 
         {specs.cardDesignSource === 'template' && (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {TEMPLATES.map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setSpec({ cardTemplate: id, cardProofApproved: false })}
-                className={`overflow-hidden rounded-xl border-2 transition-all ${
-                  specs.cardTemplate === id
-                    ? 'border-blue-500 ring-1 ring-blue-500'
-                    : 'border-slate-200 hover:border-blue-200'
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/images/templates/business-cards/${id}.jpg`}
-                  alt={`Template ${id}`}
-                  className="aspect-[89/51] w-full object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {specs.cardDesignSource === 'upload' && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <DesignUpload
-              side="front"
-              required
-              fileUrl={specs.cardFrontFileUrl}
-              fileName={specs.cardFrontFileName}
-              onFile={(file) => setDesignFile('front', file)}
-              onRemove={() => removeDesignFile('front')}
-            />
-            {specs.cardPrintSides === 'double' && (
-              <DesignUpload
-                side="back"
-                fileUrl={specs.cardBackFileUrl}
-                fileName={specs.cardBackFileName}
-                onFile={(file) => setDesignFile('back', file)}
-                onRemove={() => removeDesignFile('back')}
-              />
+          <div className="mt-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {TEMPLATES.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    if (id === specs.cardTemplate) return;
+                    // Switching templates discards studio edits seeded from
+                    // the previous one.
+                    for (const url of [specs.cardFrontFileUrl, specs.cardBackFileUrl]) {
+                      if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+                    }
+                    setSpec({
+                      cardTemplate: id,
+                      cardProofApproved: false,
+                      cardFrontFileUrl: undefined,
+                      cardFrontFileName: undefined,
+                      cardStudioFront: undefined,
+                      cardStudioBack: undefined,
+                    });
+                  }}
+                  className={`overflow-hidden rounded-xl border-2 transition-all ${
+                    specs.cardTemplate === id
+                      ? 'border-blue-500 ring-1 ring-blue-500'
+                      : 'border-slate-200 hover:border-blue-200'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/images/templates/business-cards/${id}.jpg`}
+                    alt={`Template ${id}`}
+                    className="aspect-[89/51] w-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+            {specs.cardTemplate && (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={studioBusy}
+                  onClick={openStudio}
+                  className="flex items-center gap-1.5 rounded-lg border border-blue-200 px-3.5 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                >
+                  <IconPencil className="h-4 w-4" />
+                  {studioBusy
+                    ? 'Preparing…'
+                    : specs.cardStudioFront
+                      ? 'Edit design in the studio'
+                      : 'Customize this template in the studio'}
+                </button>
+                {specs.cardStudioFront && (
+                  <button
+                    type="button"
+                    onClick={revertToRawTemplate}
+                    className="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-red-600 hover:underline"
+                  >
+                    Revert to the original template
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
 
-        {specs.cardDesignSource === 'editor' && (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-            {specs.cardFrontFileUrl ? (
-              <div className="flex flex-wrap items-center gap-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={specs.cardFrontFileUrl}
-                  alt="Saved card design"
-                  className="h-16 rounded-lg border border-slate-200 bg-slate-50 object-contain"
+        {specs.cardDesignSource === 'upload' && (
+          <div className="mt-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <DesignUpload
+                side="front"
+                required
+                fileUrl={specs.cardFrontFileUrl}
+                fileName={specs.cardFrontFileName}
+                onFile={(file) => setDesignFile('front', file)}
+                onRemove={() => removeDesignFile('front')}
+              />
+              {specs.cardPrintSides === 'double' && (
+                <DesignUpload
+                  side="back"
+                  fileUrl={specs.cardBackFileUrl}
+                  fileName={specs.cardBackFileName}
+                  onFile={(file) => setDesignFile('back', file)}
+                  onRemove={() => removeDesignFile('back')}
                 />
-                <div className="min-w-48 flex-1">
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
-                    <IconCheckCircle className="h-4 w-4 shrink-0 text-green-600" />
-                    Design saved in the studio
-                  </p>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    A 300-DPI print file was generated per side. Changed the size or
-                    shape afterwards? Re-open the studio and save again to regenerate
-                    it.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setStudioOpen(true)}
-                  className="flex items-center gap-1.5 rounded-lg border border-blue-200 px-3.5 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-                >
-                  <IconPencil className="h-4 w-4" /> Edit design
-                </button>
-              </div>
-            ) : (
+              )}
+            </div>
+            {((specs.cardFrontFileUrl && !isPdfFile(specs.cardFrontFileUrl, specs.cardFrontFileName)) ||
+              (specs.cardPrintSides === 'double' &&
+                specs.cardBackFileUrl &&
+                !isPdfFile(specs.cardBackFileUrl, specs.cardBackFileName))) && (
               <button
                 type="button"
-                onClick={() => setStudioOpen(true)}
-                className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500 hover:border-blue-300 hover:text-blue-700"
+                disabled={studioBusy}
+                onClick={openStudio}
+                className="mt-3 flex items-center gap-1.5 rounded-lg border border-blue-200 px-3.5 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
               >
-                <IconType className="h-6 w-6" />
-                <span className="font-semibold">Open the design studio</span>
-                <span className="text-xs font-normal text-slate-400">
-                  Add text, logos, shapes and colours — we export a print-ready 300-DPI
-                  file for you.
-                </span>
+                <IconPencil className="h-4 w-4" />
+                {studioBusy
+                  ? 'Preparing…'
+                  : specs.cardStudioFront
+                    ? 'Edit design in the studio'
+                    : 'Edit your design in the studio'}
               </button>
             )}
           </div>
@@ -580,8 +695,8 @@ export default function BusinessCardCustomizationPanel({
               ? Math.round(activeRate * specs.quantity * 100) / 100
               : undefined
           }
-          initialFront={specs.cardStudioFront}
-          initialBack={specs.cardStudioBack}
+          initialFront={studioSeed.front}
+          initialBack={studioSeed.back}
           onSave={handleStudioSave}
           onClose={() => setStudioOpen(false)}
         />
