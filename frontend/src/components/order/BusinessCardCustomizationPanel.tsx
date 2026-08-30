@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CARD_PAPERS as CARD_PAPERS_FALLBACK,
   CARD_PRINT_SIDES as CARD_PRINT_SIDES_FALLBACK,
@@ -14,9 +14,13 @@ import { formatCurrency } from '@/lib/utils';
 import {
   IconCheckCircle,
   IconFileText,
+  IconPencil,
   IconTrash,
+  IconType,
   IconUpload,
 } from '@/components/icons';
+import CardStudio, { type StudioResult } from './card-studio/CardStudio';
+import { SIZE_ASPECT, shapeStyle } from './card-studio/model';
 import type { OrderAction } from './orderReducer';
 
 interface Props {
@@ -27,31 +31,6 @@ interface Props {
 
 const ACCEPTED = '.pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg';
 const TEMPLATES = ['t1', 't2', 't3', 't4'];
-
-/** CSS approximation of each die-cut shape (rounded corners fold in here). */
-function shapeStyle(shape?: string, rounded?: boolean, aspect?: string) {
-  const radius = rounded ? '18%' : '8%';
-  switch (shape) {
-    case 'square':
-      return { borderRadius: radius, aspectRatio: '1 / 1' };
-    case 'circle':
-      return { borderRadius: '50%', aspectRatio: '1 / 1' };
-    case 'oval':
-      return { borderRadius: '50%', aspectRatio: aspect ?? '89 / 51' };
-    case 'leaf':
-      return { borderRadius: '50% 8% 50% 8%', aspectRatio: aspect ?? '89 / 51' };
-    case 'classic':
-      return { borderRadius: '14%', aspectRatio: aspect ?? '89 / 51' };
-    default: // rectangle
-      return { borderRadius: radius, aspectRatio: aspect ?? '89 / 51' };
-  }
-}
-
-const SIZE_ASPECT: Record<string, string> = {
-  standard: '89 / 51',
-  square: '1 / 1',
-  mini: '85 / 45',
-};
 
 /** Subtle material tint layered over the design so previews read texture. */
 const PAPER_OVERLAY: Record<string, string | undefined> = {
@@ -233,6 +212,30 @@ export default function BusinessCardCustomizationPanel({
   const previewShape = { ...shapeStyle(specs.cardShape, rounded, aspect) };
   const overlay = PAPER_OVERLAY[specs.cardPaper ?? ''];
 
+  const [studioOpen, setStudioOpen] = useState(false);
+
+  /** Studio exported a fresh 300-DPI PNG per side — adopt them like uploads. */
+  const handleStudioSave = (result: StudioResult) => {
+    for (const url of [specs.cardFrontFileUrl, specs.cardBackFileUrl]) {
+      if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    }
+    setSpec({
+      cardDesignSource: 'editor',
+      cardFrontFileUrl: URL.createObjectURL(result.frontFile),
+      cardFrontFileName: result.frontFile.name,
+      cardStudioFront: result.frontDoc,
+      cardStudioBack: result.backDoc,
+      cardProofApproved: false,
+      ...(result.backFile
+        ? {
+            cardBackFileUrl: URL.createObjectURL(result.backFile),
+            cardBackFileName: result.backFile.name,
+          }
+        : { cardBackFileUrl: undefined, cardBackFileName: undefined }),
+    });
+    setStudioOpen(false);
+  };
+
   const previewFor = (side: 'front' | 'back') => {
     const url =
       side === 'front'
@@ -412,11 +415,12 @@ export default function BusinessCardCustomizationPanel({
         <p className="label">
           Design source <span className="text-red-500">*</span>
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           {(
             [
               { value: 'template', label: 'Browse ready templates', hint: 'Pick from common layouts and add your details' },
               { value: 'upload', label: 'Upload your own design', hint: 'Print-ready artwork at 300 DPI' },
+              { value: 'editor', label: 'Design online', hint: 'Make your card in our free studio — no artwork needed' },
             ] as const
           ).map((option) => (
             <button
@@ -480,6 +484,52 @@ export default function BusinessCardCustomizationPanel({
             )}
           </div>
         )}
+
+        {specs.cardDesignSource === 'editor' && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+            {specs.cardFrontFileUrl ? (
+              <div className="flex flex-wrap items-center gap-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={specs.cardFrontFileUrl}
+                  alt="Saved card design"
+                  className="h-16 rounded-lg border border-slate-200 bg-slate-50 object-contain"
+                />
+                <div className="min-w-48 flex-1">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                    <IconCheckCircle className="h-4 w-4 shrink-0 text-green-600" />
+                    Design saved in the studio
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    A 300-DPI print file was generated per side. Changed the size or
+                    shape afterwards? Re-open the studio and save again to regenerate
+                    it.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStudioOpen(true)}
+                  className="flex items-center gap-1.5 rounded-lg border border-blue-200 px-3.5 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                >
+                  <IconPencil className="h-4 w-4" /> Edit design
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStudioOpen(true)}
+                className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500 hover:border-blue-300 hover:text-blue-700"
+              >
+                <IconType className="h-6 w-6" />
+                <span className="font-semibold">Open the design studio</span>
+                <span className="text-xs font-normal text-slate-400">
+                  Add text, logos, shapes and colours — we export a print-ready 300-DPI
+                  file for you.
+                </span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <ChoiceGrid
@@ -518,6 +568,24 @@ export default function BusinessCardCustomizationPanel({
           are correct and match my brand guidelines.
         </span>
       </label>
+
+      {studioOpen && (
+        <CardStudio
+          cardSize={specs.cardSize}
+          cardShape={specs.cardShape}
+          rounded={rounded}
+          doubleSided={specs.cardPrintSides === 'double'}
+          price={
+            activeRate !== undefined
+              ? Math.round(activeRate * specs.quantity * 100) / 100
+              : undefined
+          }
+          initialFront={specs.cardStudioFront}
+          initialBack={specs.cardStudioBack}
+          onSave={handleStudioSave}
+          onClose={() => setStudioOpen(false)}
+        />
+      )}
     </section>
   );
 }

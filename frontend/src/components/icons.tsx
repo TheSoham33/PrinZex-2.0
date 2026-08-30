@@ -563,3 +563,72 @@ export const IconBan = (props: IconProps) => (
     <path d="m4.9 4.9 14.2 14.2" />
   </svg>
 );
+
+/* ------------------------------------------------------------------ */
+/* Card studio (business-card design editor)                           */
+/* ------------------------------------------------------------------ */
+
+export const IconType = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <polyline points="4 7 4 4 20 4 20 7" />
+    <line x1="9" x2="15" y1="20" y2="20" />
+    <line x1="12" x2="12" y1="4" y2="20" />
+  </svg>
+);
+
+export const IconShapes = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <circle cx="17.5" cy="17.5" r="3.5" />
+  </svg>
+);
+
+export const IconUndo = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <path d="M3 7v6h6" />
+    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+  </svg>
+);
+
+export const IconRedo = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <path d="M21 7v6h-6" />
+    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+  </svg>
+);
+
+export const IconZoomIn = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" x2="16.65" y1="21" y2="16.65" />
+    <line x1="11" x2="11" y1="8" y2="14" />
+    <line x1="8" x2="14" y1="11" y2="11" />
+  </svg>
+);
+
+export const IconZoomOut = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" x2="16.65" y1="21" y2="16.65" />
+    <line x1="8" x2="14" y1="11" y2="11" />
+  </svg>
+);
+
+export const IconSquare = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+  </svg>
+);
+
+export const IconCircle = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <circle cx="12" cy="12" r="10" />
+  </svg>
+);
+
+export const IconMinus = (props: IconProps) => (
+  <svg {...base} {...props}>
+    <path d="M5 12h14" />
+  </svg>
+);
