@@ -71,6 +71,10 @@ assert.equal(pan.x, -BLEED_MM); // would expose background on the left
 pan = clampElement(shape({ x: 5, w: STANDARD.w + 2 * BLEED_MM }), STANDARD);
 assert.equal(pan.x, -BLEED_MM); // exactly bleed-size locks in place
 
+/* Text has a 3pt floor and may overhang the card keeping a 2 mm grip
+   inside the bleed box on some edge — asserts live below the fixture. */
+assert.equal(MIN_TEXT_PT, 3);
+
 /* Move + clamp composition. */
 el = moveElementBy(shape({ x: 5, y: 5 }), 1000, -1000, STANDARD);
 assert.equal(el.x, STANDARD.w + BLEED_MM - 20);
@@ -121,6 +125,17 @@ let shrunk = resizeElement(text({}), 'se', -1000, 0, STANDARD);
 assert.equal(shrunk.fontSize, MIN_TEXT_PT);
 let exploded = resizeElement(text({}), 'se', 100000, 0, STANDARD);
 assert.equal(exploded.fontSize, MAX_TEXT_PT);
+
+/* Text overhang: free outside the card, but a 2 mm sliver always stays
+   inside the bleed box so the block can't be pushed offstage and lost. */
+let tClamp = clampElement(text({ x: -100, y: 5, w: 40 }), STANDARD);
+assert.equal(tClamp.x, -40 - BLEED_MM + 2); // = -41: leftmost, 2mm visible
+tClamp = clampElement(text({ x: 500, y: 5, w: 40 }), STANDARD);
+assert.equal(tClamp.x, STANDARD.w + BLEED_MM - 2); // = 90: rightmost
+tClamp = clampElement(text({ x: -100, y: -100, w: 40 }), STANDARD);
+assert.equal(tClamp.y, -5.5 - BLEED_MM + 2); // fixture h=5.5 → -6.5
+tClamp = clampElement(text({ x: 5, y: 5, w: 40 }), STANDARD);
+assert.equal(tClamp.x, 5); // inside range — untouched
 
 /* Z-order as array order. */
 let doc: StudioDoc = createDoc();

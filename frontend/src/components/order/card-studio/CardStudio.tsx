@@ -13,8 +13,10 @@
  *  - No rotation, snapping or multi-select. Upgrade path: add `rotation` to
  *    ElementBase and rotate via CSS transform + ctx.rotate in export.ts.
  *  - Oversized elements pan under a cover-clamp (must keep covering the
- *    bleed box) — free off-edge overhang is intentionally not offered, so a
- *    design can never print with an accidental blank sliver.
+ *    bleed box) — free off-edge overhang is intentionally not offered for
+ *    images/shapes/icons, so a design can never print with an accidental
+ *    blank sliver. Text MAY overhang by design; the stage clips it at the
+ *    bleed edge, exactly what the cutter trims.
  *  - Undo tracks structure (add/move/resize/delete), not keystrokes — text
  *    and style tweaks mutate live. Upgrade: debounced snapshots per edit.
  *  - Pinch zoom not handled (buttons only).
@@ -62,6 +64,8 @@ import {
 import {
   BLEED_MM,
   FONT_STACKS,
+  MAX_TEXT_PT,
+  MIN_TEXT_PT,
   SAFETY_MM,
   SWATCHES,
   addElement,
@@ -879,12 +883,15 @@ export default function CardStudio({
             </select>
             <input
               type="number"
-              min={6}
-              max={96}
+              min={MIN_TEXT_PT}
+              max={MAX_TEXT_PT}
               step={0.5}
               value={selected.fontSize}
               onChange={(event) => {
-                const fontSize = Math.min(96, Math.max(6, Number(event.target.value) || 6));
+                const fontSize = Math.min(
+                  MAX_TEXT_PT,
+                  Math.max(MIN_TEXT_PT, Number(event.target.value) || MIN_TEXT_PT),
+                );
                 tweak((d) =>
                   updateElement(d, selected.id, { fontSize, h: ptToMm(fontSize) * 1.3 }),
                 );

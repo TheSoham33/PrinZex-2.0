@@ -19,7 +19,9 @@ export const BLEED_MM = 3;
 /** Text must sit 3 mm inside the trim so it survives die-cut drift. */
 export const SAFETY_MM = 3;
 export const MIN_SIZE_MM = 2;
-export const MIN_TEXT_PT = 6;
+/** Customer-requested floor. Print guidance still recommends ≥6pt for foil
+ *  finishes (product-panel hint) — that's advice, this is the hard limit. */
+export const MIN_TEXT_PT = 3;
 export const MAX_TEXT_PT = 96;
 
 export const CARD_SIZE_MM: Record<string, { w: number; h: number }> = {
@@ -136,7 +138,14 @@ export const uid = (): string =>
  * full-bleed template/upload, or anything enlarged past it) may PAN, but
  * only within the range where they still cover it — that's how the customer
  * frames the crop, and it guarantees no blank sliver at a cut edge.
+ *
+ * Text is different: it may hang OFF the card by design (the stage clips it
+ * at the bleed edge, exactly what the cutter will trim). It must keep a
+ * 2 mm sliver inside the bleed box at some edge so it stays grabbable — a
+ * text block can never be pushed fully off-stage and lost.
  */
+const TEXT_GRIP_MM = 2;
+
 const clampAxis = (pos: number, elSize: number, cardSize: number): number => {
   const nearEdge = -BLEED_MM;
   const farEdge = cardSize + BLEED_MM - elSize;
@@ -145,9 +154,24 @@ const clampAxis = (pos: number, elSize: number, cardSize: number): number => {
     : Math.min(Math.max(pos, farEdge), nearEdge); // oversized: keep covering
 };
 
+const clampTextAxis = (pos: number, elSize: number, cardSize: number): number =>
+  Math.min(
+    Math.max(pos, -elSize - BLEED_MM + TEXT_GRIP_MM),
+    cardSize + BLEED_MM - TEXT_GRIP_MM,
+  );
+
 export function clampElement<T extends StudioElement>(el: T, size: { w: number; h: number }): T {
   const w = Math.max(MIN_SIZE_MM, el.w);
   const h = Math.max(MIN_SIZE_MM, el.h);
+  if (el.kind === 'text') {
+    return {
+      ...el,
+      w,
+      h,
+      x: clampTextAxis(el.x, w, size.w),
+      y: clampTextAxis(el.y, h, size.h),
+    };
+  }
   return {
     ...el,
     w,
