@@ -157,14 +157,27 @@ async function loadOrderableService(sellerId: string, sellerServiceId: string) {
   };
 }
 
-/** Enforce the seller-configured minimum order quantity for the service. */
+/**
+ * Enforce the seller-configured minimum order quantity for the service. When
+ * the service has quantity slabs (Business Cards), the smallest slab
+ * threshold is the real minimum — a crafted custom quantity below it must be
+ * rejected, not just priced at the smallest tier's rate.
+ */
 function assertMinimumOrderQuantity(
   service: { serviceName: string; minQuantity: number },
   quantity: number,
+  sellerMetadata?: Prisma.JsonValue | null,
+  serviceId?: string,
 ): void {
-  if (quantity < service.minQuantity) {
+  const slabs = serviceId
+    ? (readSellerMetadata(sellerMetadata ?? null).pricingOverrides?.quantitySlabs?.[serviceId] ??
+      [])
+    : [];
+  const slabMin = slabs.length ? Math.min(...slabs.map((s) => s.qty)) : undefined;
+  const minQuantity = slabMin ?? service.minQuantity;
+  if (quantity < minQuantity) {
     throw ApiError.badRequest(
-      `Minimum order quantity for ${service.serviceName} is ${service.minQuantity}`,
+      `Minimum order quantity for ${service.serviceName} is ${minQuantity}`,
     );
   }
 }
@@ -271,7 +284,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     input.sellerId,
     input.sellerServiceId,
   );
-  assertMinimumOrderQuantity(service, input.quantity);
+  assertMinimumOrderQuantity(service, input.quantity, seller.metadata, service.serviceId);
   assertMinimumPageCount(service, input.specifications.totalPages ?? 0);
   assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
   assertDocumentColorModeAvailable(
@@ -356,7 +369,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     input.sellerId,
     input.sellerServiceId,
   );
-  assertMinimumOrderQuantity(service, input.quantity);
+  assertMinimumOrderQuantity(service, input.quantity, seller.metadata, service.serviceId);
   assertMinimumPageCount(service, input.specifications.totalPages ?? 0);
   assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
   assertDocumentColorModeAvailable(

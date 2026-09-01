@@ -192,10 +192,29 @@ export default function BusinessCardCustomizationPanel({
     () => [...(service?.quantitySlabs ?? [])].sort((a, b) => a.qty - b.qty),
     [service?.quantitySlabs],
   );
+  // Custom quantities floor at the smallest slab (falling back to the
+  // service minimum when the seller set no slabs). The backend enforces the
+  // same floor, so a crafted request can't undercut it either.
+  const minQty = slabs[0]?.qty ?? service?.minQuantity ?? 1;
+  const QTY_MAX = 1_000_000;
   const activeRate = slabs.length
     ? ([...slabs].reverse().find((s) => specs.quantity >= s.qty) ?? slabs[0]).rate
     : undefined;
   const isCustomQty = !slabs.some((s) => s.qty === specs.quantity);
+  /**
+   * String draft for the custom-quantity box. Committing on every keystroke
+   * floors mid-typing — and when the floor is a slab value the input wipes
+   * itself — so below-min drafts wait for blur, then floor to minQty.
+   */
+  const [qtyDraft, setQtyDraft] = useState<string | null>(null);
+  const commitQtyDraft = () => {
+    if (qtyDraft === null) return;
+    setQtyDraft(null);
+    const n = Math.floor(Number(qtyDraft));
+    setSpec({
+      quantity: !Number.isFinite(n) || n < minQty ? minQty : Math.min(QTY_MAX, n),
+    });
+  };
 
   const setDesignFile = (side: 'front' | 'back', file: File) => {
     const url = URL.createObjectURL(file);
@@ -457,9 +476,12 @@ export default function BusinessCardCustomizationPanel({
             <button
               key={slab.qty}
               type="button"
-              onClick={() => setSpec({ quantity: slab.qty })}
+              onClick={() => {
+                setQtyDraft(null);
+                setSpec({ quantity: slab.qty });
+              }}
               className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
-                specs.quantity === slab.qty
+                specs.quantity === slab.qty && qtyDraft === null
                   ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
                   : 'border-slate-200 hover:border-blue-200'
               }`}
@@ -469,24 +491,33 @@ export default function BusinessCardCustomizationPanel({
           ))}
           <div
             className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 ${
-              isCustomQty ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500' : 'border-slate-200'
+              qtyDraft !== null || isCustomQty
+                ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                : 'border-slate-200'
             }`}
           >
             <span className="text-sm font-semibold text-slate-600">Custom</span>
             <input
               type="number"
-              min={slabs[0]?.qty ?? service?.minQuantity ?? 1}
-              value={isCustomQty ? specs.quantity : ''}
-              placeholder="e.g. 750"
-              onChange={(event) =>
-                setSpec({
-                  quantity: Math.max(
-                    service?.minQuantity ?? 1,
-                    Number(event.target.value) || (service?.minQuantity ?? 1),
-                  ),
-                })
-              }
-              className="w-20 bg-transparent text-sm font-semibold outline-none"
+              min={minQty}
+              max={QTY_MAX}
+              step={1}
+              value={qtyDraft ?? (isCustomQty ? String(specs.quantity) : '')}
+              placeholder={`min ${minQty}`}
+              onChange={(event) => {
+                const raw = event.target.value;
+                setQtyDraft(raw);
+                const n = Math.floor(Number(raw));
+                // Live-apply valid values so chips/price track while typing.
+                if (Number.isFinite(n) && n >= minQty && n <= QTY_MAX) {
+                  setSpec({ quantity: n });
+                }
+              }}
+              onBlur={commitQtyDraft}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur();
+              }}
+              className="w-24 bg-transparent text-sm font-semibold outline-none"
             />
           </div>
         </div>
