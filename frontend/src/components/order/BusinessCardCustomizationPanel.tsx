@@ -263,6 +263,7 @@ export default function BusinessCardCustomizationPanel({
       }
       if (
         !seed.back &&
+        !specs.cardBackSameAsFront &&
         specs.cardBackFileUrl &&
         !isPdfFile(specs.cardBackFileUrl, specs.cardBackFileName)
       ) {
@@ -329,10 +330,12 @@ export default function BusinessCardCustomizationPanel({
   };
 
   const previewFor = (side: 'front' | 'back') => {
+    // Mirrored back previews exactly what prints: the front design.
+    const effectiveSide = side === 'back' && specs.cardBackSameAsFront ? 'front' : side;
     // A saved studio doc means the exported PNG is the design of record —
     // show it instead of the raw template/upload it was seeded from.
     const url =
-      side === 'front'
+      effectiveSide === 'front'
         ? specs.cardStudioFront && specs.cardFrontFileUrl
           ? specs.cardFrontFileUrl
           : specs.cardDesignSource === 'template'
@@ -341,7 +344,7 @@ export default function BusinessCardCustomizationPanel({
         : specs.cardBackFileUrl;
     const isPdf = isPdfFile(
       url,
-      side === 'front' ? specs.cardFrontFileName : specs.cardBackFileName,
+      effectiveSide === 'front' ? specs.cardFrontFileName : specs.cardBackFileName,
     );
     return { url: isPdf ? undefined : url, isPdf };
   };
@@ -615,7 +618,7 @@ export default function BusinessCardCustomizationPanel({
                 onFile={(file) => setDesignFile('front', file)}
                 onRemove={() => removeDesignFile('front')}
               />
-              {specs.cardPrintSides === 'double' && (
+              {specs.cardPrintSides === 'double' && !specs.cardBackSameAsFront && (
                 <DesignUpload
                   side="back"
                   fileUrl={specs.cardBackFileUrl}
@@ -627,6 +630,7 @@ export default function BusinessCardCustomizationPanel({
             </div>
             {((specs.cardFrontFileUrl && !isPdfFile(specs.cardFrontFileUrl, specs.cardFrontFileName)) ||
               (specs.cardPrintSides === 'double' &&
+                !specs.cardBackSameAsFront &&
                 specs.cardBackFileUrl &&
                 !isPdfFile(specs.cardBackFileUrl, specs.cardBackFileName))) && (
               <button
@@ -654,6 +658,26 @@ export default function BusinessCardCustomizationPanel({
         selected={specs.cardPrintSides}
         onSelect={(value) => setSpec({ cardPrintSides: value as 'single' | 'double' })}
       />
+      {specs.cardPrintSides === 'double' && (
+        <label className="-mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <input
+            type="checkbox"
+            checked={specs.cardBackSameAsFront ?? false}
+            onChange={(event) =>
+              setSpec({
+                cardBackSameAsFront: event.target.checked,
+                cardProofApproved: false,
+              })
+            }
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600"
+          />
+          <span className="text-sm text-slate-700">
+            <strong className="text-slate-900">Back side same as front.</strong>{' '}
+            Print the front design on the back too — no separate back design
+            needed.
+          </span>
+        </label>
+      )}
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
         <strong>Foil / finish artwork rules:</strong> use bold, high-contrast
@@ -690,6 +714,7 @@ export default function BusinessCardCustomizationPanel({
           cardShape={specs.cardShape}
           rounded={rounded}
           doubleSided={specs.cardPrintSides === 'double'}
+          mirroredBack={specs.cardBackSameAsFront ?? false}
           price={
             activeRate !== undefined
               ? Math.round(activeRate * specs.quantity * 100) / 100

@@ -128,6 +128,9 @@ interface Props {
   cardShape?: string;
   rounded?: boolean;
   doubleSided: boolean;
+  /** Order prints the back as a copy of the front — the side rail, preview
+   *  and export then skip a separate back entirely. */
+  mirroredBack?: boolean;
   /** Quantity × rate for the header price chip (₹), when the panel knows it. */
   price?: number;
   initialFront?: string | null;
@@ -516,6 +519,7 @@ export default function CardStudio({
   cardShape,
   rounded,
   doubleSided,
+  mirroredBack = false,
   price,
   initialFront,
   initialBack,
@@ -810,6 +814,20 @@ export default function CardStudio({
     reader.readAsDataURL(file);
   };
 
+  /** One-click back-from-front (independent deep copy — fresh element ids). */
+  const copyFrontToBack = () => {
+    const source = docsRef.current.front;
+    mutate(
+      () => ({
+        background: source.background,
+        elements: source.elements.map((el) => ({ ...el, id: uid() })),
+      }),
+      'back',
+    );
+    setSide('back');
+    setSelectedId(null);
+  };
+
   /* --------------------------------- Save --------------------------------- */
 
   const resolveIcon =
@@ -823,9 +841,10 @@ export default function CardStudio({
     setSaving(true);
     try {
       const frontFile = await renderSideToFile(docs.front, size, 'front', resolveIcon('front'));
-      const backFile = doubleSided
-        ? await renderSideToFile(docs.back, size, 'back', resolveIcon('back'))
-        : undefined;
+      const backFile =
+        doubleSided && !mirroredBack
+          ? await renderSideToFile(docs.back, size, 'back', resolveIcon('back'))
+          : undefined;
       openedSnapshot.current = `${serializeDoc(docs.front)}|${serializeDoc(docs.back)}`;
       onSave({
         frontFile,
@@ -1228,7 +1247,7 @@ export default function CardStudio({
         {/* front / back rail */}
         <aside className="hidden w-28 shrink-0 flex-col items-center gap-4 overflow-y-auto border-l border-slate-200 bg-white py-4 md:flex" aria-label="Card sides">
           {(['front', 'back'] as const)
-            .filter((s) => s === 'front' || doubleSided)
+            .filter((s) => s === 'front' || (doubleSided && !mirroredBack))
             .map((s) => (
               <button
                 key={s}
@@ -1254,6 +1273,16 @@ export default function CardStudio({
                 </span>
               </button>
             ))}
+          {doubleSided && !mirroredBack && (
+            <button
+              type="button"
+              onClick={copyFrontToBack}
+              className="rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-semibold text-slate-500 transition-colors hover:border-blue-300 hover:text-blue-600"
+              title="Copy the front design onto the back"
+            >
+              Front → Back
+            </button>
+          )}
         </aside>
       </div>
 
@@ -1279,7 +1308,7 @@ export default function CardStudio({
           </div>
           <div className="flex flex-1 flex-wrap items-center justify-center gap-10 overflow-auto p-6">
             {(['front', 'back'] as const)
-              .filter((s) => s === 'front' || doubleSided)
+              .filter((s) => s === 'front' || (doubleSided && !mirroredBack))
               .map((s) => (
                 <div key={s} className="text-center">
                   <StageView
