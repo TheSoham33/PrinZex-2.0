@@ -173,6 +173,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           cardSize: specs.cardSize,
           cardCorners: specs.cardCorners,
           cardPrintSides: specs.cardPrintSides,
+          cardBackSameAsFront: specs.cardBackSameAsFront,
           cardDesignSource: specs.cardDesignSource,
           cardTemplate: specs.cardTemplate,
           cardFrontFileUrl: specs.cardFrontFileUrl,
@@ -309,8 +310,12 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           if (!specs.cardFrontFileUrl) {
             return 'Please upload your front card design';
           }
-          if (specs.cardPrintSides === 'double' && !specs.cardBackFileUrl) {
-            return 'Please upload your back design or switch to single-sided';
+          if (
+            specs.cardPrintSides === 'double' &&
+            !specs.cardBackSameAsFront &&
+            !specs.cardBackFileUrl
+          ) {
+            return 'Please upload your back design, switch to single-sided, or choose back same as front';
           }
         }
         if (!specs.cardDesignSource) {
@@ -416,6 +421,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           cardSize: specs.cardSize,
           cardCorners: specs.cardCorners,
           cardPrintSides: specs.cardPrintSides,
+          cardBackSameAsFront: specs.cardBackSameAsFront,
           cardDesignSource: specs.cardDesignSource,
           cardTemplate: specs.cardTemplate,
           cardFrontFileUrl: specs.cardFrontFileUrl,

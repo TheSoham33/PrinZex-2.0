@@ -57,6 +57,7 @@ export const specificationsSchema = z.object({
   cardSize: z.string().trim().min(1).optional(),
   cardCorners: z.string().trim().min(1).optional(),
   cardPrintSides: z.enum(['single', 'double']).optional(),
+  cardBackSameAsFront: z.boolean().optional(),
   cardDesignSource: z.enum(['template', 'upload']).optional(),
   cardTemplate: z.string().trim().max(80).optional(),
   cardFrontFileUrl: z.string().max(2048).optional(),

@@ -148,6 +148,9 @@ export interface OrderSpecifications {
   cardSize?: string;
   cardCorners?: string;
   cardPrintSides?: 'single' | 'double';
+  /** Double-sided, but the back reprints the front design — no separate
+   *  back artwork required. */
+  cardBackSameAsFront?: boolean;
   cardDesignSource?: 'template' | 'upload';
   cardTemplate?: string;
   cardFrontFileUrl?: string;
