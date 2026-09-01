@@ -7,6 +7,7 @@ import type {
 } from '@/lib/types';
 import { countColorPages, formatCurrency } from '@/lib/utils';
 import { IconShieldCheck, IconLock } from '@/components/icons';
+import { pickSlabRate } from './orderReducer';
 
 interface OrderSummarySidebarProps {
   storeName: string;
@@ -61,7 +62,12 @@ export default function OrderSummarySidebar({
                   {service.name}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {formatCurrency(service.startingPrice)} {service.unit} ·{' '}
+                  {/* Slab-priced services (Business Cards): the rate follows
+                      the quantity range, not the static base price. */}
+                  {formatCurrency(
+                    pickSlabRate(service.quantitySlabs, quantity) ?? service.startingPrice,
+                  )}{' '}
+                  {service.unit} ·{' '}
                   {specs?.totalPages ? `${specs.totalPages} pages · ` : ''}Qty{' '}
                   {quantity}
                 </p>
