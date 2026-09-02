@@ -265,9 +265,13 @@ export function computeCost(
       : totalPages;
   const isTwinLoopDuplex =
     service?.id === 'bind-twin-loop' && specs.twinLoopPrintSides === 'double';
+  // Document Printing duplex also bills per physical sheet: page count halves
+  // (sheet holds two sides), odd PDF page counts round up to one more sheet.
+  const isDocPrintDuplex = service?.id === 'doc-print' && specs.printSides === 'double';
+  const isDuplexSheets = isTwinLoopDuplex || isDocPrintDuplex;
   const pricedDocumentPages =
     service?.id === 'bind-twin-loop' ? twinLoopInnerPages : totalPages;
-  const billablePages = isTwinLoopDuplex
+  const billablePages = isDuplexSheets
     ? Math.ceil(pricedDocumentPages / 2)
     : pricedDocumentPages;
   const colorPageCount =
@@ -275,7 +279,7 @@ export function computeCost(
       ? billablePages
       : specs.colorOption === 'mixed'
         ? Math.min(
-            isTwinLoopDuplex
+            isDuplexSheets
               ? countDuplexColorSheets(specs.colorPages, pricedDocumentPages)
               : countColorPages(specs.colorPages, pricedDocumentPages),
             billablePages,
@@ -372,7 +376,7 @@ export function computeCost(
     ...(twinLoopPitch !== undefined ? { twinLoopPitch } : {}),
     ...(twinLoopWireSize !== undefined ? { twinLoopWireSize } : {}),
     ...(twinLoopTotalSheets !== undefined ? { twinLoopTotalSheets } : {}),
-    ...(service?.id === 'bind-twin-loop' ? { billablePages } : {}),
+    ...(service?.id === 'bind-twin-loop' || isDocPrintDuplex ? { billablePages } : {}),
   };
   cost.total = recalcTotal(cost);
   return cost;

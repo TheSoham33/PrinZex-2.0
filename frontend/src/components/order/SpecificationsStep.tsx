@@ -871,6 +871,13 @@ export default function SpecificationsStep({
                 </button>
               ))}
             </div>
+            {specs.printSides === 'double' && totalPages > 0 && (
+              <p className="mt-2 text-xs font-semibold text-blue-600">
+                Duplex billing: {totalPages} page{totalPages === 1 ? '' : 's'} →{' '}
+                {Math.ceil(totalPages / 2)} sheet{Math.ceil(totalPages / 2) === 1 ? '' : 's'} — you
+                are charged per sheet.
+              </p>
+            )}
           </section>
         )}
       </div>

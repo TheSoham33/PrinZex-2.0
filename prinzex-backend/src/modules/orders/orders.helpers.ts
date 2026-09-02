@@ -13,6 +13,8 @@ export interface QuoteSpecifications {
   paperType: string;
   size: string;
   colorOption: 'color' | 'bw' | 'mixed';
+  // Document printing: duplex bills per physical sheet (pages halve).
+  printSides?: 'single' | 'double';
   finishing: string[];
   totalPages?: number;
   // "1, 5, 10-15" — pages printed in colour when colorOption === 'mixed'.
@@ -358,18 +360,23 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
 
   // Twin Loop duplex printing puts two PDF pages on one physical sheet. Per the
   // marketplace pricing model, its inner-page charge follows that physical
-  // sheet count rather than the original PDF page count.
+  // sheet count rather than the original PDF page count. Document Printing
+  // duplex (owner rule) bills the same way: page count halves, odd PDF page
+  // counts round up to one more sheet.
   const twinLoopInnerPages =
     input.serviceId === 'bind-twin-loop' && specifications.twinLoopCoverSubmission === 'embedded'
       ? Math.max(0, totalPages - 2)
       : totalPages;
   const isTwinLoopDuplex =
     input.serviceId === 'bind-twin-loop' && specifications.twinLoopPrintSides === 'double';
+  const isDocPrintDuplex =
+    input.serviceId === 'doc-print' && specifications.printSides === 'double';
+  const isDuplexSheets = isTwinLoopDuplex || isDocPrintDuplex;
   const pricedDocumentPages =
     input.serviceId === 'bind-twin-loop' ? twinLoopInnerPages : totalPages;
-  const billablePages = isTwinLoopDuplex ? Math.ceil(pricedDocumentPages / 2) : pricedDocumentPages;
+  const billablePages = isDuplexSheets ? Math.ceil(pricedDocumentPages / 2) : pricedDocumentPages;
   const split =
-    isTwinLoopDuplex && specifications.colorOption === 'mixed'
+    isDuplexSheets && specifications.colorOption === 'mixed'
       ? (() => {
           const colorSheets = Math.min(
             countDuplexColorSheets(specifications.colorPages, pricedDocumentPages),
@@ -479,6 +486,6 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     ...(twinLoopPitch !== undefined ? { twinLoopPitch } : {}),
     ...(twinLoopWireSize !== undefined ? { twinLoopWireSize } : {}),
     ...(twinLoopTotalSheets !== undefined ? { twinLoopTotalSheets } : {}),
-    ...(input.serviceId === 'bind-twin-loop' ? { billablePages } : {}),
+    ...(input.serviceId === 'bind-twin-loop' || isDocPrintDuplex ? { billablePages } : {}),
   };
 }
