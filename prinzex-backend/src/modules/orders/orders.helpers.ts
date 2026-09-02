@@ -95,6 +95,16 @@ export const FINISHING_UPCHARGES: Record<string, number> = {
   stapling: 5,
   folding: 10,
   cutting: 15,
+  // Kebab-case keys the catalogue finishing-options group actually ships —
+  // chips send catalogue values straight through, so assertKnownFinishing
+  // must accept what the catalogue offers (these previously 400'd).
+  'spiral-binding': 60,
+  'hard-binding': 120,
+  punching: 8,
+  // Document-printing stapling/binding choice (radio panel; 'loose sheet'
+  // is simply the absence of either key).
+  'corner-stapling': 5,
+  'side-stapling': 10,
 };
 
 // These are the ONLY customer-facing delivery charges and must match the
