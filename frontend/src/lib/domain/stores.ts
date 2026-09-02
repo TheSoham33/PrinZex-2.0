@@ -102,14 +102,8 @@ export const PAPER_TYPES = [
 
 export const PAPER_SIZES = [
   { value: 'A4', label: 'A4', hint: '210 × 297 mm', multiplier: 1 },
+  { value: 'A5', label: 'A5', hint: '148 × 210 mm', multiplier: 0.8 },
   { value: 'A3', label: 'A3', hint: '297 × 420 mm', multiplier: 1.9 },
-  { value: 'A2', label: 'A2', hint: '420 × 594 mm', multiplier: 3.4 },
-  {
-    value: 'custom',
-    label: 'Custom',
-    hint: 'Tell us in instructions',
-    multiplier: 2.2,
-  },
 ] as const;
 
 export const FINISHING_OPTIONS = [
