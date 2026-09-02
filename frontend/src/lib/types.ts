@@ -98,6 +98,9 @@ export interface OrderSpecifications {
   size: string;
   quantity: number;
   colorOption: 'color' | 'bw' | 'mixed';
+  /** Document printing only: single-sided or duplex. Pricing stays per-page
+   *  (a page = one side), so this is production info for the operator. */
+  printSides?: 'single' | 'double';
   finishing: string[];
   // New fields for Hard Binding
   colorPages?: string; // Particular pages color (e.g. "5, 10-12")
