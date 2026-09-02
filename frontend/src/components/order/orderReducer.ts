@@ -33,6 +33,27 @@ export type OrderAction =
   | { type: 'SET_STEP'; payload: number }
   | { type: 'SET_ERROR'; payload: string | null };
 
+/**
+ * Stapling/binding choice for document printing, stored as finishing keys so
+ * both pricing paths (local estimate + backend computeQuote) charge it per
+ * quantity with no special casing. Choices are mutually exclusive: picking
+ * one replaces every stapling-family key, 'loose' removes them all.
+ */
+export const STAPLING_FINISHING_KEYS = [
+  'stapling', // legacy flat key (in-flight orders / older specs)
+  'corner-stapling',
+  'side-stapling',
+] as const;
+
+export type StaplingChoice = 'loose' | 'corner-stapling' | 'side-stapling';
+
+export function withStaplingChoice(finishing: string[], choice: StaplingChoice): string[] {
+  const rest = finishing.filter(
+    (key) => !(STAPLING_FINISHING_KEYS as readonly string[]).includes(key),
+  );
+  return choice === 'loose' ? rest : [...rest, choice];
+}
+
 /** Same "from qty → per-piece rate" picker as backend pricing.slabs. */
 export function pickSlabRate(
   slabs: { qty: number; rate: number }[] | undefined,

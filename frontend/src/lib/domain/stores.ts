@@ -110,7 +110,8 @@ export const FINISHING_OPTIONS = [
   { value: 'lamination', label: 'Lamination', price: 15 },
   { value: 'spiral-binding', label: 'Spiral binding', price: 40 },
   { value: 'hard-binding', label: 'Hard / Thesis binding', price: 120 },
-  { value: 'stapling', label: 'Stapling', price: 5 },
+  { value: 'corner-stapling', label: 'Corner Stapling', price: 5 },
+  { value: 'side-stapling', label: 'Side Stapling', price: 10 },
   { value: 'punching', label: 'Hole punching', price: 8 },
 ] as const;
 

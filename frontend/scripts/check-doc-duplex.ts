@@ -58,4 +58,15 @@ assert.equal(mixedSingle.subtotal, 58 * 1 + 2 * 2);
 /* Quantity multiplies sheets, not pages, in duplex. */
 assert.equal(cost({ printSides: 'double', quantity: 3 }).subtotal, 90);
 
+/* Stapling/binding choice updates the finishing list exactly exclusively. */
+import { withStaplingChoice } from '../src/components/order/orderReducer';
+assert.deepEqual(withStaplingChoice([], 'corner-stapling'), ['corner-stapling']);
+assert.deepEqual(
+  withStaplingChoice(['corner-stapling', 'lamination'], 'side-stapling'),
+  ['lamination', 'side-stapling'],
+);
+assert.deepEqual(withStaplingChoice(['side-stapling'], 'loose'), []);
+assert.deepEqual(withStaplingChoice(['stapling'], 'corner-stapling'), ['corner-stapling']); // legacy key replaced
+assert.deepEqual(withStaplingChoice(['punching'], 'loose'), ['punching']); // unrelated finishing kept
+
 console.log('doc-print duplex pricing checks: OK');
