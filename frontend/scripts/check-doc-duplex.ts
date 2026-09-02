@@ -58,16 +58,23 @@ assert.equal(mixedSingle.subtotal, 58 * 1 + 2 * 2);
 /* Quantity multiplies sheets, not pages, in duplex. */
 assert.equal(cost({ printSides: 'double', quantity: 3 }).subtotal, 90);
 
-/* Stapling/binding choice updates the finishing list exactly exclusively. */
-import { withStaplingChoice } from '../src/components/order/orderReducer';
-assert.deepEqual(withStaplingChoice([], 'corner-stapling'), ['corner-stapling']);
-assert.deepEqual(
-  withStaplingChoice(['corner-stapling', 'lamination'], 'side-stapling'),
-  ['lamination', 'side-stapling'],
-);
-assert.deepEqual(withStaplingChoice(['side-stapling'], 'loose'), []);
-assert.deepEqual(withStaplingChoice(['stapling'], 'corner-stapling'), ['corner-stapling']); // legacy key replaced
-assert.deepEqual(withStaplingChoice(['punching'], 'loose'), ['punching']); // unrelated finishing kept
-assert.deepEqual(withStaplingChoice(['lamination'], 'stapling'), ['lamination', 'stapling']); // legacy chip toggled on
+/* Stapling is a dedicated mandatory spec (not finishing), charged per set:
+ * 'loose' is free, unset behaves as 'loose', and the catalogue default price
+ * applies when the seller saved no stapling prices. */
+const sellerService = {
+  ...service,
+  staplingOptions: { 'corner-stapling': 7 }, // seller override wins over catalogue ₹5
+} as unknown as ServiceOffering;
+const sellerCost = (over: Partial<OrderSpecifications>) =>
+  computeCost({ ...baseSpecs, ...over }, sellerService, 0, 0);
+
+assert.equal(cost({ stapling: 'loose' }).subtotal, 60); // free default
+assert.equal(cost({ stapling: undefined }).subtotal, 60); // unset = loose
+assert.equal(cost({ stapling: 'corner-stapling' }).subtotal, 60 + 5); // catalogue default ₹5
+assert.equal(cost({ stapling: 'corner-stapling', quantity: 2 }).subtotal, (60 + 5) * 2); // per set
+assert.equal(sellerCost({ stapling: 'corner-stapling' }).subtotal, 60 + 7); // seller ₹7 wins
+assert.equal(sellerCost({ stapling: 'side-stapling' }).subtotal, 60 + 10); // seller didn't price → default ₹10
+/* Unknown stapling key never charges. */
+assert.equal(cost({ stapling: 'not-a-thing' }).subtotal, 60);
 
 console.log('doc-print duplex pricing checks: OK');

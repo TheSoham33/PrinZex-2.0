@@ -19,6 +19,7 @@ import {
   PAPER_TYPES,
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
+  STAPLING_OPTIONS,
   TWIN_LOOP_BACK_COVERS,
   TWIN_LOOP_FRONT_COVERS,
   TWIN_LOOP_WIRE_COLORS,
@@ -30,7 +31,10 @@ import QuantitySlabEditor, {
   toSlabs,
   type SlabDraft,
 } from '@/components/seller-dashboard/QuantitySlabEditor';
-import SpiralBindingCustomizationPricing from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
+import SpiralBindingCustomizationPricing, {
+  type PriceOptions,
+} from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
+import StaplingPricingOptions from '@/components/seller-dashboard/StaplingPricingOptions';
 import TwinLoopCustomizationPricing, {
   type TwinLoopPricingState,
 } from '@/components/seller-dashboard/TwinLoopCustomizationPricing';
@@ -67,6 +71,7 @@ export default function SellerPricingPage() {
   const [coverColorOptions, setCoverColorOptions] = useState<
     Record<string, { price: string; enabled: boolean }>
   >({});
+  const [staplingPriceOptions, setStaplingPriceOptions] = useState<PriceOptions>({});
   const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
   const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
   const [servicePaperOptions, setServicePaperOptions] = useState<
@@ -130,6 +135,16 @@ export default function SellerPricingPage() {
         };
       });
       setCoilOptions(cl);
+
+      const staplingPrices = overrides.staplingOptions ?? {};
+      const st: PriceOptions = {};
+      STAPLING_OPTIONS.filter((o) => o.value !== 'loose').forEach((o) => {
+        st[o.value] = {
+          price: String(staplingPrices[o.value] ?? ''),
+          enabled: staplingPrices[o.value] !== undefined,
+        };
+      });
+      setStaplingPriceOptions(st);
 
       const coverColor = overrides.coverColor ?? {};
       const cc: Record<string, { price: string; enabled: boolean }> = {};
@@ -295,9 +310,15 @@ export default function SellerPricingPage() {
       if (v.enabled) coverColor[k] = Number(v.price) || 0;
     });
 
+    const staplingOptions: Record<string, number> = {};
+    Object.entries(staplingPriceOptions).forEach(([k, v]) => {
+      if (v.enabled) staplingOptions[k] = Number(v.price) || 0;
+    });
+
     updateOverridesMutation.mutate({
       pageRate: pageRatePayload,
       documentColorModes,
+      staplingOptions,
       coverType,
       coilType,
       coverColor,
@@ -542,6 +563,15 @@ export default function SellerPricingPage() {
                         </button>
                       </div>
                     </div>
+                  )}
+
+                  {entry.serviceId === 'doc-print' && (
+                    <StaplingPricingOptions
+                      values={staplingPriceOptions}
+                      setValues={setStaplingPriceOptions}
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
                   )}
 
                   {entry.serviceId === 'bind-hard' && (

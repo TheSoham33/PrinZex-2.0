@@ -57,6 +57,9 @@ export interface ServiceOffering {
   };
   /** Seller-configured quantity pricing slabs: "from qty, ₹rate per piece". */
   quantitySlabs?: { qty: number; rate: number }[];
+  /** Document Printing stapling styles the seller offers → ₹ per set, keyed
+   *  by catalogue option value ('loose' is always free and never listed). */
+  staplingOptions?: Record<string, number>;
 }
 
 export interface Review {
@@ -101,6 +104,10 @@ export interface OrderSpecifications {
   /** Document printing only: single-sided or duplex. Pricing stays per-page
    *  (a page = one side), so this is production info for the operator. */
   printSides?: 'single' | 'double';
+  /** Document printing only: mandatory stapling choice from the
+   *  'stapling-options' catalogue group. 'loose' (default) = Loose Sheet,
+   *  free. Other styles charge the seller-set (or default) per-set price. */
+  stapling?: string;
   finishing: string[];
   // New fields for Hard Binding
   colorPages?: string; // Particular pages color (e.g. "5, 10-12")

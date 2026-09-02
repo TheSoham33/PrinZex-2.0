@@ -1,4 +1,4 @@
-import { FINISHING_OPTIONS, TAX_RATE } from '@/lib/domain/stores';
+import { FINISHING_OPTIONS, STAPLING_OPTIONS, TAX_RATE } from '@/lib/domain/stores';
 import { countColorPages } from '@/lib/utils';
 import type {
   CostBreakdown,
@@ -34,24 +34,17 @@ export type OrderAction =
   | { type: 'SET_ERROR'; payload: string | null };
 
 /**
- * Stapling options for document printing are catalogue-managed finishing rows
- * (Admin → Catalogue → Finishing options) stored as finishing keys so both
- * pricing paths (local estimate + backend computeQuote) charge them per
- * quantity with no special casing. Choices are mutually exclusive: picking
- * one replaces every stapling-family key, 'loose' removes them all.
+ * Stapling used to ride as finishing add-on keys. It's now a dedicated
+ * mandatory Document Printing spec (specs.stapling) with seller-set prices,
+ * so these legacy keys exist only to keep them OUT of the finishing chips
+ * (older catalogue rows may still list them). The backend still prices them
+ * for in-flight orders.
  */
 export const STAPLING_FINISHING_KEYS = [
   'stapling', // legacy flat key (in-flight orders / older specs)
   'corner-stapling',
   'side-stapling',
 ] as const;
-
-export function withStaplingChoice(finishing: string[], choice: string): string[] {
-  const rest = finishing.filter(
-    (key) => !(STAPLING_FINISHING_KEYS as readonly string[]).includes(key),
-  );
-  return choice === 'loose' ? rest : [...rest, choice];
-}
 
 /** Same "from qty → per-piece rate" picker as backend pricing.slabs. */
 export function pickSlabRate(
@@ -261,6 +254,8 @@ export function computeCost(
   pageRateFallback?: number,
   /** Admin-catalogue finishing list; falls back to the shipped constant. */
   finishingOptions: ReadonlyArray<{ value: string; price: number }> = FINISHING_OPTIONS,
+  /** Admin-catalogue stapling list; falls back to the shipped constant. */
+  staplingOptions: ReadonlyArray<{ value: string; price: number }> = STAPLING_OPTIONS,
 ): CostBreakdown {
   const base = service?.startingPrice ?? 0;
   const quantity = Math.max(1, specs.quantity || 1);
@@ -312,6 +307,17 @@ export function computeCost(
     return sum + (option?.price ?? 0);
   }, 0);
 
+  // Mandatory Document Printing stapling choice — the seller's per-set price
+  // wins over the catalogue default; 'loose' is always free. Mirrors the
+  // backend computeQuote stapling branch.
+  const staplingKey = specs.stapling ?? 'loose';
+  const staplingPerUnit =
+    staplingKey === 'loose'
+      ? 0
+      : (service?.staplingOptions?.[staplingKey] ??
+        staplingOptions.find((entry) => entry.value === staplingKey)?.price ??
+        0);
+
   const isBinding = Boolean(service?.id?.startsWith('bind-'));
   const slabRate = pickSlabRate(service?.quantitySlabs, quantity);
   const twinLoop = service?.twinLoopOptions;
@@ -334,19 +340,24 @@ export function computeCost(
     );
     const bindingRate = base + twinLoopExtra;
     bindingCost = Math.round(bindingRate * quantity);
-    subtotal = Math.round(pageCost + bindingCost + finishingPerUnit * quantity);
+    subtotal = Math.round(
+      pageCost + bindingCost + (finishingPerUnit + staplingPerUnit) * quantity,
+    );
   } else if (service?.unit.toLowerCase().includes('page')) {
     subtotal = Math.round(
       (bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity +
-        finishingPerUnit * quantity,
+        (finishingPerUnit + staplingPerUnit) * quantity,
     );
   } else if (slabRate !== undefined) {
     // Slab-priced services (Business Cards): per-piece rate from the seller's
     // quantity tiers — mirrors the backend quote branch.
-    subtotal = Math.round(slabRate * quantity + finishingPerUnit * quantity);
+    subtotal = Math.round(
+      slabRate * quantity + (finishingPerUnit + staplingPerUnit) * quantity,
+    );
   } else {
     subtotal = Math.round(
-      (base + paperOptionExtra) * quantity + finishingPerUnit * quantity,
+      (base + paperOptionExtra) * quantity +
+        (finishingPerUnit + staplingPerUnit) * quantity,
     );
   }
 

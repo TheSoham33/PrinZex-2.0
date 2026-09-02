@@ -15,6 +15,9 @@ export interface QuoteSpecifications {
   colorOption: 'color' | 'bw' | 'mixed';
   // Document printing: duplex bills per physical sheet (pages halve).
   printSides?: 'single' | 'double';
+  // Document printing: mandatory stapling choice ('loose' = free default).
+  // Seller's staplingOptions price wins, else STAPLING_OPTION_PRICES.
+  stapling?: string;
   finishing: string[];
   totalPages?: number;
   // "1, 5, 10-15" — pages printed in colour when colorOption === 'mixed'.
@@ -101,8 +104,20 @@ export const FINISHING_UPCHARGES: Record<string, number> = {
   'spiral-binding': 60,
   'hard-binding': 120,
   punching: 8,
-  // Document-printing stapling/binding choice (radio panel; 'loose sheet'
-  // is simply the absence of either key).
+  // Stapling used to ride as finishing keys — kept valid for in-flight
+  // orders and older specs. New orders carry stapling as its own mandatory
+  // Document Printing spec (see STAPLING_OPTION_PRICES).
+  'corner-stapling': 5,
+  'side-stapling': 10,
+};
+
+/**
+ * Default per-set stapling charges for Document Printing, used when the
+ * seller hasn't saved their own staplingOptions prices. 'loose' (the
+ * mandatory default) is always free. Catalogue rows decide labels and
+ * availability; a price here (or a seller override) makes a key chargeable.
+ */
+export const STAPLING_OPTION_PRICES: Record<string, number> = {
   'corner-stapling': 5,
   'side-stapling': 10,
 };
@@ -342,6 +357,17 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     0,
   );
 
+  // Document Printing stapling is a dedicated mandatory spec (not finishing):
+  // the seller's price for the choice wins, else the platform default.
+  // 'loose' is always free. Charged per set, like finishing.
+  const staplingChoice = specifications.stapling ?? 'loose';
+  const staplingCharge =
+    staplingChoice === 'loose'
+      ? 0
+      : (overrides.staplingOptions?.[staplingChoice] ??
+        STAPLING_OPTION_PRICES[staplingChoice] ??
+        0);
+
   // No uploaded file ⇒ 0 pages ⇒ page cost ₹0 (the summary resets). Once a PDF
   // is chosen the page count is set and pricing scales with it.
   const totalPages = Math.max(0, specifications.totalPages || 0);
@@ -431,20 +457,25 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     const bindingRate = input.basePrice + spiralCustomizationRate + twinLoopCustomizationRate;
 
     bindingCost = round2(bindingRate * quantity);
-    subtotal = round2(pageCost + bindingCost + finishingCharge * quantity);
+    subtotal = round2(
+      pageCost + bindingCost + (finishingCharge + staplingCharge) * quantity,
+    );
   } else if (unit.toLowerCase().includes('page')) {
     // ── Per-page services: B&W/colour page rates are the whole price ─────
     subtotal = round2(
       (bwRate * split.bwPages + colorRate * split.colorPages) * quantity +
-        finishingCharge * quantity,
+        (finishingCharge + staplingCharge) * quantity,
     );
   } else if (slabRate !== undefined) {
     // ── Slab-priced services (Business Cards): per-piece rate from the
     //    seller's quantity tiers — replaces the base price. ───────────────
-    subtotal = round2(slabRate * quantity + finishingCharge * quantity);
+    subtotal = round2(slabRate * quantity + (finishingCharge + staplingCharge) * quantity);
   } else {
     // ── Per-piece / per-set / per-sqft services: single base rate ────────
-    subtotal = round2((input.basePrice + paperOptionExtra) * quantity + finishingCharge * quantity);
+    subtotal = round2(
+      (input.basePrice + paperOptionExtra) * quantity +
+        (finishingCharge + staplingCharge) * quantity,
+    );
   }
 
   const rushFee = RUSH_FEES[input.deliverySpeed];

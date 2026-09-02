@@ -9,6 +9,7 @@ import {
   FINISHING_OPTIONS as FINISHING_OPTIONS_FALLBACK,
   PAPER_SIZES as PAPER_SIZES_FALLBACK,
   PAPER_TYPES as PAPER_TYPES_FALLBACK,
+  STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK,
 } from '@/lib/domain/stores';
 import { useCatalogOptions } from '@/lib/api/catalog';
 import type {
@@ -19,7 +20,7 @@ import type {
 import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import type { OrderAction } from './orderReducer';
-import { STAPLING_FINISHING_KEYS, withStaplingChoice } from './orderReducer';
+import { STAPLING_FINISHING_KEYS } from './orderReducer';
 import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
 import BusinessCardCustomizationPanel from './BusinessCardCustomizationPanel';
 import {
@@ -79,6 +80,7 @@ export default function SpecificationsStep({
   const spiralCoilTypes = useCatalogOptions('spiral-coil-types', SPIRAL_COIL_TYPES_FALLBACK);
   const spiralCoverTypes = useCatalogOptions('spiral-cover-types', SPIRAL_COVER_TYPES_FALLBACK);
   const finishingOptions = useCatalogOptions('finishing-options', FINISHING_OPTIONS_FALLBACK);
+  const staplingOptions = useCatalogOptions('stapling-options', STAPLING_OPTIONS_FALLBACK);
   const paperSizes = useCatalogOptions('paper-sizes', PAPER_SIZES_FALLBACK);
   const paperTypes = useCatalogOptions('paper-types', PAPER_TYPES_FALLBACK);
   const isHardBinding = specs.serviceId === 'bind-hard';
@@ -170,10 +172,7 @@ export default function SpecificationsStep({
   const toggleFinishing = (value: string) => {
     const finishing = specs.finishing.includes(value)
       ? specs.finishing.filter((item) => item !== value)
-      : (STAPLING_FINISHING_KEYS as readonly string[]).includes(value)
-        ? // Stapling choices are mutually exclusive — corner replaces side etc.
-          withStaplingChoice(specs.finishing, value)
-        : [...specs.finishing, value];
+      : [...specs.finishing, value];
     dispatch({ type: 'SET_SPEC', payload: { finishing } });
   };
 
@@ -362,6 +361,16 @@ export default function SpecificationsStep({
       : undefined,
   );
 
+  // Stapling is mandatory on Document Printing: Loose Sheet is always
+  // offered; once the seller saves stapling prices, the rest follow that
+  // offer list (same rule as paper options).
+  const offeredStaplingOptions = staplingOptions.filter(
+    (option) =>
+      option.value === 'loose' ||
+      selectedService?.staplingOptions === undefined ||
+      option.value in selectedService.staplingOptions,
+  );
+
   // Only show cover-customization options this store actually offers.
   const offeredCoilTypes = filterOffered(spiralCoilTypes, availableCoilTypes);
   const offeredCoverTypes = filterOffered(
@@ -385,6 +394,18 @@ export default function SpecificationsStep({
       });
     }
   }, [colorChoices, specs.colorOption, dispatch]);
+
+  // Stapling is mandatory: a choice the seller no longer offers falls back
+  // to the always-available Loose Sheet.
+  useEffect(() => {
+    if (selectedService?.id !== 'doc-print') return;
+    if (
+      specs.stapling &&
+      !offeredStaplingOptions.some((option) => option.value === specs.stapling)
+    ) {
+      dispatch({ type: 'SET_SPEC', payload: { stapling: 'loose' } });
+    }
+  }, [selectedService?.id, specs.stapling, offeredStaplingOptions, dispatch]);
 
   // Keep the selected paper options aligned with the seller's current menu.
   useEffect(() => {
@@ -650,7 +671,10 @@ export default function SpecificationsStep({
                     }
                   : {}),
                 ...(nextServiceId === 'doc-print'
-                  ? { printSides: specs.printSides ?? 'single' }
+                  ? {
+                      printSides: specs.printSides ?? 'single',
+                      stapling: specs.stapling ?? 'loose',
+                    }
                   : {}),
               },
             });
@@ -882,6 +906,50 @@ export default function SpecificationsStep({
                 are charged per sheet.
               </p>
             )}
+          </section>
+        )}
+
+        {selectedService?.id === 'doc-print' && (
+          <section className="animate-fade-in">
+            <p className="label">
+              Stapling / binding <span className="text-red-500">*</span>
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {offeredStaplingOptions.map((option) => {
+                const price =
+                  selectedService?.staplingOptions?.[option.value] ?? option.price;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={(specs.stapling ?? 'loose') === option.value}
+                    onClick={() =>
+                      dispatch({
+                        type: 'SET_SPEC',
+                        payload: { stapling: option.value },
+                      })
+                    }
+                    className={`rounded-xl border p-3.5 text-left transition-all ${
+                      (specs.stapling ?? 'loose') === option.value
+                        ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                        : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold text-slate-900">
+                      {option.label}
+                      {price > 0 && (
+                        <span className="ml-1.5 text-xs font-semibold text-blue-600">
+                          +{formatCurrency(price)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-500">
+                      {option.hint}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </section>
         )}
       </div>
@@ -1645,16 +1713,15 @@ export default function SpecificationsStep({
       <section className={isBusinessCard ? 'hidden' : ''}>
         <p className="label">Finishing (optional)</p>
         <div className="flex flex-wrap gap-2.5">
-          {(selectedService?.id === 'doc-print'
-            ? // Stapling options are catalogue-managed finishing rows (Admin →
-              // Catalogue); with no stapling chip picked the order is a loose sheet.
-              finishingOptions
-            : // Stapling is a document-printing add-on only.
-              finishingOptions.filter(
-                (option) =>
-                  !(STAPLING_FINISHING_KEYS as readonly string[]).includes(option.value),
-              )
-          ).map((option) => {
+          {// Stapling lives in its own mandatory radio above (specs.stapling)
+           // with seller-set prices — never as finishing chips. The keys can
+           // still surface from older catalogue rows, so keep filtering them.
+           finishingOptions
+            .filter(
+              (option) =>
+                !(STAPLING_FINISHING_KEYS as readonly string[]).includes(option.value),
+            )
+            .map((option) => {
             const active = specs.finishing.includes(option.value);
             return (
               <button
