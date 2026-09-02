@@ -94,7 +94,8 @@ export interface StoreDetail extends Store {
 export interface OrderSpecifications {
   serviceId: string;
   paperType: 'standard' | 'digital' | 'premium' | 'glossy' | 'matte' | '';
-  size: 'A4' | 'A3' | 'A2' | 'custom' | '';
+  /** Catalog-driven (paper-sizes group: A4/A5/A3 today) — not a closed set. */
+  size: string;
   quantity: number;
   colorOption: 'color' | 'bw' | 'mixed';
   finishing: string[];
