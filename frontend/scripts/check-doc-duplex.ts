@@ -68,5 +68,6 @@ assert.deepEqual(
 assert.deepEqual(withStaplingChoice(['side-stapling'], 'loose'), []);
 assert.deepEqual(withStaplingChoice(['stapling'], 'corner-stapling'), ['corner-stapling']); // legacy key replaced
 assert.deepEqual(withStaplingChoice(['punching'], 'loose'), ['punching']); // unrelated finishing kept
+assert.deepEqual(withStaplingChoice(['lamination'], 'stapling'), ['lamination', 'stapling']); // legacy chip toggled on
 
 console.log('doc-print duplex pricing checks: OK');

@@ -170,7 +170,10 @@ export default function SpecificationsStep({
   const toggleFinishing = (value: string) => {
     const finishing = specs.finishing.includes(value)
       ? specs.finishing.filter((item) => item !== value)
-      : [...specs.finishing, value];
+      : (STAPLING_FINISHING_KEYS as readonly string[]).includes(value)
+        ? // Stapling choices are mutually exclusive — corner replaces side etc.
+          withStaplingChoice(specs.finishing, value)
+        : [...specs.finishing, value];
     dispatch({ type: 'SET_SPEC', payload: { finishing } });
   };
 
@@ -1639,69 +1642,18 @@ export default function SpecificationsStep({
         </section>
       )}
 
-      {selectedService?.id === 'doc-print' && (
-        <section className="animate-fade-in">
-          <p className="label">Stapling / binding</p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {(
-              [
-                { value: 'loose', label: 'Loose Sheet', hint: 'No binding — sheets stay as-is' },
-                { value: 'corner-stapling', label: 'Corner Stapling', hint: 'Single staple at the top-left corner' },
-                { value: 'side-stapling', label: 'Side Stapling', hint: 'Staples along the left edge' },
-              ] as const
-            ).map((choice) => {
-              const staplingActive = specs.finishing.some((key) =>
-                (STAPLING_FINISHING_KEYS as readonly string[]).includes(key),
-              );
-              const active =
-                choice.value === 'loose' ? !staplingActive : specs.finishing.includes(choice.value);
-              const price =
-                choice.value === 'loose'
-                  ? 0
-                  : (finishingOptions.find((option) => option.value === choice.value)?.price ?? 0);
-              return (
-                <button
-                  key={choice.value}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() =>
-                    dispatch({
-                      type: 'SET_SPEC',
-                      payload: { finishing: withStaplingChoice(specs.finishing, choice.value) },
-                    })
-                  }
-                  className={`rounded-xl border p-3.5 text-left transition-all ${
-                    active
-                      ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
-                      : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="block text-sm font-semibold text-slate-900">
-                    {choice.label}
-                    {price > 0 && (
-                      <span className="ml-1.5 text-xs font-semibold text-blue-600">
-                        +{formatCurrency(price)}
-                      </span>
-                    )}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-slate-500">{choice.hint}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       <section className={isBusinessCard ? 'hidden' : ''}>
         <p className="label">Finishing (optional)</p>
         <div className="flex flex-wrap gap-2.5">
           {(selectedService?.id === 'doc-print'
-            ? // Stapling-family options live in their own radio above.
+            ? // Stapling options are catalogue-managed finishing rows (Admin →
+              // Catalogue); with no stapling chip picked the order is a loose sheet.
+              finishingOptions
+            : // Stapling is a document-printing add-on only.
               finishingOptions.filter(
                 (option) =>
                   !(STAPLING_FINISHING_KEYS as readonly string[]).includes(option.value),
               )
-            : finishingOptions
           ).map((option) => {
             const active = specs.finishing.includes(option.value);
             return (

@@ -34,8 +34,9 @@ export type OrderAction =
   | { type: 'SET_ERROR'; payload: string | null };
 
 /**
- * Stapling/binding choice for document printing, stored as finishing keys so
- * both pricing paths (local estimate + backend computeQuote) charge it per
+ * Stapling options for document printing are catalogue-managed finishing rows
+ * (Admin → Catalogue → Finishing options) stored as finishing keys so both
+ * pricing paths (local estimate + backend computeQuote) charge them per
  * quantity with no special casing. Choices are mutually exclusive: picking
  * one replaces every stapling-family key, 'loose' removes them all.
  */
@@ -45,9 +46,7 @@ export const STAPLING_FINISHING_KEYS = [
   'side-stapling',
 ] as const;
 
-export type StaplingChoice = 'loose' | 'corner-stapling' | 'side-stapling';
-
-export function withStaplingChoice(finishing: string[], choice: StaplingChoice): string[] {
+export function withStaplingChoice(finishing: string[], choice: string): string[] {
   const rest = finishing.filter(
     (key) => !(STAPLING_FINISHING_KEYS as readonly string[]).includes(key),
   );
