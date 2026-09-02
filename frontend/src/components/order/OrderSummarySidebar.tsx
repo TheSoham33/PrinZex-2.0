@@ -82,6 +82,9 @@ export default function OrderSummarySidebar({
                   </p>
                 )}
                 {specs.size && <p>Size: {specs.size}</p>}
+                {specs.serviceId === 'doc-print' && (
+                  <p>Sides: {(specs.printSides ?? 'single') === 'double' ? 'Double-sided' : 'Single-sided'}</p>
+                )}
                 {typeof cost.bindingCost === 'number' && (
                   <div className="mt-2 space-y-1 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700">
                     {specs?.totalPages ? (

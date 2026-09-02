@@ -14,6 +14,9 @@ export const specificationsSchema = z.object({
   paperType: z.string().trim().min(1),
   size: z.string().trim().min(1),
   colorOption: z.enum(['color', 'bw', 'mixed']),
+  // Document printing: duplex choice for the print operator (pricing stays
+  // per-page; a page is one side).
+  printSides: z.enum(['single', 'double']).optional(),
   finishing: z.array(z.string()),
   // Page count auto-detected from the uploaded PDF. Drives per-page pricing
   // and must flow through so removing/replacing the file updates the quote.
@@ -93,6 +96,8 @@ export const createOrderBody = z.object({
     paperType: z.string(),
     size: z.string(),
     colorOption: z.enum(['color', 'bw', 'mixed']),
+    // Document printing: duplex choice for the print operator.
+    printSides: z.enum(['single', 'double']).optional(),
     finishing: z.array(z.string()),
     totalPages: z.number().int().min(0).optional(),
     colorPages: z.string().optional(),

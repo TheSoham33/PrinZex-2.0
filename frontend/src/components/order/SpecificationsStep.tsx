@@ -645,6 +645,9 @@ export default function SpecificationsStep({
                       cardDesignSource: specs.cardDesignSource ?? 'upload',
                     }
                   : {}),
+                ...(nextServiceId === 'doc-print'
+                  ? { printSides: specs.printSides ?? 'single' }
+                  : {}),
               },
             });
           }}
@@ -834,6 +837,42 @@ export default function SpecificationsStep({
             ))}
           </div>
         </section>
+
+        {selectedService?.id === 'doc-print' && (
+          <section className="animate-fade-in">
+            <p className="label">
+              Print sides <span className="text-red-500">*</span>
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  { value: 'single', label: 'Single-sided', hint: 'Printed on one side of each sheet' },
+                  { value: 'double', label: 'Double-sided (duplex)', hint: 'Both sides — half the sheets' },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() =>
+                    dispatch({ type: 'SET_SPEC', payload: { printSides: option.value } })
+                  }
+                  className={`rounded-xl border p-3.5 text-left transition-all ${
+                    (specs.printSides ?? 'single') === option.value
+                      ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                      : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold text-slate-900">
+                    {option.label}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-slate-500">
+                    {option.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       {specs.colorOption === 'mixed' &&
