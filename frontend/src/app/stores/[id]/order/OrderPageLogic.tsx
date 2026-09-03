@@ -157,6 +157,10 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           spineText: specs.spineText,
           paperGsm: specs.paperGsm,
           hardBindingProofApproved: specs.hardBindingProofApproved,
+          tapeColor: specs.tapeColor,
+          tapeCoverSource: specs.tapeCoverSource,
+          tapeFrontCoverFileUrl: specs.tapeFrontCoverFileUrl,
+          tapeBackCoverFileUrl: specs.tapeBackCoverFileUrl,
           twinLoopWireColor: specs.twinLoopWireColor,
           twinLoopFrontCover: specs.twinLoopFrontCover,
           twinLoopBackCover: specs.twinLoopBackCover,
@@ -260,6 +264,13 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         }
         if (!specs.hardBindingProofApproved) {
           return 'Please approve the hard binding cover proof';
+        }
+      }
+      if (specs.serviceId === 'bind-tape') {
+        if (!specs.tapeColor) return 'Please choose a tape colour';
+        if (!specs.tapeCoverSource) return 'Please choose the front cover source';
+        if (specs.tapeCoverSource === 'upload' && !specs.tapeFrontCoverFileUrl) {
+          return 'Please upload the single-page front cover design (PDF/PNG/JPG)';
         }
       }
       if (specs.serviceId === 'bind-twin-loop') {
@@ -407,6 +418,10 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           spineText: specs.spineText,
           paperGsm: specs.paperGsm,
           hardBindingProofApproved: specs.hardBindingProofApproved,
+          tapeColor: specs.tapeColor,
+          tapeCoverSource: specs.tapeCoverSource,
+          tapeFrontCoverFileUrl: specs.tapeFrontCoverFileUrl,
+          tapeBackCoverFileUrl: specs.tapeBackCoverFileUrl,
           twinLoopWireColor: specs.twinLoopWireColor,
           twinLoopFrontCover: specs.twinLoopFrontCover,
           twinLoopBackCover: specs.twinLoopBackCover,
@@ -572,6 +587,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               availableCoverColors={store.availableCoverColors}
               availableHardCoverColors={store.availableHardCoverColors}
               availableHardFoilColors={store.availableHardFoilColors}
+              availableTapeColors={store.availableTapeColors}
             />
           )}
           {state.step === 2 && (

@@ -35,6 +35,11 @@ export interface QuoteSpecifications {
   spineText?: string;
   paperGsm?: 75 | 100;
   hardBindingProofApproved?: boolean;
+  // Tape Binding customization (availability-only colour, no surcharge).
+  tapeColor?: string;
+  tapeCoverSource?: 'first-page' | 'upload';
+  tapeFrontCoverFileUrl?: string;
+  tapeBackCoverFileUrl?: string;
   twinLoopWireColor?: string;
   twinLoopFrontCover?: string;
   twinLoopBackCover?: string;
@@ -483,9 +488,13 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const tax = round2(subtotal * GST_RATE);
   const commissionAmount = round2(subtotal * input.commissionRate);
   const total = round2(subtotal + rushFee + deliveryFee + tax - input.discount);
+  // Spine width estimate: sheets (2 pages each) × paper caliper. Hard
+  // binding needs ≥2 mm of spine; thermal tape grip needs ≥4 mm.
+  const SPINE_MIN_WIDTH_MM: Record<string, number> = { 'bind-hard': 2, 'bind-tape': 4 };
+  const spineMinWidthMm = SPINE_MIN_WIDTH_MM[input.serviceId ?? ''];
   const spineWidthMm =
-    input.serviceId === 'bind-hard' && totalPages > 0
-      ? Math.max(2, round2((totalPages / 2) * (specifications.paperGsm === 100 ? 0.13 : 0.1)))
+    spineMinWidthMm !== undefined && totalPages > 0
+      ? Math.max(spineMinWidthMm, round2((totalPages / 2) * (specifications.paperGsm === 100 ? 0.13 : 0.1)))
       : undefined;
 
   const twinLoopTotalSheets =

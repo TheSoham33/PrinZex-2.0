@@ -22,6 +22,7 @@ import { useToast } from '@/components/seller-dashboard/Toast';
 import type { OrderAction } from './orderReducer';
 import { STAPLING_FINISHING_KEYS } from './orderReducer';
 import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
+import TapeBindingCustomizationPanel from './TapeBindingCustomizationPanel';
 import BusinessCardCustomizationPanel from './BusinessCardCustomizationPanel';
 import {
   IconAlertCircle,
@@ -50,6 +51,7 @@ interface SpecificationsStepProps {
   availableCoverColors?: string[];
   availableHardCoverColors?: string[];
   availableHardFoilColors?: string[];
+  availableTapeColors?: string[];
 }
 
 /** `undefined` availability → show all options; otherwise only the offered ones. */
@@ -73,6 +75,7 @@ export default function SpecificationsStep({
   availableCoverColors,
   availableHardCoverColors,
   availableHardFoilColors,
+  availableTapeColors,
 }: SpecificationsStepProps) {
   const coverColors = useCatalogOptions('cover-colors', COVER_COLORS_FALLBACK);
   const coverTextColors = useCatalogOptions('cover-text-colors', COVER_TEXT_COLORS_FALLBACK);
@@ -86,6 +89,7 @@ export default function SpecificationsStep({
   const isHardBinding = specs.serviceId === 'bind-hard';
   const isSpiralBinding = specs.serviceId === 'bind-spiral';
   const isTwinLoopBinding = specs.serviceId === 'bind-twin-loop';
+  const isTapeBinding = specs.serviceId === 'bind-tape';
   const isBusinessCard = specs.serviceId === 'cards-business';
   const isCustomizableBinding = isHardBinding || isSpiralBinding;
 
@@ -676,6 +680,9 @@ export default function SpecificationsStep({
                       stapling: specs.stapling ?? 'loose',
                     }
                   : {}),
+                ...(nextServiceId === 'bind-tape'
+                  ? { tapeCoverSource: specs.tapeCoverSource ?? 'first-page' }
+                  : {}),
               },
             });
           }}
@@ -986,6 +993,14 @@ export default function SpecificationsStep({
           specs={specs}
           service={selectedService}
           dispatch={dispatch}
+        />
+      )}
+
+      {isTapeBinding && (
+        <TapeBindingCustomizationPanel
+          specs={specs}
+          dispatch={dispatch}
+          availableTapeColors={availableTapeColors}
         />
       )}
 

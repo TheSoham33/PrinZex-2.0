@@ -126,6 +126,18 @@ const GROUPS: GroupSpec[] = [
     ],
   },
   {
+    key: 'tape-colors',
+    kind: 'rows',
+    description:
+      'Tape Binding tape colours — availability-only, no surcharge (sellers toggle which ones their store offers).',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+      { key: 'class', label: 'Swatch class', kind: 'text', optional: true, placeholder: 'bg-[#111827]' },
+      { key: 'hex', label: 'Hex', kind: 'text', optional: true, placeholder: '#111827' },
+    ],
+  },
+  {
     key: 'cover-text-colors',
     kind: 'rows',
     description: 'Foil text colours for Hard Binding.',

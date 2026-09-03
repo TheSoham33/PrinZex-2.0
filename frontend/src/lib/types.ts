@@ -92,6 +92,8 @@ export interface StoreDetail extends Store {
   availableCoverColors?: string[];
   availableHardCoverColors?: string[];
   availableHardFoilColors?: string[];
+  /** Tape Binding tape colours the store offers (availability-only). */
+  availableTapeColors?: string[];
 }
 
 export interface OrderSpecifications {
@@ -133,6 +135,17 @@ export interface OrderSpecifications {
   paperGsm?: 75 | 100;
   /** Customer must approve the cover proof before continuing. */
   hardBindingProofApproved?: boolean;
+  // Tape Binding options.
+  /** Tape colour (catalogue 'tape-colors' group; no surcharge). */
+  tapeColor?: string;
+  /** Front cover: first document page or a separate single-page design
+   *  (PDF/PNG/JPG, 300 DPI minimum). */
+  tapeCoverSource?: 'first-page' | 'upload';
+  tapeFrontCoverFileUrl?: string;
+  tapeFrontCoverFileName?: string;
+  /** Optional back cover design, same format rules as the front. */
+  tapeBackCoverFileUrl?: string;
+  tapeBackCoverFileName?: string;
   // Twin Loop Binding options.
   twinLoopWireColor?: string;
   twinLoopFrontCover?: string;

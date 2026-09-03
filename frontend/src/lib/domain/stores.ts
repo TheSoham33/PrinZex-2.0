@@ -123,6 +123,16 @@ export const STAPLING_OPTIONS = [
   { value: 'side-stapling', label: 'Side Stapling', hint: 'Staples along the left edge', price: 10 },
 ] as const;
 
+// Tape Binding tape colours (fall back for the DB-managed 'tape-colors'
+// catalogue group) — availability-only customization, no surcharge.
+export const TAPE_COLORS = [
+  { value: 'black', label: 'Black', class: 'bg-[#111827]', hex: '#111827' },
+  { value: 'white', label: 'White', class: 'bg-[#f8fafc]', hex: '#f8fafc' },
+  { value: 'blue', label: 'Blue', class: 'bg-[#1d4ed8]', hex: '#1d4ed8' },
+  { value: 'red', label: 'Red', class: 'bg-[#b91c1c]', hex: '#b91c1c' },
+  { value: 'green', label: 'Green', class: 'bg-[#166534]', hex: '#166534' },
+] as const;
+
 // ── Business Cards (fall back for the DB-managed card-* catalogue groups) ──
 
 export const CARD_SHAPES = [
@@ -191,6 +201,7 @@ export const SERVICE_IMAGE_MAP: Record<string, string> = {
   'bind-twin-loop': '/images/services/twin-loop.jpg',
   'bind-hard': '/images/services/hard-binding.jpg',
   'bind-perfect': '/images/services/perfect-binding.jpg',
+  'bind-tape': '/images/services/tape-binding.jpg',
   'lf-flex-banner': '/images/services/banners.jpg',
   'lf-vinyl': '/images/services/vinyl.jpg',
   'lf-standee': '/images/services/standee.jpg',

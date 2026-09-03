@@ -91,6 +91,7 @@ export const CATALOG_GROUP_SCHEMAS: Record<string, z.ZodType<unknown>> = {
   'spiral-coil-types': hintOptions,
   'spiral-cover-types': hintOptions,
   'cover-colors': swatchOptions,
+  'tape-colors': swatchOptions,
   'cover-text-colors': swatchOptions,
   'twin-loop-wire-colors': swatchOptions,
   'twin-loop-front-covers': hintOptions,

@@ -39,6 +39,11 @@ export const specificationsSchema = z.object({
   spineText: z.string().trim().max(50).optional(),
   paperGsm: z.union([z.literal(75), z.literal(100)]).optional(),
   hardBindingProofApproved: z.boolean().optional(),
+  // Tape Binding customization (colour is availability-only, no surcharge).
+  tapeColor: z.string().optional(),
+  tapeCoverSource: z.enum(['first-page', 'upload']).optional(),
+  tapeFrontCoverFileUrl: z.string().max(2048).optional(),
+  tapeBackCoverFileUrl: z.string().max(2048).optional(),
   twinLoopWireColor: z.string().optional(),
   twinLoopFrontCover: z.string().optional(),
   twinLoopBackCover: z.string().optional(),
@@ -118,6 +123,11 @@ export const createOrderBody = z.object({
     spineText: z.string().trim().max(50).optional(),
     paperGsm: z.union([z.literal(75), z.literal(100)]).optional(),
     hardBindingProofApproved: z.boolean().optional(),
+    // Tape Binding customization (colour is availability-only, no surcharge).
+    tapeColor: z.string().optional(),
+    tapeCoverSource: z.enum(['first-page', 'upload']).optional(),
+    tapeFrontCoverFileUrl: z.string().max(2048).optional(),
+    tapeBackCoverFileUrl: z.string().max(2048).optional(),
     twinLoopWireColor: z.string().optional(),
     twinLoopFrontCover: z.string().optional(),
     twinLoopBackCover: z.string().optional(),
