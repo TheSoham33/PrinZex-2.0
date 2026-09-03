@@ -11,7 +11,9 @@ SET data = (
 )
 WHERE key = 'finishing-options';
 
-INSERT INTO "CatalogEntry" (key, label, data)
+-- "updatedAt" has no DB default (Prisma sets it app-side), so the INSERT
+-- must provide it explicitly.
+INSERT INTO "CatalogEntry" (key, label, data, "updatedAt")
 VALUES (
   'stapling-options',
   'Stapling options (Document Printing)',
@@ -19,6 +21,7 @@ VALUES (
     {"value":"loose","label":"Loose Sheet","hint":"No binding — sheets stay as-is","price":0},
     {"value":"corner-stapling","label":"Corner Stapling","hint":"Single staple at the top-left corner","price":5},
     {"value":"side-stapling","label":"Side Stapling","hint":"Staples along the left edge","price":10}
-  ]'::jsonb
+  ]'::jsonb,
+  NOW()
 )
 ON CONFLICT (key) DO NOTHING;
