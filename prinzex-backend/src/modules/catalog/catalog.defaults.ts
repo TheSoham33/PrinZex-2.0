@@ -59,6 +59,7 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
           { id: 'bind-twin-loop', name: 'Twin Loop Binding' },
           { id: 'bind-hard', name: 'Hard Binding / Thesis Binding' },
           { id: 'bind-perfect', name: 'Perfect Binding' },
+          { id: 'bind-tape', name: 'Tape Binding' },
         ],
       },
       {
@@ -125,6 +126,18 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
       { value: 'loose', label: 'Loose Sheet', hint: 'No binding — sheets stay as-is', price: 0 },
       { value: 'corner-stapling', label: 'Corner Stapling', hint: 'Single staple at the top-left corner', price: 5 },
       { value: 'side-stapling', label: 'Side Stapling', hint: 'Staples along the left edge', price: 10 },
+    ],
+  },
+  // Tape Binding tape colours — availability-only customization (no
+  // surcharge), the same model as Hard Binding cover fabrics.
+  'tape-colors': {
+    label: 'Tape Binding tape colours',
+    data: [
+      { value: 'black', label: 'Black', class: 'bg-[#111827]', hex: '#111827' },
+      { value: 'white', label: 'White', class: 'bg-[#f8fafc]', hex: '#f8fafc' },
+      { value: 'blue', label: 'Blue', class: 'bg-[#1d4ed8]', hex: '#1d4ed8' },
+      { value: 'red', label: 'Red', class: 'bg-[#b91c1c]', hex: '#b91c1c' },
+      { value: 'green', label: 'Green', class: 'bg-[#166534]', hex: '#166534' },
     ],
   },
   'cover-types': {

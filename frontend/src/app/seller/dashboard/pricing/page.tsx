@@ -20,6 +20,7 @@ import {
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
   STAPLING_OPTIONS,
+  TAPE_COLORS,
   TWIN_LOOP_BACK_COVERS,
   TWIN_LOOP_FRONT_COVERS,
   TWIN_LOOP_WIRE_COLORS,
@@ -35,6 +36,7 @@ import SpiralBindingCustomizationPricing, {
   type PriceOptions,
 } from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
 import StaplingPricingOptions from '@/components/seller-dashboard/StaplingPricingOptions';
+import TapeBindingCustomizationOptions from '@/components/seller-dashboard/TapeBindingCustomizationOptions';
 import TwinLoopCustomizationPricing, {
   type TwinLoopPricingState,
 } from '@/components/seller-dashboard/TwinLoopCustomizationPricing';
@@ -74,6 +76,7 @@ export default function SellerPricingPage() {
   const [staplingPriceOptions, setStaplingPriceOptions] = useState<PriceOptions>({});
   const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
   const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
+  const [tapeColors, setTapeColors] = useState<string[]>([]);
   const [servicePaperOptions, setServicePaperOptions] = useState<
     Record<
       string,
@@ -158,6 +161,9 @@ export default function SellerPricingPage() {
 
       setHardCoverColors(
         overrides.hardCoverColors ?? COVER_COLORS.map((color) => color.value),
+      );
+      setTapeColors(
+        overrides.tapeColors ?? TAPE_COLORS.map((color) => color.value),
       );
       setHardFoilColors(
         overrides.hardFoilColors ??
@@ -324,6 +330,7 @@ export default function SellerPricingPage() {
       coverColor,
       hardCoverColors,
       hardFoilColors,
+      tapeColors,
       servicePaperOptions,
       twinLoopOptions,
       quantitySlabs: Object.fromEntries(
@@ -580,6 +587,15 @@ export default function SellerPricingPage() {
                       foilColors={hardFoilColors}
                       onCoverColorsChange={setHardCoverColors}
                       onFoilColorsChange={setHardFoilColors}
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
+                  )}
+
+                  {entry.serviceId === 'bind-tape' && (
+                    <TapeBindingCustomizationOptions
+                      values={tapeColors}
+                      onChange={setTapeColors}
                       onSave={handleSaveOverrides}
                       saving={updateOverridesMutation.isPending}
                     />

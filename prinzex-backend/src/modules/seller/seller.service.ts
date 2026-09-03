@@ -85,6 +85,8 @@ export interface SellerMetadata {
     /** Hard Binding menus are availability-only; no automatic surcharge. */
     hardCoverColors?: string[];
     hardFoilColors?: string[];
+    /** Tape Binding tape colours offered — availability-only, no surcharge. */
+    tapeColors?: string[];
     /** Per-service paper availability and additive prices, keyed by catalogue serviceId. */
     servicePaperOptions?: Record<
       string,
@@ -1614,6 +1616,10 @@ export async function updatePricingOverrides(
         'Twin Loop custom artwork requires Heavy Cardstock and Matching Front cover options',
       );
     }
+  }
+
+  if (overrides?.tapeColors && overrides.tapeColors.length === 0) {
+    throw ApiError.badRequest('Keep at least one Tape Binding colour enabled');
   }
 
   const bwRate = overrides?.pageRate?.bw;

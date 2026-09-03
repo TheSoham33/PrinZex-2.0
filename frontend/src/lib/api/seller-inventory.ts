@@ -51,6 +51,7 @@ export const updatePricingOverrides = async (overrides: {
   coverColor?: Record<string, number>;
   hardCoverColors?: string[];
   hardFoilColors?: string[];
+  tapeColors?: string[];
   servicePaperOptions?: Record<
     string,
     {

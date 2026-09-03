@@ -238,6 +238,9 @@ export function mapBackendStoreDetailToFrontend(
     availableHardFoilColors: Array.isArray(pricingOverrides.hardFoilColors)
       ? pricingOverrides.hardFoilColors
       : undefined,
+    availableTapeColors: Array.isArray(pricingOverrides.tapeColors)
+      ? pricingOverrides.tapeColors
+      : undefined,
   };
 }
 
