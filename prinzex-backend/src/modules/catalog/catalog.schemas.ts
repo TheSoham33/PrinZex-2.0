@@ -34,6 +34,22 @@ const finishingOption = z.object({
   price: z.number().min(0).max(100000),
 });
 
+/**
+ * Stapling options — hint + per-set price. The order-page radio is mandatory
+ * with 'loose' (Loose Sheet) as the always-available free default, so that
+ * row must stay first and free (the backend also treats 'loose' as free no
+ * matter what a row claims).
+ */
+const staplingOptions = z
+  .array(
+    finishingOption.extend({
+      hint: z.string().trim().max(200).optional(),
+    }),
+  )
+  .refine((rows) => rows[0]?.value === 'loose' && rows[0].price === 0, {
+    message: "Keep a free 'loose' (Loose Sheet) row first",
+  });
+
 /** Colour swatches — Tailwind class / hex / premium flag. */
 const swatchOption = z.object({
   value: keyString,
@@ -70,6 +86,7 @@ export const CATALOG_GROUP_SCHEMAS: Record<string, z.ZodType<unknown>> = {
   'paper-types': multiplierOptions,
   'paper-sizes': multiplierOptions,
   'finishing-options': finishingOptions,
+  'stapling-options': staplingOptions,
   'cover-types': hintOptions,
   'spiral-coil-types': hintOptions,
   'spiral-cover-types': hintOptions,
