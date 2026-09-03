@@ -215,6 +215,10 @@ export function mapBackendStoreDetailToFrontend(
               ? pricingOverrides.twinLoopOptions
               : undefined,
           quantitySlabs: pricingOverrides.quantitySlabs?.[service.serviceId],
+          staplingOptions:
+            service.serviceId === 'doc-print'
+              ? pricingOverrides.staplingOptions
+              : undefined,
         };
       }) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),

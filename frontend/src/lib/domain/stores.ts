@@ -110,9 +110,17 @@ export const FINISHING_OPTIONS = [
   { value: 'lamination', label: 'Lamination', price: 15 },
   { value: 'spiral-binding', label: 'Spiral binding', price: 40 },
   { value: 'hard-binding', label: 'Hard / Thesis binding', price: 120 },
-  { value: 'corner-stapling', label: 'Corner Stapling', price: 5 },
-  { value: 'side-stapling', label: 'Side Stapling', price: 10 },
   { value: 'punching', label: 'Hole punching', price: 8 },
+] as const;
+
+// Document Printing stapling/binding choices (fall back for the DB-managed
+// 'stapling-options' catalogue group). Separate from finishing options: it's
+// a mandatory radio and sellers set each style's price from their Pricing
+// page. 'loose' is the free default every store must offer.
+export const STAPLING_OPTIONS = [
+  { value: 'loose', label: 'Loose Sheet', hint: 'No binding — sheets stay as-is', price: 0 },
+  { value: 'corner-stapling', label: 'Corner Stapling', hint: 'Single staple at the top-left corner', price: 5 },
+  { value: 'side-stapling', label: 'Side Stapling', hint: 'Staples along the left edge', price: 10 },
 ] as const;
 
 // ── Business Cards (fall back for the DB-managed card-* catalogue groups) ──

@@ -6,6 +6,7 @@ import type {
   ServiceOffering,
 } from '@/lib/types';
 import { countColorPages, formatCurrency } from '@/lib/utils';
+import { STAPLING_OPTIONS } from '@/lib/domain/stores';
 import { IconShieldCheck, IconLock } from '@/components/icons';
 import { pickSlabRate } from './orderReducer';
 
@@ -92,6 +93,23 @@ export default function OrderSummarySidebar({
                       : ''}
                   </p>
                 )}
+                {specs.serviceId === 'doc-print' &&
+                  specs.stapling &&
+                  specs.stapling !== 'loose' && (
+                    <p>
+                      Stapling:{' '}
+                      {STAPLING_OPTIONS.find((o) => o.value === specs.stapling)
+                        ?.label ?? specs.stapling}
+                      {(() => {
+                        const price =
+                          service?.staplingOptions?.[specs.stapling] ??
+                          STAPLING_OPTIONS.find((o) => o.value === specs.stapling)
+                            ?.price ??
+                          0;
+                        return price > 0 ? ` · +${formatCurrency(price)}/copy` : '';
+                      })()}
+                    </p>
+                  )}
                 {typeof cost.bindingCost === 'number' && (
                   <div className="mt-2 space-y-1 rounded-md bg-blue-50 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700">
                     {specs?.totalPages ? (

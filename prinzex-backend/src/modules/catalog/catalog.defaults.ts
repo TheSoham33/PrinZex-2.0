@@ -113,9 +113,18 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
       { value: 'lamination', label: 'Lamination', price: 15 },
       { value: 'spiral-binding', label: 'Spiral binding', price: 40 },
       { value: 'hard-binding', label: 'Hard / Thesis binding', price: 120 },
+      { value: 'punching', label: 'Hole punching', price: 8 },
+    ],
+  },
+  // Document Printing's mandatory stapling choice — a dedicated option group
+  // (radio on the order page), NOT a finishing add-on. Sellers override the
+  // per-option prices from their Pricing page; 'loose' is the free default.
+  'stapling-options': {
+    label: 'Stapling options (Document Printing)',
+    data: [
+      { value: 'loose', label: 'Loose Sheet', hint: 'No binding — sheets stay as-is', price: 0 },
       { value: 'corner-stapling', label: 'Corner Stapling', hint: 'Single staple at the top-left corner', price: 5 },
       { value: 'side-stapling', label: 'Side Stapling', hint: 'Staples along the left edge', price: 10 },
-      { value: 'punching', label: 'Hole punching', price: 8 },
     ],
   },
   'cover-types': {

@@ -73,6 +73,10 @@ export interface SellerMetadata {
       bw: boolean;
       color: boolean;
     };
+    /** Document Printing stapling choices the seller offers, option value →
+     *  ₹ per set. 'loose' is the mandatory free default and is never priced
+     *  here; a missing map means the platform default prices apply. */
+    staplingOptions?: Record<string, number>;
     // Binding services: additive ₹ components set by the seller.
     // Binding (₹/binding): coverType + coilType + coverColor.
     coverType?: Record<string, number>;
@@ -1615,6 +1619,14 @@ export async function updatePricingOverrides(
   const bwRate = overrides?.pageRate?.bw;
   if (bwRate !== undefined && (!Number.isFinite(bwRate) || bwRate <= 0)) {
     throw ApiError.badRequest('B&W page price must be greater than 0');
+  }
+
+  for (const [option, price] of Object.entries(overrides?.staplingOptions ?? {})) {
+    if (option === 'loose' || !Number.isFinite(price) || price < 0) {
+      throw ApiError.badRequest(
+        'Stapling prices must be numbers at or above 0 — Loose Sheet is always free',
+      );
+    }
   }
 
   for (const [serviceId, slabs] of Object.entries(overrides?.quantitySlabs ?? {})) {

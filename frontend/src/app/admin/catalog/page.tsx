@@ -73,6 +73,18 @@ const GROUPS: GroupSpec[] = [
     ],
   },
   {
+    key: 'stapling-options',
+    kind: 'rows',
+    description:
+      'Document Printing stapling choices — a mandatory radio on the order page. Sellers can override each price from their Pricing page; keep the free Loose Sheet row first.',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+      { key: 'hint', label: 'Hint', kind: 'text', optional: true },
+      { key: 'price', label: 'Default price (₹)', kind: 'number' },
+    ],
+  },
+  {
     key: 'cover-types',
     kind: 'rows',
     description: 'Cover materials for binding services.',

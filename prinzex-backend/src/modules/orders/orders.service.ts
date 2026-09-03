@@ -29,6 +29,7 @@ import {
 } from '../../realtime/realtime.emitters';
 import {
   assertKnownFinishing,
+  STAPLING_OPTION_PRICES,
   computeQuote,
   estimatedDeliveryFor,
   validateCoupon,
@@ -255,6 +256,25 @@ function assertTwinLoopOptionsAvailable(
   }
 }
 
+/**
+ * Document Printing requires a stapling choice the store actually offers —
+ * 'loose' is always available; priced choices must come from the seller's
+ * saved staplingOptions, or (when the seller never saved any) the platform
+ * default list. Unknown keys would otherwise slip through unpriced.
+ */
+function assertStaplingAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  stapling?: string,
+): void {
+  if (serviceId !== 'doc-print') return;
+  if (!stapling || stapling === 'loose') return;
+  const offered = readSellerMetadata(sellerMetadata).pricingOverrides?.staplingOptions;
+  if (offered ? !(stapling in offered) : !(stapling in STAPLING_OPTION_PRICES)) {
+    throw ApiError.badRequest('This stapling option is not offered by this store');
+  }
+}
+
 function assertPaperOptionAvailable(
   sellerMetadata: Prisma.JsonValue | null,
   serviceId: string,
@@ -296,6 +316,11 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     seller.metadata,
     service.serviceId,
     input.specifications,
+  );
+  assertStaplingAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.stapling,
   );
 
   // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
@@ -381,6 +406,11 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     seller.metadata,
     service.serviceId,
     input.specifications,
+  );
+  assertStaplingAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.stapling,
   );
 
   if (service.serviceId === 'bind-hard') {

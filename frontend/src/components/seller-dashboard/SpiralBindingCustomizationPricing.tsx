@@ -9,8 +9,8 @@ import {
 import { useCatalogOptions } from '@/lib/api/catalog';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 
-type PriceOption = { price: string; enabled: boolean };
-type PriceOptions = Record<string, PriceOption>;
+export type PriceOption = { price: string; enabled: boolean };
+export type PriceOptions = Record<string, PriceOption>;
 
 interface SpiralBindingCustomizationPricingProps {
   coverTypeOptions: PriceOptions;
@@ -32,7 +32,8 @@ interface OptionGridProps {
   showColorSwatch?: boolean;
 }
 
-function OptionGrid({
+/** Shared \"option → offered? + ₹ extra\" grid — also used by stapling. */
+export function OptionGrid({
   title,
   description,
   options,
