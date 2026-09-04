@@ -18,16 +18,6 @@ export type Order = T.Order;
 /* Constants                                                           */
 /* ------------------------------------------------------------------ */
 
-export const DEFAULT_HOURS: T.StoreHours[] = [
-  { day: 'Monday', open: '09:00', close: '21:00' },
-  { day: 'Tuesday', open: '09:00', close: '21:00' },
-  { day: 'Wednesday', open: '09:00', close: '21:00' },
-  { day: 'Thursday', open: '09:00', close: '21:00' },
-  { day: 'Friday', open: '09:00', close: '21:00' },
-  { day: 'Saturday', open: '10:00', close: '18:00' },
-  { day: 'Sunday', closed: true },
-];
-
 export interface DeliveryOption {
   key: T.DeliverySpeed;
   label: string;

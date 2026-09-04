@@ -16,20 +16,6 @@ export const assignDeliveryBoy = async (orderId: string, deliveryBoyId: string):
   });
 };
 
-export const updateAdminOrderStatus = async (id: string, data: { status: string; note?: string }): Promise<any> => {
-  return apiRequest<any>(`/admin/orders/${id}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-};
-
-export const refundAdminOrder = async (id: string, data: { amount: number; reason: string }): Promise<any> => {
-  return apiRequest<any>(`/admin/orders/${id}/refund`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
-
 export const fetchSupportTickets = async (params: any = {}): Promise<any[]> => {
   // If params is passed by React Query (it's an object with queryKey, signal etc), 
   // we want to ignore it and use our default empty object.

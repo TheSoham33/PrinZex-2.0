@@ -181,11 +181,6 @@ export function clampElement<T extends StudioElement>(el: T, size: { w: number; 
   };
 }
 
-export const clampDoc = (doc: StudioDoc, size: { w: number; h: number }): StudioDoc => ({
-  ...doc,
-  elements: doc.elements.map((el) => clampElement(el, size)),
-});
-
 export const moveElementBy = <T extends StudioElement>(
   el: T,
   dx: number,

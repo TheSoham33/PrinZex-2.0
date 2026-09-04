@@ -28,24 +28,10 @@ export const adminLogin = async (data: any): Promise<any> => {
   });
 };
 
-export const getMe = async (role: 'CUSTOMER' | 'SELLER' | 'ADMIN'): Promise<any> => {
-  let endpoint = '/auth/me';
-  if (role === 'SELLER') endpoint = '/seller/auth/me';
-  if (role === 'ADMIN') endpoint = '/admin/auth/me';
-  
-  return apiRequest<any>(endpoint);
-};
-
-export const logout = async (role: 'CUSTOMER' | 'SELLER' | 'ADMIN', refreshToken: string): Promise<any> => {
-  let endpoint = '/auth/logout';
-  if (role === 'SELLER') endpoint = '/seller/auth/logout';
-  if (role === 'ADMIN') endpoint = '/admin/auth/logout';
-  
-  return apiRequest<any>(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({ refreshToken }),
-  });
-};
+// ponytail: sign-out is client-only (redux logout + token clear); the
+// /auth/logout refresh-token invalidation endpoint is intentionally unwired.
+// Ceiling — access tokens are short-lived, so risk is bounded. Upgrade path:
+// call role-specific /logout from the logout handlers before dispatching.
 
 export const forgotPassword = async (identifier: string): Promise<any> => {
   return apiRequest<any>('/auth/forgot-password', {

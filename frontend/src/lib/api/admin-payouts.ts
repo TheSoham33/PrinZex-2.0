@@ -9,26 +9,6 @@ export const fetchPayouts = async (params: any = {}): Promise<any[]> => {
 export const fetchSellerPayouts = async () => fetchPayouts({ recipientType: 'seller' });
 export const fetchDeliveryPayouts = async () => fetchPayouts({ recipientType: 'delivery_boy' });
 
-export const approvePayout = async (id: string): Promise<any> => {
-  return apiRequest<any>(`/admin/payouts/${id}/approve`, {
-    method: 'POST',
-  });
-};
-
-export const markPayoutPaid = async (id: string, transactionRef: string): Promise<any> => {
-  return apiRequest<any>(`/admin/payouts/${id}/mark-paid`, {
-    method: 'POST',
-    body: JSON.stringify({ transactionRef }),
-  });
-};
-
-export const failPayout = async (id: string, reason: string): Promise<any> => {
-  return apiRequest<any>(`/admin/payouts/${id}/fail`, {
-    method: 'POST',
-    body: JSON.stringify({ reason }),
-  });
-};
-
 export const fetchAdminAnalyticsKPI = async (params: any = {}): Promise<any> => {
   return apiRequest<any>('/admin/analytics/kpi', { params });
 };

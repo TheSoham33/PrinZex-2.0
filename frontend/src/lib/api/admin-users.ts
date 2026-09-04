@@ -5,10 +5,6 @@ export const fetchPlatformUsers = async (params: any = {}): Promise<any[]> => {
   return res.data || res;
 };
 
-export const fetchPlatformUserById = async (id: string): Promise<any> => {
-  return apiRequest<any>(`/admin/users/${id}`);
-};
-
 export const suspendUser = async (id: string, reason: string): Promise<any> => {
   return apiRequest<any>(`/admin/users/${id}/suspend`, {
     method: 'PATCH',

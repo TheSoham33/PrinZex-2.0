@@ -16,22 +16,6 @@ export const fetchStores = async (params: StoreListQuery = {}): Promise<any> => 
   return apiRequest<any>('/stores', { params: params as any });
 };
 
-export const fetchStoreById = async (sellerId: string): Promise<any> => {
-  return apiRequest<any>(`/stores/${sellerId}`);
-};
-
-export const fetchStoreServices = async (sellerId: string): Promise<any> => {
-  return apiRequest<any>(`/stores/${sellerId}/services`);
-};
-
-export const fetchStoreReviews = async (sellerId: string, params: any = {}): Promise<any> => {
-  return apiRequest<any>(`/stores/${sellerId}/reviews`, { params });
-};
-
-export const fetchSearchSuggestions = async (q: string, city?: string): Promise<any> => {
-  return apiRequest<any>('/stores/search/suggestions', { params: { q, city } });
-};
-
 export interface StoreCategory {
   categoryId: string;
   categoryName: string;

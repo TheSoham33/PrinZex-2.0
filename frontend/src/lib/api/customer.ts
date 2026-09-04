@@ -12,10 +12,6 @@ export const updateProfile = async (data: {
   });
 };
 
-export const fetchProfile = async (): Promise<any> => {
-  return apiRequest<any>('/customer/profile');
-};
-
 export const fetchAddresses = async (): Promise<any[]> => {
   return apiRequest<any[]>('/customer/addresses');
 };
