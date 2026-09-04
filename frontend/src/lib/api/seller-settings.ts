@@ -32,13 +32,6 @@ export const updateNotificationSettings = async (preferences: Record<string, boo
   });
 };
 
-export const updatePricingOverrides = async (overrides: {
-  paperType?: Record<string, number>;
-  size?: Record<string, number>;
-  colorOption?: Record<string, number>;
-}): Promise<any> => {
-  return apiRequest<any>('/seller/settings/pricing-overrides', {
-    method: 'PATCH',
-    body: JSON.stringify({ overrides }),
-  });
-};
+// NOTE: pricing overrides have exactly one writer — updatePricingOverrides in
+// ./seller-inventory (used by the seller Pricing page). A second copy here
+// would silently diverge.

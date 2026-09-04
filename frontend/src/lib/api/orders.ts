@@ -66,19 +66,3 @@ export const getOrderQuote = async (quoteData: any): Promise<any> => {
     body: JSON.stringify(quoteData),
   });
 };
-
-/** Cancel an order. */
-export const cancelOrder = async (orderId: string, reason?: string): Promise<any> => {
-  return apiRequest<any>(`/orders/${orderId}/cancel`, {
-    method: 'POST',
-    body: JSON.stringify({ reason }),
-  });
-};
-
-/** Submit a review for an order. */
-export const submitOrderReview = async (orderId: string, reviewData: any): Promise<any> => {
-  return apiRequest<any>(`/orders/${orderId}/reviews`, {
-    method: 'POST',
-    body: JSON.stringify(reviewData),
-  });
-};

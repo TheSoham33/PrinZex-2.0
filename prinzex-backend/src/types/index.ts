@@ -35,33 +35,6 @@ export const ORDER_STATUSES = [
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-// ── Delivery lifecycle ─────────────────────────────────────────────────────
-export const DELIVERY_STATUSES = [
-  'pending_assignment',
-  'assigned',
-  'picked_up',
-  'out_for_delivery',
-  'delivered',
-  'failed',
-  'returned',
-] as const;
-export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
-
-// ── Payments ───────────────────────────────────────────────────────────────
-export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'] as const;
-export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
-
-export const PAYMENT_METHODS = ['razorpay', 'cod', 'wallet'] as const;
-export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
-
-// ── Payouts ────────────────────────────────────────────────────────────────
-export const PAYOUT_RECIPIENT_TYPES = ['seller', 'delivery_boy'] as const;
-export type PayoutRecipientType = (typeof PAYOUT_RECIPIENT_TYPES)[number];
-
-// ── Support tickets ────────────────────────────────────────────────────────
-export const TICKET_SENDER_TYPES = ['customer', 'admin'] as const;
-export type TicketSenderType = (typeof TICKET_SENDER_TYPES)[number];
-
 // ── JSON snapshots ─────────────────────────────────────────────────────────
 /** Snapshot stored on `Order.deliveryAddress` at purchase time. */
 export interface DeliveryAddressSnapshot {

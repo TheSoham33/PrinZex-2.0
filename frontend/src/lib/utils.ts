@@ -1,11 +1,3 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-/** Merge conditional class names with Tailwind conflict resolution. */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
 /** Format a number as Indian Rupees, e.g. 1200 -> "₹1,200", 1.5 -> "₹1.50". */
 export function formatCurrency(amount: number, withDecimals = false): string {
   // Whole amounts render without decimals; fractional amounts (e.g. ₹1.5)

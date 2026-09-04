@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { passwordField } from '../auth/auth.schema';
 
 /** Seller auth request schemas. */
 
@@ -16,13 +15,6 @@ export const sellerLogoutBody = z.object({
   refreshToken: z.string().min(1).optional(),
 });
 
-/** Sellers change password with current + new password. */
-export const sellerChangePasswordBody = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: passwordField,
-});
-
 export type SellerLoginInput = z.infer<typeof sellerLoginBody>;
 export type SellerRefreshInput = z.infer<typeof sellerRefreshBody>;
 export type SellerLogoutInput = z.infer<typeof sellerLogoutBody>;
-export type SellerChangePasswordInput = z.infer<typeof sellerChangePasswordBody>;

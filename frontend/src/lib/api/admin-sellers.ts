@@ -35,10 +35,3 @@ export const updateSellerCommission = async (id: string, commissionRate: number)
     body: JSON.stringify({ commissionRate }),
   });
 };
-
-export const verifySellerDocument = async (sellerId: string, documentType: string): Promise<any> => {
-  return apiRequest<any>(`/admin/sellers/${sellerId}/verify-document`, {
-    method: 'POST',
-    body: JSON.stringify({ documentType }),
-  });
-};

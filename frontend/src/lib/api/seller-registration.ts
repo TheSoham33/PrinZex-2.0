@@ -15,8 +15,3 @@ export const uploadSellerDocuments = async (formData: FormData): Promise<any> =>
     body: formData,
   });
 };
-
-/** Get the status of a seller application. */
-export const getSellerRegistrationStatus = async (): Promise<any> => {
-  return apiRequest<any>('/seller/register/status');
-};

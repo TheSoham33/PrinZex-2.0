@@ -55,19 +55,3 @@ export const fetchWalletTransactions = async (page = 1, limit = 10): Promise<Tra
   });
   return res.data || res;
 };
-
-/** Add money to wallet (initiate). */
-export const initiateTopup = async (amount: number): Promise<any> => {
-  return apiRequest<any>('/wallet/topup/initiate', {
-    method: 'POST',
-    body: JSON.stringify({ amount }),
-  });
-};
-
-/** Verify wallet topup. */
-export const verifyTopup = async (verificationData: any): Promise<any> => {
-  return apiRequest<any>('/wallet/topup/verify', {
-    method: 'POST',
-    body: JSON.stringify(verificationData),
-  });
-};
