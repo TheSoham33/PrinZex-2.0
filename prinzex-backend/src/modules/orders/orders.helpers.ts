@@ -18,7 +18,6 @@ export interface QuoteSpecifications {
   // Document printing: mandatory stapling choice ('loose' = free default).
   // Seller's staplingOptions price wins, else STAPLING_OPTION_PRICES.
   stapling?: string;
-  finishing: string[];
   totalPages?: number;
   // "1, 5, 10-15" — pages printed in colour when colorOption === 'mixed'.
   colorPages?: string;
@@ -99,26 +98,6 @@ export interface QuoteResult {
 
 export const GST_RATE = 0.18; // 18% GST on subtotal
 
-/** Flat per-finishing upcharges (added ONCE per finishing type selected). */
-export const FINISHING_UPCHARGES: Record<string, number> = {
-  lamination: 20,
-  spiral_binding: 60,
-  hard_binding: 120,
-  stapling: 5,
-  folding: 10,
-  cutting: 15,
-  // Kebab-case keys the catalogue finishing-options group actually ships —
-  // chips send catalogue values straight through, so assertKnownFinishing
-  // must accept what the catalogue offers (these previously 400'd).
-  'spiral-binding': 60,
-  'hard-binding': 120,
-  punching: 8,
-  // Stapling used to ride as finishing keys — kept valid for in-flight
-  // orders and older specs. New orders carry stapling as its own mandatory
-  // Document Printing spec (see STAPLING_OPTION_PRICES).
-  'corner-stapling': 5,
-  'side-stapling': 10,
-};
 
 /**
  * Default per-set stapling charges for Document Printing, used when the
@@ -249,16 +228,6 @@ export function colorPageSplit(
   return { bwPages: totalPages, colorPages: 0 };
 }
 
-/** Validate finishing selections — unknown types make quotes non-deterministic. */
-export function assertKnownFinishing(finishing: string[]): void {
-  const unknown = finishing.filter((type) => !(type in FINISHING_UPCHARGES));
-  if (unknown.length > 0) {
-    throw ApiError.badRequest(
-      `Unknown finishing option(s): ${unknown.join(', ')} — allowed: ${Object.keys(FINISHING_UPCHARGES).join(', ')}`,
-    );
-  }
-}
-
 // ── Coupon validation (shared by quote + order creation) ──────────────────
 
 export interface CouponValidation {
@@ -361,14 +330,9 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     overrides = (sellerMetadata as any).pricingOverrides || {};
   }
 
-  const finishingCharge = specifications.finishing.reduce(
-    (sum, type) => sum + (FINISHING_UPCHARGES[type] ?? 0),
-    0,
-  );
-
-  // Document Printing stapling is a dedicated mandatory spec (not finishing):
-  // the seller's price for the choice wins, else the platform default.
-  // 'loose' is always free. Charged per set, like finishing.
+  // Document Printing stapling is a dedicated mandatory spec: the seller's
+  // price for the choice wins, else the platform default. 'loose' is always
+  // free. Priced choices are charged per set.
   const staplingChoice = specifications.stapling ?? 'loose';
   const staplingCharge =
     staplingChoice === 'loose'
@@ -467,23 +431,23 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
 
     bindingCost = round2(bindingRate * quantity);
     subtotal = round2(
-      pageCost + bindingCost + (finishingCharge + staplingCharge) * quantity,
+      pageCost + bindingCost + staplingCharge * quantity,
     );
   } else if (unit.toLowerCase().includes('page')) {
     // ── Per-page services: B&W/colour page rates are the whole price ─────
     subtotal = round2(
       (bwRate * split.bwPages + colorRate * split.colorPages) * quantity +
-        (finishingCharge + staplingCharge) * quantity,
+        staplingCharge * quantity,
     );
   } else if (slabRate !== undefined) {
     // ── Slab-priced services (Business Cards): per-piece rate from the
     //    seller's quantity tiers — replaces the base price. ───────────────
-    subtotal = round2(slabRate * quantity + (finishingCharge + staplingCharge) * quantity);
+    subtotal = round2(slabRate * quantity + staplingCharge * quantity);
   } else {
     // ── Per-piece / per-set / per-sqft services: single base rate ────────
     subtotal = round2(
       (input.basePrice + paperOptionExtra) * quantity +
-        (finishingCharge + staplingCharge) * quantity,
+        staplingCharge * quantity,
     );
   }
 

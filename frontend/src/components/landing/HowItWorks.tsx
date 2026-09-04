@@ -11,7 +11,7 @@ const STEPS = [
     icon: IconUpload,
     title: 'Upload & customise',
     description:
-      'Send your files, pick paper type, size, colour and finishing. See the exact cost before you pay.',
+      'Send your files, pick paper type, size and colour. See the exact cost before you pay.',
   },
   {
     icon: IconTruck,

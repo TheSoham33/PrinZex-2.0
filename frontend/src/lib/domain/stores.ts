@@ -106,15 +106,8 @@ export const PAPER_SIZES = [
   { value: 'A3', label: 'A3', hint: '297 × 420 mm', multiplier: 1.9 },
 ] as const;
 
-export const FINISHING_OPTIONS = [
-  { value: 'lamination', label: 'Lamination', price: 15 },
-  { value: 'spiral-binding', label: 'Spiral binding', price: 40 },
-  { value: 'hard-binding', label: 'Hard / Thesis binding', price: 120 },
-  { value: 'punching', label: 'Hole punching', price: 8 },
-] as const;
-
 // Document Printing stapling/binding choices (fall back for the DB-managed
-// 'stapling-options' catalogue group). Separate from finishing options: it's
+// 'stapling-options' catalogue group). A standalone group because it's
 // a mandatory radio and sellers set each style's price from their Pricing
 // page. 'loose' is the free default every store must offer.
 export const STAPLING_OPTIONS = [

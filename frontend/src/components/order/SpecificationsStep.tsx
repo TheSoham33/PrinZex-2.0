@@ -6,7 +6,6 @@ import {
   COVER_TYPES as COVER_TYPES_FALLBACK,
   SPIRAL_COIL_TYPES as SPIRAL_COIL_TYPES_FALLBACK,
   SPIRAL_COVER_TYPES as SPIRAL_COVER_TYPES_FALLBACK,
-  FINISHING_OPTIONS as FINISHING_OPTIONS_FALLBACK,
   PAPER_SIZES as PAPER_SIZES_FALLBACK,
   PAPER_TYPES as PAPER_TYPES_FALLBACK,
   STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK,
@@ -20,7 +19,6 @@ import type {
 import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import type { OrderAction } from './orderReducer';
-import { STAPLING_FINISHING_KEYS } from './orderReducer';
 import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
 import TapeBindingCustomizationPanel from './TapeBindingCustomizationPanel';
 import GlueBindingCustomizationPanel from './GlueBindingCustomizationPanel';
@@ -83,7 +81,6 @@ export default function SpecificationsStep({
   const coverTypes = useCatalogOptions('cover-types', COVER_TYPES_FALLBACK);
   const spiralCoilTypes = useCatalogOptions('spiral-coil-types', SPIRAL_COIL_TYPES_FALLBACK);
   const spiralCoverTypes = useCatalogOptions('spiral-cover-types', SPIRAL_COVER_TYPES_FALLBACK);
-  const finishingOptions = useCatalogOptions('finishing-options', FINISHING_OPTIONS_FALLBACK);
   const staplingOptions = useCatalogOptions('stapling-options', STAPLING_OPTIONS_FALLBACK);
   const paperSizes = useCatalogOptions('paper-sizes', PAPER_SIZES_FALLBACK);
   const paperTypes = useCatalogOptions('paper-types', PAPER_TYPES_FALLBACK);
@@ -172,13 +169,6 @@ export default function SpecificationsStep({
     event.preventDefault();
     setDragging(false);
     acceptFile(event.dataTransfer.files?.[0]);
-  };
-
-  const toggleFinishing = (value: string) => {
-    const finishing = specs.finishing.includes(value)
-      ? specs.finishing.filter((item) => item !== value)
-      : [...specs.finishing, value];
-    dispatch({ type: 'SET_SPEC', payload: { finishing } });
   };
 
   const handleCoverUpload = async (
@@ -1732,41 +1722,6 @@ export default function SpecificationsStep({
           </div>
         </section>
       )}
-
-      <section className={isBusinessCard ? 'hidden' : ''}>
-        <p className="label">Finishing (optional)</p>
-        <div className="flex flex-wrap gap-2.5">
-          {// Stapling lives in its own mandatory radio above (specs.stapling)
-           // with seller-set prices — never as finishing chips. The keys can
-           // still surface from older catalogue rows, so keep filtering them.
-           finishingOptions
-            .filter(
-              (option) =>
-                !(STAPLING_FINISHING_KEYS as readonly string[]).includes(option.value),
-            )
-            .map((option) => {
-            const active = specs.finishing.includes(option.value);
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => toggleFinishing(option.value)}
-                aria-pressed={active}
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                  active
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-slate-50'
-                }`}
-              >
-                {option.label}
-                <span className="ml-1.5 text-xs text-slate-400">
-                  +{formatCurrency(option.price)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
 
       <section>
         <label htmlFor="instructions" className="label">

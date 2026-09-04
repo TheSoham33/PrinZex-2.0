@@ -110,7 +110,6 @@ export interface OrderSpecifications {
    *  'stapling-options' catalogue group. 'loose' (default) = Loose Sheet,
    *  free. Other styles charge the seller-set (or default) per-set price. */
   stapling?: string;
-  finishing: string[];
   // New fields for Hard Binding
   colorPages?: string; // Particular pages color (e.g. "5, 10-12")
   coverColor?: string;

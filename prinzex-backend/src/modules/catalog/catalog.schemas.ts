@@ -27,8 +27,8 @@ const multiplierOption = hintOption.extend({
   multiplier: z.number().positive().max(100),
 });
 
-/** Finishing add-ons — fixed per-unit price. */
-const finishingOption = z.object({
+/** Labeled rows with a fixed price — base for the stapling options. */
+const pricedOption = z.object({
   value: keyString,
   label: labelString,
   price: z.number().min(0).max(100000),
@@ -42,7 +42,7 @@ const finishingOption = z.object({
  */
 const staplingOptions = z
   .array(
-    finishingOption.extend({
+    pricedOption.extend({
       hint: z.string().trim().max(200).optional(),
     }),
   )
@@ -78,14 +78,12 @@ const hintOptionWithIncompatible = hintOption.extend({
 const hintOptions = z.array(hintOption);
 const hintOptionsWithIncompatible = z.array(hintOptionWithIncompatible);
 const multiplierOptions = z.array(multiplierOption);
-const finishingOptions = z.array(finishingOption);
 const swatchOptions = z.array(swatchOption);
 
 export const CATALOG_GROUP_SCHEMAS: Record<string, z.ZodType<unknown>> = {
   'service-categories': serviceCategories,
   'paper-types': multiplierOptions,
   'paper-sizes': multiplierOptions,
-  'finishing-options': finishingOptions,
   'stapling-options': staplingOptions,
   'cover-types': hintOptions,
   'spiral-coil-types': hintOptions,

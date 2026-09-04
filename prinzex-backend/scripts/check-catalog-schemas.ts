@@ -32,9 +32,4 @@ assert.ok(!stapling.safeParse(defaults.slice(1)).success); // loose deleted
 assert.ok(!stapling.safeParse([defaults[1], defaults[0], defaults[2]]).success); // loose moved
 assert.ok(!stapling.safeParse([{ ...defaults[0], price: 3 }, ...defaults.slice(1)]).success); // loose priced
 
-/* Existing groups still validate identically (finishing regression guard). */
-const finishing = CATALOG_GROUP_SCHEMAS['finishing-options'];
-assert.ok(finishing.safeParse([{ value: 'lamination', label: 'Lamination', price: 15 }]).success);
-assert.ok(!finishing.safeParse([{ value: 'lamination', label: 'Lamination', price: -1 }]).success);
-
 console.log('catalog schema checks: OK');
