@@ -9,6 +9,7 @@ import PasswordInput from '@/components/auth/PasswordInput';
 import { IconAlertCircle, IconStore } from '@/components/icons';
 import { EMAIL_REGEX } from '@/lib/seller-types';
 import { sellerLogin } from '@/lib/api/auth';
+import { ErrorNote } from '@/components/ui';
 
 /** Seller-side login. No social sign-in by design. */
 export default function SellerLoginForm() {
@@ -58,12 +59,7 @@ export default function SellerLoginForm() {
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        {errors.general && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
-            <IconAlertCircle className="h-4 w-4" />
-            {errors.general}
-          </div>
-        )}
+        <ErrorNote message={errors.general} />
 
         <div>
           <label htmlFor="seller-email" className="label">

@@ -1,12 +1,5 @@
 import Link from 'next/link';
-import {
-  IconBadgeCheck,
-  IconFileText,
-  IconFlag,
-  IconIdCard,
-  IconImageIcon,
-  IconTag,
-} from '@/components/icons';
+import { IconBadgeCheck, IconFileText, IconFlag, IconImageIcon, IconTag } from '@/components/icons';
 
 const SERVICES = [
   { icon: IconFileText, name: 'Documents', hint: 'From ₹1/page', query: 'documents', color: 'bg-blue-50 text-blue-600' },

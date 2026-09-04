@@ -12,6 +12,7 @@ import {
   IconTruck,
   IconWallet,
 } from '@/components/icons';
+import { ErrorNote } from '@/components/ui';
 
 const METHODS: { value: PaymentMethod; label: string; hint: string; icon: typeof IconWallet }[] = [
   { value: 'upi', label: 'UPI', hint: 'GPay, PhonePe, Paytm', icon: IconWallet },
@@ -67,11 +68,7 @@ export default function PaymentStep({
         </p>
       </header>
 
-      {error && (
-        <p className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          <IconAlertCircle className="h-4 w-4 shrink-0" /> {error}
-        </p>
-      )}
+      <ErrorNote message={error} />
 
       <section>
         <p className="label">Payment method</p>

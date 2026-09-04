@@ -25,13 +25,7 @@ import {
   EMPTY_COST,
   computeCost,
 } from '@/components/order/orderReducer';
-import {
-  IconArrowLeft,
-  IconArrowRight,
-  IconChevronRight,
-  IconLock,
-  IconShoppingCart,
-} from '@/components/icons';
+import { IconArrowLeft, IconArrowRight, IconShoppingCart } from '@/components/icons';
 import { useCatalogOptions } from '@/lib/api/catalog';
 import { STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK } from '@/lib/domain/stores';
 

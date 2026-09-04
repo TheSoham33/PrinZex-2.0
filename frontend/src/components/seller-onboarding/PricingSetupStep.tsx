@@ -1,7 +1,8 @@
 'use client';
 
 import { PRICING_UNITS, type PricingEntry, type PricingUnit } from '@/lib/seller-types';
-import { IconAlertCircle, IconPackageOpen } from '@/components/icons';
+import { IconPackageOpen } from '@/components/icons';
+import { ErrorNote } from '@/components/ui';
 
 interface PricingSetupStepProps {
   pricing: PricingEntry[];
@@ -39,11 +40,7 @@ export default function PricingSetupStep({
         </p>
       </header>
 
-      {error && (
-        <p className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          <IconAlertCircle className="h-4 w-4 shrink-0" /> {error}
-        </p>
-      )}
+      <ErrorNote message={error} />
 
       <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-4 py-3">
         <label htmlFor="allUnits" className="text-sm font-medium text-slate-700">

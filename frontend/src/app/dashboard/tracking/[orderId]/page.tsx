@@ -16,6 +16,7 @@ import {
   IconStar,
   IconTruck,
 } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 export default function TrackingPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = use(params);
@@ -40,19 +41,17 @@ export default function TrackingPage({ params }: { params: Promise<{ orderId: st
   if (isError || !order) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="card flex flex-col items-center px-6 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlertCircle className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-lg font-bold text-slate-900">Nothing to track</h1>
-          <p className="mt-1 max-w-sm text-sm text-slate-600">
-            We couldn&apos;t find an order with the ID{' '}
-            <span className="font-mono font-medium">{orderId}</span>.
-          </p>
-          <Link href="/dashboard/orders" className="btn-primary mt-6">
-            <IconArrowLeft className="h-4 w-4" /> Back to orders
-          </Link>
-        </div>
+        <StateCard
+          icon={IconAlertCircle}
+          tone="error"
+          title="Nothing to track"
+          subtitle={<>We couldn&apos;t find an order with the ID <span className="font-mono font-medium">{orderId}</span>.</>}
+          action={
+            <Link href="/dashboard/orders" className="btn-primary mt-6">
+              <IconArrowLeft className="h-4 w-4" /> Back to orders
+            </Link>
+          }
+        />
       </div>
     );
   }

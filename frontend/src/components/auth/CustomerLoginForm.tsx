@@ -10,6 +10,7 @@ import { IconAlertCircle, IconCheckCircle } from '@/components/icons';
 import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
 import { customerLogin } from '@/lib/api/auth';
 import { apiRequest } from '@/lib/api/client';
+import { ErrorNote } from '@/components/ui';
 
 export default function CustomerLoginForm() {
   const router = useRouter();
@@ -121,12 +122,7 @@ export default function CustomerLoginForm() {
   return (
     <div>
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
-        {errors.general && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
-            <IconAlertCircle className="h-4 w-4" />
-            {errors.general}
-          </div>
-        )}
+        <ErrorNote message={errors.general} />
 
         <div>
           <label htmlFor="identifier" className="label">

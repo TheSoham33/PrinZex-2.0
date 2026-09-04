@@ -2,7 +2,8 @@
 
 import { BUSINESS_TYPES, type SellerRegistrationState } from '@/lib/seller-types';
 import { formatCurrency } from '@/lib/utils';
-import { IconAlertCircle, IconCheckCircle, IconFileText } from '@/components/icons';
+import { IconCheckCircle, IconFileText } from '@/components/icons';
+import { ErrorNote } from '@/components/ui';
 
 interface ReviewSubmitStepProps {
   state: SellerRegistrationState;
@@ -72,11 +73,7 @@ export default function ReviewSubmitStep({
         </p>
       </header>
 
-      {error && (
-        <p className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          <IconAlertCircle className="h-4 w-4 shrink-0" /> {error}
-        </p>
-      )}
+      <ErrorNote message={error} />
 
       <div className="space-y-3">
         <Section title="Store information" step={1} onEdit={onEditStep}>

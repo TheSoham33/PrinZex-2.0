@@ -23,16 +23,10 @@ import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
 import TapeBindingCustomizationPanel from './TapeBindingCustomizationPanel';
 import GlueBindingCustomizationPanel from './GlueBindingCustomizationPanel';
 import BusinessCardCustomizationPanel from './BusinessCardCustomizationPanel';
-import {
-  IconAlertCircle,
-  IconUpload,
-  IconCheckCircle,
-  IconFileText,
-  IconTrash,
-  IconEye,
-} from '@/components/icons';
+import { IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { PDFDocument } from 'pdf-lib';
+import { ErrorNote } from '@/components/ui';
 
 const ACCEPTED = '.pdf';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -493,11 +487,7 @@ export default function SpecificationsStep({
         </p>
       </header>
 
-      {shownError && (
-        <p className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          <IconAlertCircle className="h-4 w-4 shrink-0" /> {shownError}
-        </p>
-      )}
+      <ErrorNote message={shownError} />
 
       <section className={`space-y-4 ${isBusinessCard ? 'hidden' : ''}`}>
         <label className="label">

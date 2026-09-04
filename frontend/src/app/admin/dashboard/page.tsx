@@ -18,6 +18,7 @@ import {
   IconUsers,
   IconWallet,
 } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 const QUICK_ACTIONS = [
   { label: 'Review pending sellers (3)', href: '/admin/sellers?status=pending', icon: IconStore, tint: 'bg-violet-50 text-violet-600' },
@@ -35,15 +36,16 @@ export default function AdminDashboardPage() {
   if (isError) {
     return (
       <div className="mx-auto max-w-6xl">
-        <div className="card flex flex-col items-center px-6 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlertCircle className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-lg font-bold text-slate-900">Couldn&apos;t load the dashboard</h1>
-          <button type="button" onClick={() => refetch()} className="btn-primary mt-6">
-            <IconRefreshCw className="h-4 w-4" /> Retry
-          </button>
-        </div>
+        <StateCard
+          icon={IconAlertCircle}
+          tone="error"
+          title="Couldn't load the dashboard"
+          action={
+            <button type="button" onClick={() => refetch()} className="btn-primary mt-6">
+              <IconRefreshCw className="h-4 w-4" /> Retry
+            </button>
+          }
+        />
       </div>
     );
   }

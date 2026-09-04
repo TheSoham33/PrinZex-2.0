@@ -7,6 +7,7 @@ import type { SellerReview } from '@/lib/domain/seller-inventory';
 import ReviewResponseCard from '@/components/seller-dashboard/ReviewResponseCard';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconRefreshCw, IconStar } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 const FILTERS = ['All', 'Unanswered', '5★', '4★', '3★ and below'] as const;
 type Filter = (typeof FILTERS)[number];
@@ -59,15 +60,16 @@ export default function SellerReviewsPage() {
   if (isError) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="card flex flex-col items-center px-6 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlertCircle className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-lg font-bold text-slate-900">Couldn&apos;t load reviews</h1>
-          <button type="button" onClick={() => refetch()} className="btn-primary mt-6">
-            <IconRefreshCw className="h-4 w-4" /> Retry
-          </button>
-        </div>
+        <StateCard
+          icon={IconAlertCircle}
+          tone="error"
+          title="Couldn't load reviews"
+          action={
+            <button type="button" onClick={() => refetch()} className="btn-primary mt-6">
+              <IconRefreshCw className="h-4 w-4" /> Retry
+            </button>
+          }
+        />
       </div>
     );
   }
@@ -157,13 +159,11 @@ export default function SellerReviewsPage() {
             <div key={index} className="card h-44 animate-pulse bg-slate-100" />
           ))
         ) : visible.length === 0 ? (
-          <div className="card flex flex-col items-center px-6 py-16 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <IconStar className="h-7 w-7" />
-            </span>
-            <p className="mt-4 font-semibold text-slate-900">No reviews in this filter</p>
-            <p className="mt-1 text-sm text-slate-600">Try a different rating filter.</p>
-          </div>
+          <StateCard
+            icon={IconStar}
+            title="No reviews in this filter"
+            subtitle="Try a different rating filter."
+          />
         ) : (
           visible.map((review) => (
             <ReviewResponseCard key={review.id} review={review} onReply={handleReply} />
