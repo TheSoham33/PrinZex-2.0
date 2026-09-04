@@ -22,12 +22,13 @@ interface Props {
 
 // ── Pure helpers (unit-checked by scripts/check-tape-binding.ts) ──────────
 
-/** Sheets hold two pages; caliper per sheet by paper weight. Tape binding
- *  needs ≥4 mm of spine for the thermal tape to grip (hard binding: 2). */
-export function estimateTapeSpineMm(totalPages: number, gsm: 75 | 100): number {
+/** Sheets hold two pages at the standard 75/80 GSM caliper (0.1 mm each).
+ *  Tape Binding offers no paper-thickness option (owner rule). It needs ≥4 mm
+ *  of spine for the thermal tape to grip (hard binding: 2). */
+export function estimateTapeSpineMm(totalPages: number): number {
   if (!totalPages || totalPages <= 0) return 0;
   const sheets = Math.ceil(totalPages / 2);
-  return Math.max(4, Math.round(sheets * (gsm === 100 ? 0.13 : 0.1) * 10) / 10);
+  return Math.max(4, Math.round(sheets * 0.1 * 10) / 10);
 }
 
 /** Page-box inches (portrait) for the catalogue sizes → pixels at 300 DPI. */
@@ -97,8 +98,7 @@ export default function TapeBindingCustomizationPanel({
   }, [offeredTapeColors, specs.tapeColor, dispatch]);
 
   const totalPages = specs.totalPages || 0;
-  const paperGsm = specs.paperGsm ?? 75;
-  const spineWidthMm = estimateTapeSpineMm(totalPages, paperGsm);
+  const spineWidthMm = estimateTapeSpineMm(totalPages);
   const selectedTape = offeredTapeColors.find(
     (color) => color.value === specs.tapeColor,
   );
@@ -349,34 +349,17 @@ export default function TapeBindingCustomizationPanel({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="label">Paper thickness</span>
-          <select
-            value={paperGsm}
-            onChange={(event) =>
-              dispatch({
-                type: 'SET_SPEC',
-                payload: { paperGsm: Number(event.target.value) as 75 | 100 },
-              })
-            }
-            className="input"
-          >
-            <option value={75}>75 GSM</option>
-            <option value={100}>100 GSM</option>
-          </select>
-        </label>
-        <div className="rounded-xl bg-blue-50 p-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-blue-500">
-            Estimated Spine Width
-          </p>
-          <p className="mt-1 text-xl font-bold text-blue-900">
-            {spineWidthMm ? `${spineWidthMm} mm` : 'Upload document'}
-          </p>
-          <p className="mt-1 text-xs text-blue-700">
-            Auto-calculated from {totalPages} pages at {paperGsm} GSM.
-          </p>
-        </div>
+      <div className="rounded-xl bg-blue-50 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-blue-500">
+          Estimated Spine Width
+        </p>
+        <p className="mt-1 text-xl font-bold text-blue-900">
+          {spineWidthMm ? `${spineWidthMm} mm` : 'Upload document'}
+        </p>
+        <p className="mt-1 text-xs text-blue-700">
+          Auto-calculated from {totalPages} page{totalPages === 1 ? '' : 's'} at
+          standard 75 GSM paper.
+        </p>
       </div>
 
       <div>
