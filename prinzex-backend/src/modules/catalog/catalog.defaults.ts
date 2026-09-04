@@ -58,7 +58,7 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
           { id: 'bind-spiral', name: 'Spiral Binding' },
           { id: 'bind-twin-loop', name: 'Twin Loop Binding' },
           { id: 'bind-hard', name: 'Hard Binding / Thesis Binding' },
-          { id: 'bind-perfect', name: 'Perfect Binding' },
+          { id: 'bind-perfect', name: 'Glue Binding' },
           { id: 'bind-tape', name: 'Tape Binding' },
         ],
       },

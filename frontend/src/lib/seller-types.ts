@@ -153,7 +153,7 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
       { id: 'bind-spiral', name: 'Spiral Binding' },
       { id: 'bind-twin-loop', name: 'Twin Loop Binding' },
       { id: 'bind-hard', name: 'Hard Binding / Thesis Binding' },
-      { id: 'bind-perfect', name: 'Perfect Binding' },
+      { id: 'bind-perfect', name: 'Glue Binding' },
       { id: 'bind-tape', name: 'Tape Binding' },
     ],
   },

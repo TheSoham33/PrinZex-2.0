@@ -1,13 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   COVER_ACCEPT,
   estimateWrapSpineMm,
   validateCoverArtwork,
 } from './bindingCover';
-import { TAPE_COLORS as TAPE_COLORS_FALLBACK } from '@/lib/domain/stores';
-import { useCatalogOptions } from '@/lib/api/catalog';
 import type { OrderSpecifications } from '@/lib/types';
 import {
   IconCheckCircle,
@@ -20,49 +18,20 @@ import type { OrderAction } from './orderReducer';
 interface Props {
   specs: OrderSpecifications;
   dispatch: React.Dispatch<OrderAction>;
-  /** Store-offered tape colours; undefined = every catalogue colour. */
-  availableTapeColors?: string[];
 }
 
-// ── Panel ──────────────────────────────────────────────────────────────────
-
-export default function TapeBindingCustomizationPanel({
-  specs,
-  dispatch,
-  availableTapeColors,
-}: Props) {
-  const tapeColors = useCatalogOptions('tape-colors', TAPE_COLORS_FALLBACK);
+/**
+ * Glue Binding (thermal-glued paperback spine) customization: cover source,
+ * optional back cover, the auto spine-width estimate and a binding preview.
+ * No colour/thickness options — mirrors Tape Binding minus its colour grid.
+ */
+export default function GlueBindingCustomizationPanel({ specs, dispatch }: Props) {
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const offeredTapeColors = useMemo(
-    () =>
-      availableTapeColors
-        ? tapeColors.filter((color) => availableTapeColors.includes(color.value))
-        : [...tapeColors],
-    [tapeColors, availableTapeColors],
-  );
-
-  // Tape colour is mandatory: default to the first offered one and move a
-  // selection the seller no longer offers back into the offered set.
-  useEffect(() => {
-    if (offeredTapeColors.length === 0) return;
-    if (
-      !specs.tapeColor ||
-      !offeredTapeColors.some((color) => color.value === specs.tapeColor)
-    ) {
-      dispatch({
-        type: 'SET_SPEC',
-        payload: { tapeColor: offeredTapeColors[0].value },
-      });
-    }
-  }, [offeredTapeColors, specs.tapeColor, dispatch]);
-
   const totalPages = specs.totalPages || 0;
-  const spineWidthMm = estimateWrapSpineMm(totalPages, 4);
-  const selectedTape = offeredTapeColors.find(
-    (color) => color.value === specs.tapeColor,
-  );
-  const coverSource = specs.tapeCoverSource ?? 'first-page';
+  // Glued paperbacks need ≥3 mm of spine for the glue to grip (tape: 4).
+  const spineWidthMm = estimateWrapSpineMm(totalPages, 3);
+  const coverSource = specs.glueCoverSource ?? 'first-page';
 
   const handleCoverUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -83,26 +52,26 @@ export default function TapeBindingCustomizationPanel({
       payload:
         side === 'front'
           ? {
-              tapeFrontCoverFileUrl: previewUrl,
-              tapeFrontCoverFileName: selected.name,
+              glueFrontCoverFileUrl: previewUrl,
+              glueFrontCoverFileName: selected.name,
             }
           : {
-              tapeBackCoverFileUrl: previewUrl,
-              tapeBackCoverFileName: selected.name,
+              glueBackCoverFileUrl: previewUrl,
+              glueBackCoverFileName: selected.name,
             },
     });
   };
 
   const removeCover = (side: 'front' | 'back') => {
     const url =
-      side === 'front' ? specs.tapeFrontCoverFileUrl : specs.tapeBackCoverFileUrl;
+      side === 'front' ? specs.glueFrontCoverFileUrl : specs.glueBackCoverFileUrl;
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
     dispatch({
       type: 'SET_SPEC',
       payload:
         side === 'front'
-          ? { tapeFrontCoverFileUrl: undefined, tapeFrontCoverFileName: undefined }
-          : { tapeBackCoverFileUrl: undefined, tapeBackCoverFileName: undefined },
+          ? { glueFrontCoverFileUrl: undefined, glueFrontCoverFileName: undefined }
+          : { glueBackCoverFileUrl: undefined, glueBackCoverFileName: undefined },
     });
   };
 
@@ -113,8 +82,8 @@ export default function TapeBindingCustomizationPanel({
     label: string,
     required: boolean,
   ) => {
-    const url = side === 'front' ? specs.tapeFrontCoverFileUrl : specs.tapeBackCoverFileUrl;
-    const name = side === 'front' ? specs.tapeFrontCoverFileName : specs.tapeBackCoverFileName;
+    const url = side === 'front' ? specs.glueFrontCoverFileUrl : specs.glueBackCoverFileUrl;
+    const name = side === 'front' ? specs.glueFrontCoverFileName : specs.glueBackCoverFileName;
     return (
       <div>
         <p className="label">
@@ -122,14 +91,14 @@ export default function TapeBindingCustomizationPanel({
         </p>
         <input
           type="file"
-          id={`tape-${side}-cover`}
+          id={`glue-${side}-cover`}
           accept={COVER_ACCEPT}
           onChange={(event) => void handleCoverUpload(event, side)}
           className="hidden"
         />
         <div className="flex items-stretch gap-2">
           <label
-            htmlFor={`tape-${side}-cover`}
+            htmlFor={`glue-${side}-cover`}
             className={`flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 ${
               url
                 ? 'border-green-200 bg-green-50 text-green-700'
@@ -188,12 +157,12 @@ export default function TapeBindingCustomizationPanel({
         </div>
       );
     }
-    if (isImage(specs.tapeFrontCoverFileName)) {
+    if (isImage(specs.glueFrontCoverFileName)) {
       return (
         // The artwork proof previews exactly what the customer uploaded.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={specs.tapeFrontCoverFileUrl}
+          src={specs.glueFrontCoverFileUrl}
           alt="Front cover design preview"
           className="h-full w-full object-cover"
         />
@@ -203,7 +172,7 @@ export default function TapeBindingCustomizationPanel({
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-50 p-4 text-center">
         <IconEye className="h-6 w-6 text-slate-300" />
         <span className="max-w-full truncate text-[10px] text-slate-400">
-          {specs.tapeFrontCoverFileName ?? 'Front cover PDF'}
+          {specs.glueFrontCoverFileName ?? 'Front cover PDF'}
         </span>
       </div>
     );
@@ -218,37 +187,6 @@ export default function TapeBindingCustomizationPanel({
           {localError}
         </p>
       )}
-
-      <div>
-        <p className="label">
-          Tape Colour <span className="text-red-500">*</span>
-        </p>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {offeredTapeColors.map((color) => (
-            <button
-              key={color.value}
-              type="button"
-              aria-pressed={specs.tapeColor === color.value}
-              onClick={() =>
-                dispatch({ type: 'SET_SPEC', payload: { tapeColor: color.value } })
-              }
-              className={`flex items-center gap-3 rounded-xl border bg-white p-3.5 text-left transition-all ${
-                specs.tapeColor === color.value
-                  ? 'border-blue-500 ring-1 ring-blue-500'
-                  : 'border-slate-200 hover:border-blue-200'
-              }`}
-            >
-              <span
-                className="h-6 w-6 shrink-0 rounded-full border border-slate-200"
-                style={{ backgroundColor: color.hex }}
-              />
-              <span className="text-sm font-semibold text-slate-900">
-                {color.label}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="rounded-xl bg-blue-50 p-4">
         <p className="text-xs font-bold uppercase tracking-wide text-blue-500">
@@ -287,7 +225,7 @@ export default function TapeBindingCustomizationPanel({
               onClick={() =>
                 dispatch({
                   type: 'SET_SPEC',
-                  payload: { tapeCoverSource: option.value },
+                  payload: { glueCoverSource: option.value },
                 })
               }
               className={`rounded-xl border bg-white p-3.5 text-left transition-all ${
@@ -316,28 +254,26 @@ export default function TapeBindingCustomizationPanel({
           <div className="flex flex-col items-center gap-2">
             <div className="relative h-64 w-44 overflow-hidden rounded-md border border-slate-300 bg-white shadow-md">
               {frontVisual()}
-              {/* The tape strip wraps the left edge of the bound stack. */}
+              {/* The glued spine is just the milled edge of the stack — shown
+                  as a neutral band since there's no tape/colour choice. */}
               <div
-                className="absolute inset-y-0 left-0 border-r border-black/10"
-                style={{
-                  width: spinePx,
-                  backgroundColor: selectedTape?.hex ?? '#111827',
-                }}
+                className="absolute inset-y-0 left-0 border-r border-black/10 bg-slate-300"
+                style={{ width: spinePx }}
               />
             </div>
             <span className="text-xs font-medium text-slate-500">
-              Front · {selectedTape?.label ?? 'Black'} tape
-              {spineWidthMm ? ` · ${spineWidthMm} mm spine` : ''}
+              Front · glued spine
+              {spineWidthMm ? ` · ${spineWidthMm} mm` : ''}
             </span>
           </div>
 
-          {specs.tapeBackCoverFileUrl && (
+          {specs.glueBackCoverFileUrl && (
             <div className="flex flex-col items-center gap-2">
               <div className="relative flex h-64 w-44 items-center justify-center overflow-hidden rounded-md border border-slate-300 bg-white shadow-md">
-                {isImage(specs.tapeBackCoverFileName) ? (
+                {isImage(specs.glueBackCoverFileName) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={specs.tapeBackCoverFileUrl}
+                    src={specs.glueBackCoverFileUrl}
                     alt="Back cover design preview"
                     className="h-full w-full object-cover"
                   />
@@ -345,7 +281,7 @@ export default function TapeBindingCustomizationPanel({
                   <div className="flex flex-col items-center gap-2 p-4 text-center">
                     <IconEye className="h-6 w-6 text-slate-300" />
                     <span className="max-w-full truncate text-[10px] text-slate-400">
-                      {specs.tapeBackCoverFileName ?? 'Back cover PDF'}
+                      {specs.glueBackCoverFileName ?? 'Back cover PDF'}
                     </span>
                   </div>
                 )}
@@ -355,8 +291,8 @@ export default function TapeBindingCustomizationPanel({
           )}
         </div>
         <p className="mt-4 text-center text-[11px] text-slate-400">
-          Preview shows the tape strip along the left edge. Prices follow the
-          store&apos;s per-document rate — tape colour adds no extra charge.
+          Preview shows the glued spine edge along the left. Prices follow the
+          store&apos;s per-document rate.
         </p>
       </div>
     </section>
