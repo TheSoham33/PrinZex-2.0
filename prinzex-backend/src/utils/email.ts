@@ -50,14 +50,6 @@ export async function sendWelcomeEmail(to: string, name: string): Promise<void> 
   });
 }
 
-export async function sendOtpEmail(to: string, otp: string, purpose: string): Promise<void> {
-  await deliver({
-    to,
-    subject: `Your PrinZex OTP (${purpose})`,
-    text: `Your one-time code is ${otp}. It expires in 10 minutes.`,
-  });
-}
-
 /** Sent after a customer's seller application is accepted into review. */
 export async function sendSellerWelcomeEmail(to: string, ownerName: string, storeName: string): Promise<void> {
   await deliver({

@@ -64,5 +64,3 @@ export const env = cleanEnv(process.env, {
   // CORS — comma-separated origin list for the Next.js frontend
   CORS_ORIGIN: str({ default: 'http://localhost:3000' }),
 });
-
-export type Env = typeof env;

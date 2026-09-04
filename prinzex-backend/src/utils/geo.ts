@@ -4,11 +4,6 @@
  * and ETA estimation in the tracking hot path.
  */
 
-export interface LatLng {
-  lat: number;
-  lng: number;
-}
-
 export interface BoundingBox {
   minLat: number;
   maxLat: number;

@@ -124,7 +124,6 @@ model User {
   orders            Order[]
   reviews           Review[]
   refreshTokens     RefreshToken[]
-  otpCodes          OtpCode[]
   supportTickets    SupportTicket[]
   referralCode      String?   @unique
   referredBy        String?
@@ -191,21 +190,6 @@ model RefreshToken {
 
   @@index([token])
   @@index([userId])
-}
-
-model OtpCode {
-  id          String   @id @default(cuid())
-  userId      String?
-  identifier  String // email or phone
-  code        String
-  purpose     String // "email_verify", "phone_verify", "password_reset", "login_otp"
-  expiresAt   DateTime
-  used        Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([identifier, purpose])
 }
 
 // ─── SELLERS ────────────────────────────────────────
@@ -288,11 +272,13 @@ model SellerService {
 /// Admin-managed catalogue groups (services, paper types/sizes, customization
 /// option lists). One JSON document per group key; sellers and customers read
 /// the same rows so an admin edit propagates everywhere without a deploy.
+/// updatedAt keeps a DB default because catalogue seeding migrations INSERT
+/// raw SQL rows — a forgotten column otherwise aborts the deploy (P3006).
 model CatalogEntry {
   key       String   @id
   label     String
   data      Json
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model SellerBankDetails {

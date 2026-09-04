@@ -23,22 +23,6 @@ export interface PaginatedResponse<T> {
   };
 }
 
-export const DEFAULT_PAGE = 1;
-export const DEFAULT_LIMIT = 20;
-export const MAX_LIMIT = 100;
-
-/** Normalize arbitrary query input into sane pagination params. */
-export function getPagination(input?: { page?: unknown; limit?: unknown }): PaginationParams {
-  const pageRaw = Number(input?.page ?? DEFAULT_PAGE);
-  const limitRaw = Number(input?.limit ?? DEFAULT_LIMIT);
-  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : DEFAULT_PAGE;
-  const limit =
-    Number.isFinite(limitRaw) && limitRaw >= 1
-      ? Math.min(Math.floor(limitRaw), MAX_LIMIT)
-      : DEFAULT_LIMIT;
-  return { page, limit };
-}
-
 /** Prisma skip/take for a params object. */
 export function toSkipTake(params: PaginationParams): { skip: number; take: number } {
   return { skip: (params.page - 1) * params.limit, take: params.limit };

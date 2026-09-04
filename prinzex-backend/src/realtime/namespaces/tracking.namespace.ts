@@ -26,10 +26,6 @@ import {
  * fans the room emission out to whichever node holds the customer's socket.
  */
 
-export interface JoinOrderPayload {
-  orderId: string;
-}
-
 /** Exported for tests: the join handler, decoupled from the connection event. */
 export async function handleJoinOrder(ns: Namespace, socket: Socket, orderId: string): Promise<void> {
   const user = socketUser(socket);

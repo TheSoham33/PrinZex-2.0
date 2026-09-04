@@ -1,7 +1,6 @@
 import type { DeliverySpeed, Prisma } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { pickSlabRate } from './pricing.slabs';
-import { ApiError } from '../../utils/ApiError';
 
 /**
  * Quote calculation, pricing constants, commission logic and coupon
@@ -60,15 +59,6 @@ export interface QuoteSpecifications {
   twinLoopCoverMaterial?: 'gloss-300' | 'matte-350';
   twinLoopBleedAcknowledged?: boolean;
   twinLoopFlipAcknowledged?: boolean;
-}
-
-export interface QuoteInput {
-  sellerServiceId: string;
-  quantity: number;
-  specifications: QuoteSpecifications;
-  deliverySpeed: DeliverySpeed;
-  couponCode?: string;
-  sellerId: string;
 }
 
 export interface QuoteResult {

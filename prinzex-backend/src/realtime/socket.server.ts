@@ -18,10 +18,8 @@ import { initAdminNamespace } from './namespaces/admin.namespace';
  *
  * The singleton lives in socket.registry.ts (dependency-free); service files
  * emit through realtime.emitters.ts — neither imports this module, so there
- * are no circular imports (getSocketServer is re-exported here per spec).
+ * are no circular imports.
  */
-export { getSocketServer, getSocketServerOrNull } from './socket.registry';
-
 export interface InitSocketOptions {
   /** Attach the Redis adapter (multi-node). Default true; tests pass false. */
   withRedisAdapter?: boolean;

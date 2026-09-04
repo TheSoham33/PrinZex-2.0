@@ -122,4 +122,3 @@ export type PayoutsQuery = z.infer<typeof payoutsQuery>;
 export type AdminDeliveryBoysQuery = z.infer<typeof adminDeliveryBoysQuery>;
 export type AdminDeliveryBoyStatusInput = z.infer<typeof adminDeliveryBoyStatusBody>;
 export type AdminVerifyDocumentInput = z.infer<typeof adminVerifyDocumentBody>;
-export type AdminAssignDeliveryInput = z.infer<typeof adminAssignDeliveryBody>;
