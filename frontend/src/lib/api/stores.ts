@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { get } from './client';
 
 export interface StoreListQuery {
   city?: string;
@@ -12,9 +12,7 @@ export interface StoreListQuery {
   limit?: number;
 }
 
-export const fetchStores = async (params: StoreListQuery = {}): Promise<any> => {
-  return apiRequest<any>('/stores', { params: params as any });
-};
+export const fetchStores = async (params: StoreListQuery = {}): Promise<any> => get('/stores', params as any);
 
 export interface StoreCategory {
   categoryId: string;
@@ -23,6 +21,6 @@ export interface StoreCategory {
 
 /** Distinct service categories offered by approved sellers (for the filter UI). */
 export const fetchStoreCategories = async (): Promise<StoreCategory[]> => {
-  const res = await apiRequest<any>('/stores/categories');
+  const res = await get('/stores/categories');
   return res.categories ?? res ?? [];
 };

@@ -1,9 +1,9 @@
-import { apiRequest } from './client';
+import { get, post } from './client';
 import type { DashboardOrder, OrderStatus } from '@/lib/domain/orders';
 
 /** Returns every order for the signed-in customer. */
 export const fetchOrders = async (): Promise<DashboardOrder[]> => {
-  const res = await apiRequest<any>('/orders');
+  const res = await get('/orders');
 
   // The backend returns { data: [...], pagination: { ... } }
   // apiRequest already returns the 'data' field of the ApiResponse envelope.
@@ -47,22 +47,12 @@ function mapCustomerOrderDetail(raw: any) {
 
 /** Returns one order detail, normalized for the customer order page. */
 export const fetchOrderById = async (orderId: string): Promise<any> => {
-  const data = await apiRequest<any>(`/orders/${orderId}`);
+  const data = await get(`/orders/${orderId}`);
   return mapCustomerOrderDetail(data);
 };
 
 /** Place a new order. */
-export const placeOrder = async (orderData: any): Promise<any> => {
-  return apiRequest<any>('/orders', {
-    method: 'POST',
-    body: JSON.stringify(orderData),
-  });
-};
+export const placeOrder = async (orderData: any): Promise<any> => post('/orders', orderData);
 
 /** Get a quote for potential order. */
-export const getOrderQuote = async (quoteData: any): Promise<any> => {
-  return apiRequest<any>('/orders/quote', {
-    method: 'POST',
-    body: JSON.stringify(quoteData),
-  });
-};
+export const getOrderQuote = async (quoteData: any): Promise<any> => post('/orders/quote', quoteData);

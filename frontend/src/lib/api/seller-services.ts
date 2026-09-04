@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { get, post, patch, del } from './client';
 
 export interface SellerService {
   id: string;
@@ -14,7 +14,7 @@ export interface SellerService {
 
 /** Get all services for the authenticated seller. */
 export const fetchSellerServices = async (): Promise<any[]> => {
-  const res = await apiRequest<any>('/seller/store/services');
+  const res = await get('/seller/store/services');
   // Backend returns { categories: [ { services: [...] }, ... ] }
   const categories = res.categories || [];
   return categories.flatMap((cat: any) => cat.services);
@@ -28,27 +28,15 @@ export const addSellerService = async (data: {
   serviceName: string;
   basePrice: number;
   unit: string;
-}): Promise<SellerService> => {
-  return apiRequest<SellerService>('/seller/store/services', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+}): Promise<SellerService> => post<SellerService>('/seller/store/services', data);
 
 /** Update an existing service. */
 export const updateSellerService = async (
   serviceId: string,
   data: { basePrice?: number; unit?: string; isActive?: boolean }
-): Promise<SellerService> => {
-  return apiRequest<SellerService>(`/seller/store/services/${serviceId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-};
+): Promise<SellerService> => patch<SellerService>(`/seller/store/services/${serviceId}`, data);
 
 /** Remove a service from the store. */
 export const deleteSellerService = async (serviceId: string): Promise<any> => {
-  return apiRequest<any>(`/seller/store/services/${serviceId}`, {
-    method: 'DELETE',
-  });
+  return del(`/seller/store/services/${serviceId}`);
 };

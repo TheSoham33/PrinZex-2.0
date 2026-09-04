@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from './client';
+import { get, put } from './client';
 
 /**
  * Admin-managed customization catalogue. One fetch serves every surface
@@ -17,7 +17,7 @@ export interface CatalogEntryDto {
 export type CatalogMap = Record<string, CatalogEntryDto>;
 
 export const fetchCatalog = async (): Promise<CatalogMap> => {
-  const res = await apiRequest<CatalogMap>('/catalog');
+  const res = await get<CatalogMap>('/catalog');
   return ((res as { data?: CatalogMap })?.data ?? res) as CatalogMap;
 };
 
@@ -41,7 +41,7 @@ export function useCatalogOptions<T>(key: string, fallback: readonly T[]): T[] {
 /* ------------------------------ Admin writes ----------------------------- */
 
 export const adminFetchCatalog = async (): Promise<CatalogMap> => {
-  const res = await apiRequest<CatalogMap>('/admin/catalog');
+  const res = await get<CatalogMap>('/admin/catalog');
   return ((res as { data?: CatalogMap })?.data ?? res) as CatalogMap;
 };
 
@@ -49,12 +49,6 @@ export const adminSaveCatalogEntry = async (payload: {
   key: string;
   data: unknown[];
 }): Promise<CatalogEntryDto> => {
-  const res = await apiRequest<{ data?: CatalogEntryDto }>(
-    `/admin/catalog/${payload.key}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify({ data: payload.data }),
-    },
-  );
+  const res = await put<{ data?: CatalogEntryDto }>(`/admin/catalog/${payload.key}`, { data: payload.data });
   return ((res as { data?: CatalogEntryDto })?.data ?? res) as CatalogEntryDto;
 };

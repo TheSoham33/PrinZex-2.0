@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { get, post, patch, del } from './client';
 
 export interface Banner {
   id: string;
@@ -42,8 +42,8 @@ export interface TemplateRow {
 // ── Banners ────────────────────────────────────────────────────────────────
 
 export const fetchBanners = async (): Promise<Banner[]> => {
-  const res = await apiRequest<any>('/admin/content/banners');
-  const data = res.data || res;
+  const res = await get('/admin/content/banners');
+  const data = res;
   return data.map((b: any) => ({
     ...b,
     active: b.isActive,
@@ -51,37 +51,20 @@ export const fetchBanners = async (): Promise<Banner[]> => {
   }));
 };
 
-export const createBanner = async (data: any): Promise<Banner> => {
-  return apiRequest<Banner>('/admin/content/banners', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+export const createBanner = async (data: any): Promise<Banner> => post<Banner>('/admin/content/banners', data);
 
-export const updateBanner = async (id: string, data: any): Promise<Banner> => {
-  return apiRequest<Banner>(`/admin/content/banners/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-};
+export const updateBanner = async (id: string, data: any): Promise<Banner> => patch<Banner>(`/admin/content/banners/${id}`, data);
 
 export const deleteBanner = async (id: string): Promise<void> => {
-  return apiRequest<void>(`/admin/content/banners/${id}`, {
-    method: 'DELETE',
-  });
+  return del<void>(`/admin/content/banners/${id}`);
 };
 
-export const reorderBanners = async (orderedIds: string[]): Promise<void> => {
-  return apiRequest<void>('/admin/content/banners/reorder', {
-    method: 'PATCH',
-    body: JSON.stringify({ orderedIds }),
-  });
-};
+export const reorderBanners = async (orderedIds: string[]): Promise<void> => patch<void>('/admin/content/banners/reorder', { orderedIds });
 
 // ── FAQs ───────────────────────────────────────────────────────────────────
 
 export const fetchFaqs = async (): Promise<FaqCategory[]> => {
-  const groups = await apiRequest<any[]>('/admin/content/faqs');
+  const groups = await get<any[]>('/admin/content/faqs');
   return groups.map((g: any) => ({
     id: g.category,
     name: g.category,
@@ -93,84 +76,48 @@ export const fetchFaqs = async (): Promise<FaqCategory[]> => {
   }));
 };
 
-export const createFaq = async (data: any): Promise<any> => {
-  return apiRequest<any>('/admin/content/faqs', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+export const createFaq = async (data: any): Promise<any> => post('/admin/content/faqs', data);
 
-export const updateFaq = async (id: string, data: any): Promise<any> => {
-  return apiRequest<any>(`/admin/content/faqs/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-};
+export const updateFaq = async (id: string, data: any): Promise<any> => patch(`/admin/content/faqs/${id}`, data);
 
 export const deleteFaq = async (id: string): Promise<void> => {
-  return apiRequest<void>(`/admin/content/faqs/${id}`, {
-    method: 'DELETE',
-  });
+  return del<void>(`/admin/content/faqs/${id}`);
 };
 
 // ── Categories ─────────────────────────────────────────────────────────────
 
 export const fetchCategories = async (): Promise<ServiceCategoryRow[]> => {
-  const res = await apiRequest<any>('/admin/content/categories');
-  const data = res.data || res;
+  const res = await get('/admin/content/categories');
+  const data = res;
   return data.map((c: any) => ({
     ...c,
     active: c.isActive 
   }));
 };
 
-export const updateCategory = async (id: string, data: { isActive: boolean }): Promise<any> => {
-  return apiRequest<any>(`/admin/content/categories/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-};
+export const updateCategory = async (id: string, data: { isActive: boolean }): Promise<any> => patch(`/admin/content/categories/${id}`, data);
 
 // ── Templates ──────────────────────────────────────────────────────────────
 
 export const fetchTemplates = async (): Promise<TemplateRow[]> => {
-  const res = await apiRequest<any>('/admin/content/templates');
-  const data = res.data || res;
+  const res = await get('/admin/content/templates');
+  const data = res;
   return data.map((t: any) => ({
     ...t,
     active: t.isActive 
   }));
 };
 
-export const createTemplate = async (data: any): Promise<TemplateRow> => {
-  return apiRequest<TemplateRow>('/admin/content/templates', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+export const createTemplate = async (data: any): Promise<TemplateRow> => post<TemplateRow>('/admin/content/templates', data);
 
-export const updateTemplate = async (id: string, data: any): Promise<TemplateRow> => {
-  return apiRequest<TemplateRow>(`/admin/content/templates/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-};
+export const updateTemplate = async (id: string, data: any): Promise<TemplateRow> => patch<TemplateRow>(`/admin/content/templates/${id}`, data);
 
 export const deleteTemplate = async (id: string): Promise<void> => {
-  return apiRequest<void>(`/admin/content/templates/${id}`, {
-    method: 'DELETE',
-  });
+  return del<void>(`/admin/content/templates/${id}`);
 };
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
-export const fetchPlatformSettings = async (): Promise<any> => {
-  return apiRequest<any>('/admin/content/settings');
-};
+export const fetchPlatformSettings = async (): Promise<any> => get('/admin/content/settings');
 
-export const updatePlatformSettings = async (data: any): Promise<any> => {
-  return apiRequest<any>('/admin/content/settings', {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-};
+export const updatePlatformSettings = async (data: any): Promise<any> => patch('/admin/content/settings', data);

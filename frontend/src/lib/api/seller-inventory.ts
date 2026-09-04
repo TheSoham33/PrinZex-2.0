@@ -1,14 +1,9 @@
-import { apiRequest } from './client';
+import { get, getList, patch } from './client';
 import { normalizeServiceName } from './mappers';
 
-export const fetchInventory = async (params: any = {}): Promise<any[]> => {
-  return apiRequest<any>('/seller/inventory', { params });
-};
+export const fetchInventory = async (params: any = {}): Promise<any[]> => get('/seller/inventory', params);
 
-export const fetchPayouts = async (params: any = {}): Promise<any[]> => {
-  const res = await apiRequest<any>('/seller/payouts', { params });
-  return res.data || res;
-};
+export const fetchPayouts = async (params: any = {}): Promise<any[]> => getList('/seller/payouts', params);
 
 export interface PricingInfo {
   services: any[];
@@ -16,7 +11,7 @@ export interface PricingInfo {
 }
 
 export const fetchSellerPricing = async (): Promise<PricingInfo> => {
-  const res = await apiRequest<PricingInfo>('/seller/pricing');
+  const res = await get<PricingInfo>('/seller/pricing');
   // Older DB rows may still carry the pre-rename service label; show the
   // canonical name (e.g. "Hard Binding / Thesis Binding").
   return {
@@ -28,19 +23,9 @@ export const fetchSellerPricing = async (): Promise<PricingInfo> => {
   };
 };
 
-export const updateBulkPrices = async (prices: Array<{ serviceId: string; basePrice: number; unit: string; minQuantity?: number; minPages?: number | null }>): Promise<any> => {
-  return apiRequest<any>('/seller/pricing/bulk', {
-    method: 'PATCH',
-    body: JSON.stringify(prices),
-  });
-};
+export const updateBulkPrices = async (prices: Array<{ serviceId: string; basePrice: number; unit: string; minQuantity?: number; minPages?: number | null }>): Promise<any> => patch('/seller/pricing/bulk', prices);
 
-export const updateBulkDiscounts = async (tiers: Array<{ minQty: number; discountPct: number }>): Promise<any> => {
-  return apiRequest<any>('/seller/pricing/bulk-discounts', {
-    method: 'PATCH',
-    body: JSON.stringify({ tiers }),
-  });
-};
+export const updateBulkDiscounts = async (tiers: Array<{ minQty: number; discountPct: number }>): Promise<any> => patch('/seller/pricing/bulk-discounts', { tiers });
 
 export const updatePricingOverrides = async (overrides: {
   pageRate?: { bw: number; color: number };
@@ -67,12 +52,7 @@ export const updatePricingOverrides = async (overrides: {
     concealedPrice?: number;
   };
   quantitySlabs?: Record<string, { qty: number; rate: number }[]>;
-}): Promise<any> => {
-  return apiRequest<any>('/seller/settings/pricing-overrides', {
-    method: 'PATCH',
-    body: JSON.stringify({ overrides }),
-  });
-};
+}): Promise<any> => patch('/seller/settings/pricing-overrides', { overrides });
 
 export const fetchSellerReviews = async (): Promise<any[]> => {
   // Reviews are currently under admin or public, but let's check if there's a seller specific one.
@@ -81,5 +61,5 @@ export const fetchSellerReviews = async (): Promise<any[]> => {
 };
 
 export const fetchTeam = async (): Promise<any[]> => {
-  return apiRequest<any[]>('/seller/team');
+  return get<any[]>('/seller/team');
 };

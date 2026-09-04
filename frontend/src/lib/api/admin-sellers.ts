@@ -1,37 +1,13 @@
-import { apiRequest } from './client';
+import { get, getList, post, patch } from './client';
 
-export const fetchAdminSellers = async (params: any = {}): Promise<any[]> => {
-  const res = await apiRequest<any>('/admin/sellers', { params });
-  return res.data || res;
-};
+export const fetchAdminSellers = async (params: any = {}): Promise<any[]> => getList('/admin/sellers', params);
 
-export const fetchAdminSellerById = async (id: string): Promise<any> => {
-  return apiRequest<any>(`/admin/sellers/${id}`);
-};
+export const fetchAdminSellerById = async (id: string): Promise<any> => get(`/admin/sellers/${id}`);
 
-export const approveSeller = async (id: string): Promise<any> => {
-  return apiRequest<any>(`/admin/sellers/${id}/approve`, {
-    method: 'POST',
-  });
-};
+export const approveSeller = async (id: string): Promise<any> => post(`/admin/sellers/${id}/approve`);
 
-export const rejectSeller = async (id: string, reason: string): Promise<any> => {
-  return apiRequest<any>(`/admin/sellers/${id}/reject`, {
-    method: 'POST',
-    body: JSON.stringify({ reason }),
-  });
-};
+export const rejectSeller = async (id: string, reason: string): Promise<any> => post(`/admin/sellers/${id}/reject`, { reason });
 
-export const suspendSeller = async (id: string, reason: string): Promise<any> => {
-  return apiRequest<any>(`/admin/sellers/${id}/suspend`, {
-    method: 'POST',
-    body: JSON.stringify({ reason }),
-  });
-};
+export const suspendSeller = async (id: string, reason: string): Promise<any> => post(`/admin/sellers/${id}/suspend`, { reason });
 
-export const updateSellerCommission = async (id: string, commissionRate: number): Promise<any> => {
-  return apiRequest<any>(`/admin/sellers/${id}/commission`, {
-    method: 'PATCH',
-    body: JSON.stringify({ commissionRate }),
-  });
-};
+export const updateSellerCommission = async (id: string, commissionRate: number): Promise<any> => patch(`/admin/sellers/${id}/commission`, { commissionRate });

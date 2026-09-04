@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { post } from './client';
 
 export interface PaymentOrderResponse {
   razorpayOrderId: string;
@@ -9,12 +9,7 @@ export interface PaymentOrderResponse {
 }
 
 /** Create a Razorpay order for an existing PrinZex order. */
-export const createPaymentOrder = async (orderId: string): Promise<PaymentOrderResponse> => {
-  return apiRequest<PaymentOrderResponse>('/payments/create-order', {
-    method: 'POST',
-    body: JSON.stringify({ orderId }),
-  });
-};
+export const createPaymentOrder = async (orderId: string): Promise<PaymentOrderResponse> => post<PaymentOrderResponse>('/payments/create-order', { orderId });
 
 /** Verify a Razorpay payment. */
 export const verifyPayment = async (data: {
@@ -22,9 +17,4 @@ export const verifyPayment = async (data: {
   razorpayOrderId: string;
   razorpayPaymentId: string;
   razorpaySignature: string;
-}): Promise<any> => {
-  return apiRequest<any>('/payments/verify', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+}): Promise<any> => post('/payments/verify', data);
