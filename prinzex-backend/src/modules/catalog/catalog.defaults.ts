@@ -108,17 +108,8 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
       { value: 'A3', label: 'A3', hint: '297 × 420 mm', multiplier: 1.9 },
     ],
   },
-  'finishing-options': {
-    label: 'Finishing options',
-    data: [
-      { value: 'lamination', label: 'Lamination', price: 15 },
-      { value: 'spiral-binding', label: 'Spiral binding', price: 40 },
-      { value: 'hard-binding', label: 'Hard / Thesis binding', price: 120 },
-      { value: 'punching', label: 'Hole punching', price: 8 },
-    ],
-  },
   // Document Printing's mandatory stapling choice — a dedicated option group
-  // (radio on the order page), NOT a finishing add-on. Sellers override the
+  // (radio on the order page). Sellers override the
   // per-option prices from their Pricing page; 'loose' is the free default.
   'stapling-options': {
     label: 'Stapling options (Document Printing)',

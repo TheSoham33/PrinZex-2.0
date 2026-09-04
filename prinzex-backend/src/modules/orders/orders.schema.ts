@@ -20,7 +20,6 @@ export const specificationsSchema = z.object({
   // Document printing: mandatory stapling choice ('loose' = free default).
   // String (not enum) — the option list is admin-catalogue managed.
   stapling: z.string().optional(),
-  finishing: z.array(z.string()),
   // Page count auto-detected from the uploaded PDF. Drives per-page pricing
   // and must flow through so removing/replacing the file updates the quote.
   totalPages: z.number().int().min(0).optional(),
@@ -112,7 +111,6 @@ export const createOrderBody = z.object({
     printSides: z.enum(['single', 'double']).optional(),
     // Document printing: mandatory stapling choice ('loose' = free default).
     stapling: z.string().optional(),
-    finishing: z.array(z.string()),
     totalPages: z.number().int().min(0).optional(),
     colorPages: z.string().optional(),
     coverType: z.string().optional(),

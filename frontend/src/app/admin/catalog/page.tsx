@@ -63,16 +63,6 @@ const GROUPS: GroupSpec[] = [
     ],
   },
   {
-    key: 'finishing-options',
-    kind: 'rows',
-    description: 'Optional finishing add-ons with a fixed per-unit price.',
-    fields: [
-      { key: 'value', label: 'Value', kind: 'text' },
-      { key: 'label', label: 'Label', kind: 'text' },
-      { key: 'price', label: 'Price (₹)', kind: 'number' },
-    ],
-  },
-  {
     key: 'stapling-options',
     kind: 'rows',
     description:

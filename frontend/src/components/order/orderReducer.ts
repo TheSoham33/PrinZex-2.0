@@ -1,4 +1,4 @@
-import { FINISHING_OPTIONS, STAPLING_OPTIONS, TAX_RATE } from '@/lib/domain/stores';
+import { STAPLING_OPTIONS, TAX_RATE } from '@/lib/domain/stores';
 import { countColorPages } from '@/lib/utils';
 import type {
   CostBreakdown,
@@ -32,19 +32,6 @@ export type OrderAction =
   | { type: 'SET_COST_BREAKDOWN'; payload: CostBreakdown }
   | { type: 'SET_STEP'; payload: number }
   | { type: 'SET_ERROR'; payload: string | null };
-
-/**
- * Stapling used to ride as finishing add-on keys. It's now a dedicated
- * mandatory Document Printing spec (specs.stapling) with seller-set prices,
- * so these legacy keys exist only to keep them OUT of the finishing chips
- * (older catalogue rows may still list them). The backend still prices them
- * for in-flight orders.
- */
-export const STAPLING_FINISHING_KEYS = [
-  'stapling', // legacy flat key (in-flight orders / older specs)
-  'corner-stapling',
-  'side-stapling',
-] as const;
 
 /** Same "from qty → per-piece rate" picker as backend pricing.slabs. */
 export function pickSlabRate(
@@ -84,7 +71,6 @@ export function createInitialState(
         size: 'A4',
         quantity: Math.max(1, minQuantity),
         colorOption: 'bw',
-        finishing: [],
         // Binding defaults — applied for every new job.
         spiralType: 'plastic',
         coverType: 'clear',
@@ -252,8 +238,6 @@ export function computeCost(
   /** Seller's cheapest per-page rate — used for binding services, whose own
    *  starting price is per-document (never a per-page rate). */
   pageRateFallback?: number,
-  /** Admin-catalogue finishing list; falls back to the shipped constant. */
-  finishingOptions: ReadonlyArray<{ value: string; price: number }> = FINISHING_OPTIONS,
   /** Admin-catalogue stapling list; falls back to the shipped constant. */
   staplingOptions: ReadonlyArray<{ value: string; price: number }> = STAPLING_OPTIONS,
 ): CostBreakdown {
@@ -302,11 +286,6 @@ export function computeCost(
         : 0;
   const bwPageCount = billablePages - colorPageCount;
 
-  const finishingPerUnit = specs.finishing.reduce((sum, key) => {
-    const option = finishingOptions.find((entry) => entry.value === key);
-    return sum + (option?.price ?? 0);
-  }, 0);
-
   // Mandatory Document Printing stapling choice — the seller's per-set price
   // wins over the catalogue default; 'loose' is always free. Mirrors the
   // backend computeQuote stapling branch.
@@ -341,23 +320,23 @@ export function computeCost(
     const bindingRate = base + twinLoopExtra;
     bindingCost = Math.round(bindingRate * quantity);
     subtotal = Math.round(
-      pageCost + bindingCost + (finishingPerUnit + staplingPerUnit) * quantity,
+      pageCost + bindingCost + staplingPerUnit * quantity,
     );
   } else if (service?.unit.toLowerCase().includes('page')) {
     subtotal = Math.round(
       (bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity +
-        (finishingPerUnit + staplingPerUnit) * quantity,
+        staplingPerUnit * quantity,
     );
   } else if (slabRate !== undefined) {
     // Slab-priced services (Business Cards): per-piece rate from the seller's
     // quantity tiers — mirrors the backend quote branch.
     subtotal = Math.round(
-      slabRate * quantity + (finishingPerUnit + staplingPerUnit) * quantity,
+      slabRate * quantity + staplingPerUnit * quantity,
     );
   } else {
     subtotal = Math.round(
       (base + paperOptionExtra) * quantity +
-        (finishingPerUnit + staplingPerUnit) * quantity,
+        staplingPerUnit * quantity,
     );
   }
 

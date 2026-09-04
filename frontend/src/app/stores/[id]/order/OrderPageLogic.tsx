@@ -33,10 +33,7 @@ import {
   IconShoppingCart,
 } from '@/components/icons';
 import { useCatalogOptions } from '@/lib/api/catalog';
-import {
-  FINISHING_OPTIONS as FINISHING_OPTIONS_FALLBACK,
-  STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK,
-} from '@/lib/domain/stores';
+import { STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK } from '@/lib/domain/stores';
 
 const TOTAL_STEPS = 3;
 
@@ -52,7 +49,6 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     }
   }, [store.isOpen, store.id, router]);
 
-  const finishingOptionsCatalog = useCatalogOptions('finishing-options', FINISHING_OPTIONS_FALLBACK);
   const staplingOptionsCatalog = useCatalogOptions('stapling-options', STAPLING_OPTIONS_FALLBACK);
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get('service') ?? '';
@@ -142,7 +138,6 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           colorOption: specs.colorOption,
           printSides: specs.printSides,
           stapling: specs.stapling,
-          finishing: specs.finishing,
           totalPages: specs.totalPages,
           colorPages: specs.colorPages,
           coverType: specs.coverType,
@@ -224,7 +219,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // estimate so the summary resets immediately instead of showing stale prices.
   const cost = useMemo(() => {
     if (token && quoteData && !quoteLoading) return quoteData;
-    return computeCost(specs, service, 0, 0, pageRateFallback, finishingOptionsCatalog, staplingOptionsCatalog);
+    return computeCost(specs, service, 0, 0, pageRateFallback, staplingOptionsCatalog);
   }, [token, quoteData, quoteLoading, specs, service, pageRateFallback]);
 
   useEffect(() => {
@@ -412,7 +407,6 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           colorOption: specs.colorOption,
           printSides: specs.printSides,
           stapling: specs.stapling,
-          finishing: specs.finishing,
           totalPages: specs.totalPages,
           colorPages: specs.colorPages,
           coverType: specs.coverType,

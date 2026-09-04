@@ -33,7 +33,7 @@ export default function AllServicesPage() {
               All printing services
             </h1>
             <p className="mt-4 max-w-2xl text-lg text-slate-600">
-              Browse our complete catalog of professional printing and finishing options available from local shops in Kolkata.
+              Browse our complete catalog of professional printing and binding services available from local shops in Kolkata.
             </p>
           </header>
 

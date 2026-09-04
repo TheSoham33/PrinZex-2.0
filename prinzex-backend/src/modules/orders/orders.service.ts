@@ -28,7 +28,6 @@ import {
   emitOrderStatusChanged,
 } from '../../realtime/realtime.emitters';
 import {
-  assertKnownFinishing,
   STAPLING_OPTION_PRICES,
   computeQuote,
   estimatedDeliveryFor,
@@ -299,7 +298,6 @@ export interface QuoteResponse extends QuoteResult {
 }
 
 export async function createQuote(customerId: string, input: QuoteBody): Promise<QuoteResponse> {
-  assertKnownFinishing(input.specifications.finishing);
   const { service, seller, pageRateFallback } = await loadOrderableService(
     input.sellerId,
     input.sellerServiceId,
@@ -379,7 +377,6 @@ export interface CreatedOrder {
 }
 
 export async function createOrder(customerId: string, input: CreateOrderInput): Promise<CreatedOrder> {
-  assertKnownFinishing(input.specifications.finishing);
 
   // 1. Address must belong to THIS customer (JWT-derived id, never the body).
   const address = await prisma.address.findFirst({

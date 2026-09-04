@@ -23,7 +23,6 @@ const baseSpecs: OrderSpecifications = {
   size: 'A4',
   quantity: 1,
   colorOption: 'bw',
-  finishing: [],
   totalPages: 60,
 };
 
