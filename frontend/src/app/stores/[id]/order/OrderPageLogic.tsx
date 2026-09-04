@@ -161,6 +161,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           tapeCoverSource: specs.tapeCoverSource,
           tapeFrontCoverFileUrl: specs.tapeFrontCoverFileUrl,
           tapeBackCoverFileUrl: specs.tapeBackCoverFileUrl,
+          glueCoverSource: specs.glueCoverSource,
+          glueFrontCoverFileUrl: specs.glueFrontCoverFileUrl,
+          glueBackCoverFileUrl: specs.glueBackCoverFileUrl,
           twinLoopWireColor: specs.twinLoopWireColor,
           twinLoopFrontCover: specs.twinLoopFrontCover,
           twinLoopBackCover: specs.twinLoopBackCover,
@@ -270,6 +273,12 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         if (!specs.tapeColor) return 'Please choose a tape colour';
         if (!specs.tapeCoverSource) return 'Please choose the front cover source';
         if (specs.tapeCoverSource === 'upload' && !specs.tapeFrontCoverFileUrl) {
+          return 'Please upload the single-page front cover design (PDF/PNG/JPG)';
+        }
+      }
+      if (specs.serviceId === 'bind-perfect') {
+        if (!specs.glueCoverSource) return 'Please choose the front cover source';
+        if (specs.glueCoverSource === 'upload' && !specs.glueFrontCoverFileUrl) {
           return 'Please upload the single-page front cover design (PDF/PNG/JPG)';
         }
       }
@@ -422,6 +431,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           tapeCoverSource: specs.tapeCoverSource,
           tapeFrontCoverFileUrl: specs.tapeFrontCoverFileUrl,
           tapeBackCoverFileUrl: specs.tapeBackCoverFileUrl,
+          glueCoverSource: specs.glueCoverSource,
+          glueFrontCoverFileUrl: specs.glueFrontCoverFileUrl,
+          glueBackCoverFileUrl: specs.glueBackCoverFileUrl,
           twinLoopWireColor: specs.twinLoopWireColor,
           twinLoopFrontCover: specs.twinLoopFrontCover,
           twinLoopBackCover: specs.twinLoopBackCover,

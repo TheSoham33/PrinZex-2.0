@@ -23,6 +23,7 @@ import type { OrderAction } from './orderReducer';
 import { STAPLING_FINISHING_KEYS } from './orderReducer';
 import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
 import TapeBindingCustomizationPanel from './TapeBindingCustomizationPanel';
+import GlueBindingCustomizationPanel from './GlueBindingCustomizationPanel';
 import BusinessCardCustomizationPanel from './BusinessCardCustomizationPanel';
 import {
   IconAlertCircle,
@@ -683,6 +684,9 @@ export default function SpecificationsStep({
                 ...(nextServiceId === 'bind-tape'
                   ? { tapeCoverSource: specs.tapeCoverSource ?? 'first-page' }
                   : {}),
+                ...(nextServiceId === 'bind-perfect'
+                  ? { glueCoverSource: specs.glueCoverSource ?? 'first-page' }
+                  : {}),
               },
             });
           }}
@@ -1002,6 +1006,10 @@ export default function SpecificationsStep({
           dispatch={dispatch}
           availableTapeColors={availableTapeColors}
         />
+      )}
+
+      {specs.serviceId === 'bind-perfect' && (
+        <GlueBindingCustomizationPanel specs={specs} dispatch={dispatch} />
       )}
 
       {isBusinessCard && (

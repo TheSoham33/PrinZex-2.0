@@ -44,6 +44,10 @@ export const specificationsSchema = z.object({
   tapeCoverSource: z.enum(['first-page', 'upload']).optional(),
   tapeFrontCoverFileUrl: z.string().max(2048).optional(),
   tapeBackCoverFileUrl: z.string().max(2048).optional(),
+  // Glue Binding customization (renamed Perfect Binding service).
+  glueCoverSource: z.enum(['first-page', 'upload']).optional(),
+  glueFrontCoverFileUrl: z.string().max(2048).optional(),
+  glueBackCoverFileUrl: z.string().max(2048).optional(),
   twinLoopWireColor: z.string().optional(),
   twinLoopFrontCover: z.string().optional(),
   twinLoopBackCover: z.string().optional(),
@@ -128,6 +132,10 @@ export const createOrderBody = z.object({
     tapeCoverSource: z.enum(['first-page', 'upload']).optional(),
     tapeFrontCoverFileUrl: z.string().max(2048).optional(),
     tapeBackCoverFileUrl: z.string().max(2048).optional(),
+  // Glue Binding customization (renamed Perfect Binding service).
+    glueCoverSource: z.enum(['first-page', 'upload']).optional(),
+    glueFrontCoverFileUrl: z.string().max(2048).optional(),
+    glueBackCoverFileUrl: z.string().max(2048).optional(),
     twinLoopWireColor: z.string().optional(),
     twinLoopFrontCover: z.string().optional(),
     twinLoopBackCover: z.string().optional(),

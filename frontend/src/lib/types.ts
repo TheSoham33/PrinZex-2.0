@@ -146,6 +146,15 @@ export interface OrderSpecifications {
   /** Optional back cover design, same format rules as the front. */
   tapeBackCoverFileUrl?: string;
   tapeBackCoverFileName?: string;
+  // Glue Binding options (renamed Perfect Binding — same serviceId).
+  /** Front cover: first document page or a separate single-page design
+   *  (PDF/PNG/JPG, 300 DPI minimum). */
+  glueCoverSource?: 'first-page' | 'upload';
+  glueFrontCoverFileUrl?: string;
+  glueFrontCoverFileName?: string;
+  /** Optional back cover design, same format rules as the front. */
+  glueBackCoverFileUrl?: string;
+  glueBackCoverFileName?: string;
   // Twin Loop Binding options.
   twinLoopWireColor?: string;
   twinLoopFrontCover?: string;

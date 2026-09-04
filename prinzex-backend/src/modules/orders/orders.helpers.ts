@@ -40,6 +40,10 @@ export interface QuoteSpecifications {
   tapeCoverSource?: 'first-page' | 'upload';
   tapeFrontCoverFileUrl?: string;
   tapeBackCoverFileUrl?: string;
+  // Glue Binding customization (no colour/thickness options).
+  glueCoverSource?: 'first-page' | 'upload';
+  glueFrontCoverFileUrl?: string;
+  glueBackCoverFileUrl?: string;
   twinLoopWireColor?: string;
   twinLoopFrontCover?: string;
   twinLoopBackCover?: string;
@@ -489,13 +493,22 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const commissionAmount = round2(subtotal * input.commissionRate);
   const total = round2(subtotal + rushFee + deliveryFee + tax - input.discount);
   // Spine width estimate: sheets (2 pages each) × paper caliper. Hard
-  // binding needs ≥2 mm of spine; thermal tape grip needs ≥4 mm. Tape
-  // Binding offers no paper-thickness option — its spine always uses the
-  // standard 75/80 GSM caliper (0.1 mm/sheet).
-  const SPINE_MIN_WIDTH_MM: Record<string, number> = { 'bind-hard': 2, 'bind-tape': 4 };
+  // binding needs ≥2 mm of spine; thermal tape grip ≥4 mm, glued paperback
+  // ≥3 mm. Tape and Glue Binding offer no paper-thickness option — their
+  // spines always use the standard 75/80 GSM caliper (0.1 mm/sheet).
+  const SPINE_MIN_WIDTH_MM: Record<string, number> = {
+    'bind-hard': 2,
+    'bind-perfect': 3,
+    'bind-tape': 4,
+  };
   const spineMinWidthMm = SPINE_MIN_WIDTH_MM[input.serviceId ?? ''];
+  const FIXED_CALIPER_SERVICES = new Set(['bind-tape', 'bind-perfect']);
   const spineCaliper =
-    input.serviceId === 'bind-tape' ? 0.1 : specifications.paperGsm === 100 ? 0.13 : 0.1;
+    FIXED_CALIPER_SERVICES.has(input.serviceId ?? '')
+      ? 0.1
+      : specifications.paperGsm === 100
+        ? 0.13
+        : 0.1;
   const spineWidthMm =
     spineMinWidthMm !== undefined && totalPages > 0
       ? Math.max(spineMinWidthMm, round2((totalPages / 2) * spineCaliper))
