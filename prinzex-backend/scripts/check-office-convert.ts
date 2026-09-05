@@ -1,14 +1,17 @@
 /**
- * Runnable check for the Office → PDF pre-flight pieces that can run without
- * LibreOffice installed: the PDF page counter counts a freshly built PDF
- * exactly, the binary resolver honours LIBREOFFICE_PATH/PATH, and a missing
- * binary surfaces as 503 (never a silently stored half-converted file) while
- * leaving the caller's original file on disk for the service to clean up.
+ * Runnable check for the Gotenberg Office → PDF client. A mock Gotenberg
+ * server (node:http, ephemeral port) exercises the real fetch path:
+ *
+ *   200 + real PDF  → conversion succeeds, exact bytes stored, pages count
+ *   500             → 422 user copy, input preserved, no output written
+ *   200 + garbage   → 422 (a 200 is only trusted when bytes really are %PDF)
+ *   server down     → 503 config error, input preserved
  *
  *   npx tsx scripts/check-office-convert.ts
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
@@ -16,54 +19,82 @@ import { ApiError } from '../src/utils/ApiError';
 import {
   OFFICE_CONVERTIBLE,
   convertOfficeToPdf,
-  resolveSofficePath,
-} from '../src/utils/libreoffice';
+} from '../src/utils/gotenberg';
 import { countPdfPages } from '../src/utils/pdf';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prinzex-convert-check-'));
+const inputDocx = path.join(dir, 'report.docx');
+const expectedPdf = path.join(dir, 'report.pdf');
+
+async function expectApiError(promise: Promise<unknown>, statusCode: number, label: string) {
+  await assert.rejects(
+    promise,
+    (error: unknown) => error instanceof ApiError && error.statusCode === statusCode,
+    label,
+  );
+  assert.ok(fs.existsSync(inputDocx), `${label}: input must survive`);
+  assert.ok(!fs.existsSync(expectedPdf), `${label}: no half-written output`);
+}
 
 async function main() {
   try {
-    /* Exact page count from a real PDF (built with the same pdf-lib). */
+    /* Exact page count from a real PDF (also the mock's success payload). */
     const document = await PDFDocument.create();
     for (let i = 0; i < 3; i++) document.addPage();
-    const pdfPath = path.join(dir, 'three-pages.pdf');
-    fs.writeFileSync(pdfPath, await document.save());
-    assert.equal(await countPdfPages(pdfPath), 3);
+    const pdfBytes = Buffer.from(await document.save());
+    fs.writeFileSync(path.join(dir, 'three-pages.pdf'), pdfBytes);
+    assert.equal(await countPdfPages(path.join(dir, 'three-pages.pdf')), 3);
 
     /* Only the four Office extensions convert. */
     assert.deepEqual([...OFFICE_CONVERTIBLE].sort(), ['.doc', '.docx', '.ppt', '.pptx']);
 
-    /* Resolver: explicit env path wins when it exists; bogus values are
-     * ignored instead of crashing spawns later. */
-    const envBefore = process.env.LIBREOFFICE_PATH;
-    const pathBefore = process.env.PATH;
-    process.env.LIBREOFFICE_PATH = pdfPath; // exists ⇒ accepted
-    assert.equal(resolveSofficePath(), pdfPath);
-    process.env.LIBREOFFICE_PATH = path.join(dir, 'no-such-binary');
-    process.env.PATH = dir; // empty dir ⇒ nothing on PATH
-    if (process.platform !== 'win32') {
-      // On Windows the standard install location may legitimately resolve.
-      assert.equal(resolveSofficePath(), null);
-    }
+    fs.writeFileSync(inputDocx, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14])); // PK-pretend office
 
-    /* A conversion can never succeed from garbage input: no binary → 503
-     * config error, binary present (dev machine with LibreOffice) → 422
-     * conversion failure. Either way the input file is NEVER touched —
-     * registerDesignUpload owns cleanup on failure. */
-    const resolved = resolveSofficePath();
-    const inputDocx = path.join(dir, 'report.docx');
-    fs.writeFileSync(inputDocx, 'PK-pretend-office');
-    await assert.rejects(
-      convertOfficeToPdf(inputDocx, dir),
-      (error: unknown) =>
-        error instanceof ApiError && error.statusCode === (resolved ? 422 : 503),
-    );
-    assert.ok(fs.existsSync(inputDocx), 'input must survive a failed conversion');
+    /* Mock Gotenberg — response mode controlled per case. */
+    let mode: 'ok' | 'fail' | 'garbage' = 'ok';
+    let sawMultipart = false;
+    const server = http.createServer((req, res) => {
+      if (req.method === 'POST' && req.url === '/forms/libreoffice/convert') {
+        sawMultipart ||= (req.headers['content-type'] ?? '').includes('multipart/form-data');
+        req.resume(); // drain the upload without parsing it
+        if (mode === 'ok') {
+          res.writeHead(200, { 'content-type': 'application/pdf' });
+          res.end(pdfBytes);
+        } else if (mode === 'garbage') {
+          res.writeHead(200, { 'content-type': 'text/plain' });
+          res.end('not-a-pdf');
+        } else {
+          res.writeHead(500, { 'content-type': 'text/plain' });
+          res.end('boom');
+        }
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as { port: number };
+    process.env.GOTENBERG_URL = `http://127.0.0.1:${port}`;
 
-    process.env.LIBREOFFICE_PATH = envBefore ?? '';
-    if (envBefore === undefined) delete process.env.LIBREOFFICE_PATH;
-    process.env.PATH = pathBefore;
+    /* 200 + real PDF → stored byte-exact under the same basename. */
+    const output = await convertOfficeToPdf(inputDocx, dir);
+    assert.equal(output, expectedPdf);
+    assert.ok(sawMultipart, 'request must be multipart/form-data');
+    assert.ok(fs.readFileSync(output).equals(pdfBytes));
+    assert.equal(await countPdfPages(output), 3);
+    fs.unlinkSync(expectedPdf);
+
+    /* Service-side failure → 422, nothing written. */
+    mode = 'fail';
+    await expectApiError(convertOfficeToPdf(inputDocx, dir), 422, 'Gotenberg 500');
+
+    /* Bogus 200 body → 422 (magic guard). */
+    mode = 'garbage';
+    await expectApiError(convertOfficeToPdf(inputDocx, dir), 422, 'garbage 200');
+
+    /* Unreachable service → 503 config error. */
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await expectApiError(convertOfficeToPdf(inputDocx, dir), 503, 'service down');
 
     console.log('check-office-convert: OK');
   } finally {

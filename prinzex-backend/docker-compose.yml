@@ -51,6 +51,35 @@ services:
       timeout: 5s
       retries: 10
 
+  # Office → PDF conversion sidecar for order uploads. Only the backend API
+  # (upload.service.ts) talks to it; browsers never see it.
+  #
+  # Security posture (mirrors the threat model for conversion sidecars):
+  # - loopback-only publish: 127.0.0.1:3000 — never reachable from LAN/public
+  #   internet. On a multi-host deployment, drop the ports block and put the
+  #   app and this service on a private compose network instead.
+  # - --chromium-disable-routes: only /forms/libreoffice/convert is served —
+  #   the URL/HTML-to-PDF routes (the SSRF surface) are OFF entirely.
+  # - --api-body-limit slightly above the app upload cap --api-timeout caps
+  #   a single malicious/oversized job; --libreoffice-max-queue-size rejects
+  #   bursts with 503 instead of piling up conversions.
+  # - cpus/mem_limit: a crash in a crafted document can't starve the host.
+  # - pinned image digest-less version (never :latest): upgrade deliberately.
+  gotenberg:
+    image: gotenberg/gotenberg:8.36.0
+    container_name: prinzex-gotenberg
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --api-timeout=120s
+      - --api-body-limit=64MB
+      - --libreoffice-max-queue-size=10
+      - --chromium-disable-routes=true
+    ports:
+      - '127.0.0.1:3000:3000'
+    cpus: 2
+    mem_limit: 2g
+
 volumes:
   prinzex-pgdata:
   prinzex-mongodata:
