@@ -12,6 +12,11 @@ import {
   FILM_THICKNESS_OPTIONS as FILM_THICKNESS_OPTIONS_FALLBACK,
 } from '@/lib/domain/stores';
 import { useCatalogOptions } from '@/lib/api/catalog';
+import {
+  ACCEPTED_DOCUMENT_TYPES,
+  ACCEPTED_DOCUMENT_DESCRIPTION,
+  pageCountStrategy,
+} from '@/lib/domain/files';
 import type {
   OrderSpecifications,
   ServiceOffering,
@@ -29,7 +34,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import { ErrorNote } from '@/components/ui';
 
-const ACCEPTED = '.pdf';
+const ACCEPTED = ACCEPTED_DOCUMENT_TYPES;
 const MAX_BYTES = 25 * 1024 * 1024;
 
 interface SpecificationsStepProps {
@@ -103,9 +108,10 @@ export default function SpecificationsStep({
   const acceptFile = async (selected: File | undefined) => {
     if (!selected) return;
 
-    if (selected.type !== 'application/pdf') {
+    const strategy = pageCountStrategy(selected.name);
+    if (!strategy) {
       setLocalError(
-        'Currently only PDF file accept. Please convert the file into PDF then send it.',
+        `That file type isn't supported. Please upload ${ACCEPTED_DOCUMENT_DESCRIPTION}.`,
       );
       if (inputRef.current) inputRef.current.value = '';
       return;
@@ -122,16 +128,27 @@ export default function SpecificationsStep({
     setProcessing(true);
 
     try {
-      const arrayBuffer = await selected.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer, {
-        ignoreEncryption: true,
-      });
-      const totalPages = pdfDoc.getPageCount();
+      let totalPages: number;
+      if (strategy === 'pdf') {
+        const arrayBuffer = await selected.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer, {
+          ignoreEncryption: true,
+        });
+        totalPages = pdfDoc.getPageCount();
+      } else if (strategy === 'image') {
+        totalPages = 1; // one sheet per image
+      } else {
+        // Word/PowerPoint page counts can't be read reliably in the browser —
+        // attach the file at 0 pages; the customer enters the count in the
+        // Total pages card that appears once the file is attached.
+        totalPages = 0;
+      }
 
-      // Seller page minimum: reject the PDF instead of attaching it.
-      if (minPages > 0 && totalPages < minPages) {
+      // Seller page minimum: reject the file instead of attaching it (manual
+      // counts are validated later, once entered).
+      if (strategy !== 'manual' && minPages > 0 && totalPages < minPages) {
         const serviceName = selectedService?.name ?? 'this service';
-        const message = `Minimum page count should be ${minPages} for ${serviceName}. Your PDF has only ${totalPages} page${totalPages === 1 ? '' : 's'}.`;
+        const message = `Minimum page count should be ${minPages} for ${serviceName}. Your file has only ${totalPages} page${totalPages === 1 ? '' : 's'}.`;
         showToast(message, 'error');
         setLocalError(message);
         if (inputRef.current) inputRef.current.value = '';
@@ -150,7 +167,7 @@ export default function SpecificationsStep({
           previewUrl,
         },
       });
-      dispatch({ type: 'SET_SPEC', payload: { totalPages } });
+      dispatch({ type: 'SET_SPEC', payload: { totalPages, colorPages: '' } });
     } catch (e) {
       console.error('Error processing PDF:', e);
       setLocalError(
@@ -281,6 +298,8 @@ export default function SpecificationsStep({
   const shownError = localError ?? error;
 
   const totalPages = specs.totalPages || 0;
+  /** How the attached file's pages are counted (drives the Total pages card). */
+  const attachedStrategy = file ? pageCountStrategy(file.name) : null;
   const colorPageCount = countColorPages(specs.colorPages, totalPages);
   const paperGsm = specs.paperGsm ?? 75;
   // Approximation based on sheets (two pages per sheet) and common paper caliper.
@@ -592,16 +611,46 @@ export default function SpecificationsStep({
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    Total pages
+                    Total pages{' '}
+                    {attachedStrategy === 'manual' && (
+                      <span className="text-red-500">*</span>
+                    )}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Automatically calculated from PDF
+                    {attachedStrategy === 'manual'
+                      ? 'Can\'t be read from Word/PowerPoint — type the pages or slides to print'
+                      : attachedStrategy === 'image'
+                        ? 'Each image prints as one sheet'
+                        : 'Automatically calculated from PDF'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex h-10 w-20 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-900">
-                    {specs.totalPages || 1}
-                  </div>
+                  {attachedStrategy === 'manual' ? (
+                    <input
+                      id="manualPageCount"
+                      type="number"
+                      min={Math.max(1, minPages)}
+                      max={9999}
+                      inputMode="numeric"
+                      value={specs.totalPages || ''}
+                      onChange={(e) =>
+                        dispatch({
+                          type: 'SET_SPEC',
+                          payload: {
+                            totalPages: Math.max(0, Math.floor(Number(e.target.value) || 0)),
+                            colorPages: '',
+                          },
+                        })
+                      }
+                      placeholder="1"
+                      aria-label="Number of pages or slides to print"
+                      className="input h-10 w-20 text-center font-bold"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-20 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-900">
+                      {specs.totalPages || 1}
+                    </div>
+                  )}
                   <span className="text-sm font-medium text-slate-600">
                     pages
                   </span>
@@ -634,10 +683,10 @@ export default function SpecificationsStep({
               <IconUpload className="h-6 w-6" />
             </span>
             <p className="mt-4 text-sm font-semibold text-slate-900">
-              Drop PDF here, or <span className="text-blue-600">browse</span>
+              Drop your file here, or <span className="text-blue-600">browse</span>
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Only PDF files are currently accepted · up to 25 MB
+              {ACCEPTED_DOCUMENT_DESCRIPTION} · up to 25 MB
             </p>
           </div>
         )}
