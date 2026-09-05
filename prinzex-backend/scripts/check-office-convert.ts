@@ -50,23 +50,42 @@ async function main() {
 
     fs.writeFileSync(inputDocx, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14])); // PK-pretend office
 
-    /* Mock Gotenberg — response mode controlled per case. */
+    /* Mock Gotenberg — response mode controlled per case. The multipart
+     * envelope is validated with the same strictness Go's mime/multipart
+     * parser applies (this is the one thing the mock must not rubber-stamp):
+     * boundary prefix, a `files` part with the original filename, byte-exact
+     * payload, closing delimiter. */
     let mode: 'ok' | 'fail' | 'garbage' = 'ok';
-    let sawMultipart = false;
+    let multipartReport = '';
     const server = http.createServer((req, res) => {
       if (req.method === 'POST' && req.url === '/forms/libreoffice/convert') {
-        sawMultipart ||= (req.headers['content-type'] ?? '').includes('multipart/form-data');
-        req.resume(); // drain the upload without parsing it
-        if (mode === 'ok') {
-          res.writeHead(200, { 'content-type': 'application/pdf' });
-          res.end(pdfBytes);
-        } else if (mode === 'garbage') {
-          res.writeHead(200, { 'content-type': 'text/plain' });
-          res.end('not-a-pdf');
-        } else {
-          res.writeHead(500, { 'content-type': 'text/plain' });
-          res.end('boom');
-        }
+        const chunks: Buffer[] = [];
+        req.on('data', (chunk) => chunks.push(chunk));
+        req.on('end', () => {
+          const body = Buffer.concat(chunks);
+          const boundary = /boundary=([^;]+)/.exec(
+            (req.headers['content-type'] ?? '').replace(/"/g, ''),
+          )?.[1];
+          const text = body.toString('latin1');
+          if (!boundary) multipartReport = 'missing boundary in content-type';
+          else if (!text.startsWith(`--${boundary}\r\n`)) multipartReport = 'bad opening delimiter';
+          else if (!/content-disposition: form-data; name="files"; filename="report\.docx"/i.test(text))
+            multipartReport = 'files part missing or filename lost';
+          else if (body.indexOf(Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14])) === -1)
+            multipartReport = 'payload bytes corrupted in transit';
+          else if (!text.endsWith(`--${boundary}--\r\n`)) multipartReport = 'bad closing delimiter';
+          else multipartReport = '';
+          if (mode === 'ok') {
+            res.writeHead(200, { 'content-type': 'application/pdf' });
+            res.end(pdfBytes);
+          } else if (mode === 'garbage') {
+            res.writeHead(200, { 'content-type': 'text/plain' });
+            res.end('not-a-pdf');
+          } else {
+            res.writeHead(500, { 'content-type': 'text/plain' });
+            res.end('boom');
+          }
+        });
       } else {
         res.writeHead(404);
         res.end();
@@ -79,7 +98,7 @@ async function main() {
     /* 200 + real PDF → stored byte-exact under the same basename. */
     const output = await convertOfficeToPdf(inputDocx, dir);
     assert.equal(output, expectedPdf);
-    assert.ok(sawMultipart, 'request must be multipart/form-data');
+    assert.equal(multipartReport, '', `multipart shape rejected by the strict parser: ${multipartReport}`);
     assert.ok(fs.readFileSync(output).equals(pdfBytes));
     assert.equal(await countPdfPages(output), 3);
     fs.unlinkSync(expectedPdf);
