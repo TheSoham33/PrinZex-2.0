@@ -19,6 +19,7 @@ import { ApiError } from '../src/utils/ApiError';
 import {
   OFFICE_CONVERTIBLE,
   convertOfficeToPdf,
+  gotenbergUrl,
 } from '../src/utils/gotenberg';
 import { countPdfPages } from '../src/utils/pdf';
 
@@ -47,6 +48,16 @@ async function main() {
 
     /* Only the four Office extensions convert. */
     assert.deepEqual([...OFFICE_CONVERTIBLE].sort(), ['.doc', '.docx', '.ppt', '.pptx']);
+
+    /* The default sidecar port is 3200, NOT 3000 — 3000 is the Next.js dev
+     * server, and hitting it used to surface as a mysterious 422 on upload. */
+    const savedGotenbergUrl = process.env.GOTENBERG_URL;
+    delete process.env.GOTENBERG_URL;
+    assert.equal(gotenbergUrl(), 'http://localhost:3200');
+    process.env.GOTENBERG_URL = 'http://example:9/'; // trailing slash trimmed
+    assert.equal(gotenbergUrl(), 'http://example:9');
+    if (savedGotenbergUrl === undefined) delete process.env.GOTENBERG_URL;
+    else process.env.GOTENBERG_URL = savedGotenbergUrl;
 
     fs.writeFileSync(inputDocx, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14])); // PK-pretend office
 

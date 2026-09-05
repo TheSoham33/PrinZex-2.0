@@ -55,9 +55,11 @@ services:
   # (upload.service.ts) talks to it; browsers never see it.
   #
   # Security posture (mirrors the threat model for conversion sidecars):
-  # - loopback-only publish: 127.0.0.1:3000 — never reachable from LAN/public
-  #   internet. On a multi-host deployment, drop the ports block and put the
-  #   app and this service on a private compose network instead.
+  # - loopback-only publish on host port 3200 — never reachable from LAN/
+  #   public internet. (NOT 3000: the Next.js dev server owns that port on a
+  #   dev machine, and nothing must ever proxy to it by accident.) On a
+  #   multi-host deployment, drop the ports block and put the app and this
+  #   service on a private compose network instead.
   # - --chromium-disable-routes: only /forms/libreoffice/convert is served —
   #   the URL/HTML-to-PDF routes (the SSRF surface) are OFF entirely.
   # - --api-body-limit slightly above the app upload cap --api-timeout caps
@@ -76,7 +78,7 @@ services:
       - --libreoffice-max-queue-size=10
       - --chromium-disable-routes=true
     ports:
-      - '127.0.0.1:3000:3000'
+      - '127.0.0.1:3200:3000'
     cpus: 2
     mem_limit: 2g
 

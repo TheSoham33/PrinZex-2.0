@@ -23,8 +23,9 @@ npm run dev                   # http://localhost:5000 (GET /health for liveness)
 `docker compose up -d` uses the credentials already present in `.env.example`
 (`postgres:password@localhost:5432/prinzex`, `mongodb://localhost:27017/prinzex`, `localhost:6379`),
 so a fresh clone boots without editing anything. The `gotenberg` service is the
-Office→PDF converter for order uploads; it binds `127.0.0.1:3000` only (never
-expose it publicly) and matches `GOTENBERG_URL` in `.env.example`.
+Office→PDF converter for order uploads; it binds `127.0.0.1:3200` only (never
+expose it publicly; 3000 stays free for the Next.js dev server) and matches
+`GOTENBERG_URL` in `.env.example`.
 
 ### Seed credentials
 
