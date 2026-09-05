@@ -16,6 +16,7 @@ import {
   ACCEPTED_DOCUMENT_TYPES,
   ACCEPTED_DOCUMENT_DESCRIPTION,
   pageCountStrategy,
+  readOfficePageCount,
 } from '@/lib/domain/files';
 import type {
   OrderSpecifications,
@@ -138,15 +139,15 @@ export default function SpecificationsStep({
       } else if (strategy === 'image') {
         totalPages = 1; // one sheet per image
       } else {
-        // Word/PowerPoint page counts can't be read reliably in the browser —
-        // attach the file at 0 pages; the customer enters the count in the
-        // Total pages card that appears once the file is attached.
-        totalPages = 0;
+        // Modern .docx/.pptx carry Office's own <Pages>/<Slides> metadata —
+        // read it here. 0 (legacy .doc/.ppt or missing metadata) means the
+        // Total pages card stays editable for the customer to type the count.
+        totalPages = (await readOfficePageCount(selected)) ?? 0;
       }
 
-      // Seller page minimum: reject the file instead of attaching it (manual
-      // counts are validated later, once entered).
-      if (strategy !== 'manual' && minPages > 0 && totalPages < minPages) {
+      // Seller page minimum: reject the file instead of attaching it when the
+      // count is known (office files typed manually are validated later).
+      if (minPages > 0 && totalPages > 0 && totalPages < minPages) {
         const serviceName = selectedService?.name ?? 'this service';
         const message = `Minimum page count should be ${minPages} for ${serviceName}. Your file has only ${totalPages} page${totalPages === 1 ? '' : 's'}.`;
         showToast(message, 'error');
@@ -612,22 +613,24 @@ export default function SpecificationsStep({
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
                     Total pages{' '}
-                    {attachedStrategy === 'manual' && (
+                    {attachedStrategy === 'office' && (
                       <span className="text-red-500">*</span>
                     )}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {attachedStrategy === 'manual'
-                      ? 'Can\'t be read from Word/PowerPoint — type the pages or slides to print'
+                    {attachedStrategy === 'office'
+                      ? specs.totalPages
+                        ? 'Detected automatically — adjust if needed'
+                        : 'Can\'t be read from this file — type the pages or slides to print'
                       : attachedStrategy === 'image'
                         ? 'Each image prints as one sheet'
                         : 'Automatically calculated from PDF'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {attachedStrategy === 'manual' ? (
+                  {attachedStrategy === 'office' ? (
                     <input
-                      id="manualPageCount"
+                      id="officePageCount"
                       type="number"
                       min={Math.max(1, minPages)}
                       max={9999}

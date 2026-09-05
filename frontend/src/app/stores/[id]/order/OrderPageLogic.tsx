@@ -251,7 +251,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         return 'Please upload the file you want printed';
       if (
         state.order.file &&
-        pageCountStrategy(state.order.file.name) === 'manual' &&
+        pageCountStrategy(state.order.file.name) === 'office' &&
         (specs.totalPages ?? 0) < 1
       )
         return 'Please enter the number of pages/slides to print — it can\'t be read from Word/PowerPoint files';
