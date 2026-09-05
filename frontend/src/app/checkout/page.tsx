@@ -70,7 +70,9 @@ export default function CheckoutPage() {
         deliverySpeed: toApiDeliverySpeed(deliverySpeed),
         paymentMethod: paymentMethod,
         specialInstructions: item.specialInstructions,
-        fileUrl: "/uploads/designs/demo.pdf" // In real app, would use the actual uploaded URL
+        // Office files were converted to PDF and stored at attach time;
+        // other types keep the pre-existing client-side stub for now.
+        fileUrl: item.file?.serverFileUrl ?? "/uploads/designs/demo.pdf"
       }));
 
       const results = await Promise.all(orderPromises);

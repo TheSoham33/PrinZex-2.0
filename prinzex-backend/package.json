@@ -47,6 +47,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.3",
     "multer": "^2.2.0",
+    "pdf-lib": "^1.17.1",
     "rate-limit-redis": "^4.2.0",
     "razorpay": "^2.9.8",
     "redis": "^6.2.0",
