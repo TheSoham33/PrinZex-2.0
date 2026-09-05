@@ -18,6 +18,10 @@ const filenameParams = z.object({
     .refine((value) => !value.includes('..'), 'Invalid filename'),
 });
 
+// Public — registered before `authenticate`: the order page shows the cap
+// to guests too (see upload.controller#getUploadLimits).
+uploadRouter.get('/limits', uploadController.getUploadLimits);
+
 uploadRouter.use(authenticate);
 
 uploadRouter.post('/design', uploadDesignMiddleware, uploadController.uploadDesign);

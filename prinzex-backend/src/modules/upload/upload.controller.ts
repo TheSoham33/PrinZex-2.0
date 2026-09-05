@@ -1,9 +1,18 @@
 import { ApiError } from '../../utils/ApiError';
 import { ApiResponse } from '../../utils/ApiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { getMaxUploadDesignBytes } from '../../utils/uploadLimits';
 import * as uploadService from './upload.service';
 
 /** Upload controllers — routes mount `authenticate` (any signed-in actor). */
+
+/** Public: the order page needs the live cap before the customer picks a file. */
+export const getUploadLimits = asyncHandler(async (_req, res) => {
+  const bytes = await getMaxUploadDesignBytes();
+  res
+    .status(200)
+    .json(new ApiResponse(200, { maxDesignFileSizeMb: Math.round(bytes / 1024 / 1024) }, 'Upload limits fetched'));
+});
 
 export const uploadDesign = asyncHandler(async (req, res) => {
   if (!req.user || !('userId' in req.user)) {

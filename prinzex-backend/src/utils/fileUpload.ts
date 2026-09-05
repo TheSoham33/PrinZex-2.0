@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import { ApiError } from './ApiError';
+import { MAX_CONFIGURABLE_UPLOAD_MB } from './uploadLimits';
 
 /**
  * Design-file upload handling — multer with DISK STORAGE for now.
@@ -33,7 +34,11 @@ const ALLOWED_EXTENSIONS = [
 ] as const;
 export type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number];
 
-export const MAX_DESIGN_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
+// Hard ceiling only — the effective customer-facing cap is the
+// admin-configured value from uploadLimits.ts (default 100MB), enforced in
+// upload.service. This must equal Gotenberg's --api-body-limit so any file
+// multer accepts is one the converter can accept.
+export const MAX_DESIGN_SIZE_BYTES = MAX_CONFIGURABLE_UPLOAD_MB * 1024 * 1024;
 
 /**
  * Magic-byte signatures per extension. Offsets are byte positions in the

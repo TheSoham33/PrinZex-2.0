@@ -85,7 +85,7 @@ curl -s localhost:5000/api/delivery/auth/login -H 'content-type: application/jso
 
 **`/api/stores`** — PUBLIC: `GET /` (filters: `city`, `q`, `services` (all-of, comma list), `minRating`, `sort=relevance|rating|distance|price_asc`, page/limit — Redis cached with `X-Cache: HIT|MISS`), `GET /:sellerId` (detail + latest 5 reviews, cached), `GET /:sellerId/services` (grouped by category), `GET /:sellerId/reviews` (paginated, masked names like "Rahul K."), `GET /search/suggestions?q=…` (top 5 stores + top 5 services, 60s cache). Only APPROVED sellers are ever exposed; bank details/documents/GST/commission never selected.
 
-**`/api/upload`** — `authenticate` (any role): `POST /design` (multer disk storage to `uploads/designs/`, `.pdf/.png/.jpg/.jpeg/.ai/.psd/.doc/.docx/.ppt/.pptx` (Office files become PDF via the Gotenberg sidecar before storage), 100MB max, magic-byte verification, ownership metadata in Redis 24h — TODO: S3), `DELETE /design/:filename` (owner-only). Served statically at `/uploads/…`.
+**`/api/upload`** — `GET /limits` is public (admin-configured order-file cap, 60s cache); everything else needs `authenticate` (any role): `POST /design` (multer disk storage to `uploads/designs/`, `.pdf/.png/.jpg/.jpeg/.ai/.psd/.doc/.docx/.ppt/.pptx` (Office files become PDF via the Gotenberg sidecar before storage), size cap set in Admin → Settings → Platform — default 100MB, 128MB hard ceiling = the sidecar's `--api-body-limit`, magic-byte verification, ownership metadata in Redis 24h — TODO: S3), `DELETE /design/:filename` (owner-only). Served statically at `/uploads/…`.
 
 Try the cache behavior: `curl -si localhost:5000/api/stores | grep -i x-cache` twice — second response shows `HIT`.
 

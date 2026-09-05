@@ -12,7 +12,7 @@ import {
   FILM_THICKNESS_OPTIONS as FILM_THICKNESS_OPTIONS_FALLBACK,
 } from '@/lib/domain/stores';
 import { useCatalogOptions } from '@/lib/api/catalog';
-import { uploadDesign } from '@/lib/api/uploads';
+import { uploadDesign, useUploadLimits } from '@/lib/api/uploads';
 import { useAppSelector } from '@/store/hooks';
 import {
   ACCEPTED_DOCUMENT_TYPES,
@@ -42,8 +42,6 @@ import { PDFDocument } from 'pdf-lib';
 import { ErrorNote } from '@/components/ui';
 
 const ACCEPTED = ACCEPTED_DOCUMENT_TYPES;
-const MAX_UPLOAD_MB = 100;
-const MAX_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 interface SpecificationsStepProps {
   specs: OrderSpecifications;
@@ -108,6 +106,9 @@ export default function SpecificationsStep({
   const minPages = selectedService?.minPages ?? 0;
 
   const { showToast } = useToast();
+  // Live, admin-configured cap (GET /upload/limits); shipped default until it answers.
+  const { maxDesignFileSizeMb } = useUploadLimits();
+  const maxFileBytes = maxDesignFileSizeMb * 1024 * 1024;
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState<'pdf' | 'office' | null>(null);
@@ -126,9 +127,9 @@ export default function SpecificationsStep({
       return;
     }
 
-    if (selected.size > MAX_BYTES) {
+    if (selected.size > maxFileBytes) {
       setLocalError(
-        `That file is larger than ${MAX_UPLOAD_MB} MB. Please compress it and try again.`,
+        `That file is larger than ${maxDesignFileSizeMb} MB. Please compress it and try again.`,
       );
       return;
     }
@@ -227,9 +228,9 @@ export default function SpecificationsStep({
       return;
     }
 
-    if (selected.size > MAX_BYTES) {
+    if (selected.size > maxFileBytes) {
       setLocalError(
-        `The cover PDF is larger than ${MAX_UPLOAD_MB} MB. Please compress it and try again.`,
+        `The cover PDF is larger than ${maxDesignFileSizeMb} MB. Please compress it and try again.`,
       );
       e.target.value = '';
       return;
@@ -691,7 +692,7 @@ export default function SpecificationsStep({
               Drop your file here, or <span className="text-blue-600">browse</span>
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {ACCEPTED_DOCUMENT_DESCRIPTION} · up to {MAX_UPLOAD_MB} MB
+              {ACCEPTED_DOCUMENT_DESCRIPTION} · up to {maxDesignFileSizeMb} MB
             </p>
           </div>
         )}
