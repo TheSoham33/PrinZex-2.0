@@ -74,7 +74,7 @@ export const errorHandler: ErrorRequestHandler = (err: unknown, req, res, _next)
     // Upload errors (size limits etc.)
     if (err.code === 'LIMIT_FILE_SIZE') {
       statusCode = 413;
-      // Per-route limits differ (50MB designs, 5MB documents) — stay generic.
+      // Per-route limits differ (100MB designs, 5MB documents) — stay generic.
       message = 'File too large — exceeds the upload size limit';
     } else {
       statusCode = 400;

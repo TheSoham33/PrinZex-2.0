@@ -42,7 +42,8 @@ import { PDFDocument } from 'pdf-lib';
 import { ErrorNote } from '@/components/ui';
 
 const ACCEPTED = ACCEPTED_DOCUMENT_TYPES;
-const MAX_BYTES = 25 * 1024 * 1024;
+const MAX_UPLOAD_MB = 100;
+const MAX_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 interface SpecificationsStepProps {
   specs: OrderSpecifications;
@@ -127,7 +128,7 @@ export default function SpecificationsStep({
 
     if (selected.size > MAX_BYTES) {
       setLocalError(
-        'That file is larger than 25 MB. Please compress it and try again.',
+        `That file is larger than ${MAX_UPLOAD_MB} MB. Please compress it and try again.`,
       );
       return;
     }
@@ -228,7 +229,7 @@ export default function SpecificationsStep({
 
     if (selected.size > MAX_BYTES) {
       setLocalError(
-        'The cover PDF is larger than 25 MB. Please compress it and try again.',
+        `The cover PDF is larger than ${MAX_UPLOAD_MB} MB. Please compress it and try again.`,
       );
       e.target.value = '';
       return;
@@ -690,7 +691,7 @@ export default function SpecificationsStep({
               Drop your file here, or <span className="text-blue-600">browse</span>
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {ACCEPTED_DOCUMENT_DESCRIPTION} · up to 25 MB
+              {ACCEPTED_DOCUMENT_DESCRIPTION} · up to {MAX_UPLOAD_MB} MB
             </p>
           </div>
         )}

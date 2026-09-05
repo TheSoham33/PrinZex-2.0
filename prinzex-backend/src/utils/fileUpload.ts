@@ -33,7 +33,7 @@ const ALLOWED_EXTENSIONS = [
 ] as const;
 export type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number];
 
-export const MAX_DESIGN_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+export const MAX_DESIGN_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
 
 /**
  * Magic-byte signatures per extension. Offsets are byte positions in the
