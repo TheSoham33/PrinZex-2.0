@@ -219,6 +219,10 @@ export function mapBackendStoreDetailToFrontend(
             service.serviceId === 'doc-print'
               ? pricingOverrides.staplingOptions
               : undefined,
+          filmThicknessOptions:
+            service.serviceId === 'lam-film'
+              ? pricingOverrides.filmThicknessOptions
+              : undefined,
         };
       }) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),

@@ -20,6 +20,9 @@ export const specificationsSchema = z.object({
   // Document printing: mandatory stapling choice ('loose' = free default).
   // String (not enum) — the option list is admin-catalogue managed.
   stapling: z.string().optional(),
+  // Lamination: mandatory film thickness ('micron-80' = free default).
+  // String (not enum) — the option list is admin-catalogue managed.
+  filmThickness: z.string().optional(),
   // Page count auto-detected from the uploaded PDF. Drives per-page pricing
   // and must flow through so removing/replacing the file updates the quote.
   totalPages: z.number().int().min(0).optional(),

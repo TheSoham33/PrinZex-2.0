@@ -106,6 +106,16 @@ export const STAPLING_OPTIONS = [
   { value: 'side-stapling', label: 'Side Stapling', hint: 'Staples along the left edge', price: 10 },
 ] as const;
 
+// Lamination film thicknesses (fall back for the DB-managed 'film-thickness'
+// catalogue group). A standalone group because it's a mandatory radio and
+// sellers set each film's per-sheet price from their Pricing page.
+// 'micron-80' is the free default every store must offer.
+export const FILM_THICKNESS_OPTIONS = [
+  { value: 'micron-80', label: '80 micron', hint: 'Standard everyday film', price: 0 },
+  { value: 'micron-125', label: '125 micron', hint: 'Sturdy — certificates, ID cards', price: 2 },
+  { value: 'micron-250', label: '250 micron', hint: 'Rigid — menus, outdoor use', price: 4 },
+] as const;
+
 // Tape Binding tape colours (fall back for the DB-managed 'tape-colors'
 // catalogue group) — availability-only customization, no surcharge.
 export const TAPE_COLORS = [
@@ -185,6 +195,7 @@ export const SERVICE_IMAGE_MAP: Record<string, string> = {
   'bind-hard': '/images/services/hard-binding.jpg',
   'bind-perfect': '/images/services/perfect-binding.jpg',
   'bind-tape': '/images/services/tape-binding.jpg',
+  'lam-film': '/images/services/lamination.jpg',
   'lf-flex-banner': '/images/services/banners.jpg',
   'lf-vinyl': '/images/services/vinyl.jpg',
   'lf-standee': '/images/services/standee.jpg',

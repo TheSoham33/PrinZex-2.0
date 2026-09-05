@@ -20,6 +20,7 @@ import {
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
   STAPLING_OPTIONS,
+  FILM_THICKNESS_OPTIONS,
   TAPE_COLORS,
   TWIN_LOOP_BACK_COVERS,
   TWIN_LOOP_FRONT_COVERS,
@@ -36,6 +37,7 @@ import SpiralBindingCustomizationPricing, {
   type PriceOptions,
 } from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
 import StaplingPricingOptions from '@/components/seller-dashboard/StaplingPricingOptions';
+import FilmThicknessPricingOptions from '@/components/seller-dashboard/FilmThicknessPricingOptions';
 import TapeBindingCustomizationOptions from '@/components/seller-dashboard/TapeBindingCustomizationOptions';
 import TwinLoopCustomizationPricing, {
   type TwinLoopPricingState,
@@ -75,6 +77,7 @@ export default function SellerPricingPage() {
     Record<string, { price: string; enabled: boolean }>
   >({});
   const [staplingPriceOptions, setStaplingPriceOptions] = useState<PriceOptions>({});
+  const [filmPriceOptions, setFilmPriceOptions] = useState<PriceOptions>({});
   const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
   const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
   const [tapeColors, setTapeColors] = useState<string[]>([]);
@@ -149,6 +152,16 @@ export default function SellerPricingPage() {
         };
       });
       setStaplingPriceOptions(st);
+
+      const filmPrices = overrides.filmThicknessOptions ?? {};
+      const ft: PriceOptions = {};
+      FILM_THICKNESS_OPTIONS.filter((o) => o.value !== 'micron-80').forEach((o) => {
+        ft[o.value] = {
+          price: String(filmPrices[o.value] ?? ''),
+          enabled: filmPrices[o.value] !== undefined,
+        };
+      });
+      setFilmPriceOptions(ft);
 
       const coverColor = overrides.coverColor ?? {};
       const cc: Record<string, { price: string; enabled: boolean }> = {};
@@ -322,10 +335,16 @@ export default function SellerPricingPage() {
       if (v.enabled) staplingOptions[k] = Number(v.price) || 0;
     });
 
+    const filmThicknessOptions: Record<string, number> = {};
+    Object.entries(filmPriceOptions).forEach(([k, v]) => {
+      if (v.enabled) filmThicknessOptions[k] = Number(v.price) || 0;
+    });
+
     updateOverridesMutation.mutate({
       pageRate: pageRatePayload,
       documentColorModes,
       staplingOptions,
+      filmThicknessOptions,
       coverType,
       coilType,
       coverColor,
@@ -572,6 +591,15 @@ export default function SellerPricingPage() {
                     <StaplingPricingOptions
                       values={staplingPriceOptions}
                       setValues={setStaplingPriceOptions}
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
+                  )}
+
+                  {entry.serviceId === 'lam-film' && (
+                    <FilmThicknessPricingOptions
+                      values={filmPriceOptions}
+                      setValues={setFilmPriceOptions}
                       onSave={handleSaveOverrides}
                       saving={updateOverridesMutation.isPending}
                     />

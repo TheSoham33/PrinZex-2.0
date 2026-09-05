@@ -9,6 +9,7 @@ import {
   PAPER_SIZES as PAPER_SIZES_FALLBACK,
   PAPER_TYPES as PAPER_TYPES_FALLBACK,
   STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK,
+  FILM_THICKNESS_OPTIONS as FILM_THICKNESS_OPTIONS_FALLBACK,
 } from '@/lib/domain/stores';
 import { useCatalogOptions } from '@/lib/api/catalog';
 import type {
@@ -76,6 +77,7 @@ export default function SpecificationsStep({
   const spiralCoilTypes = useCatalogOptions('spiral-coil-types', SPIRAL_COIL_TYPES_FALLBACK);
   const spiralCoverTypes = useCatalogOptions('spiral-cover-types', SPIRAL_COVER_TYPES_FALLBACK);
   const staplingOptions = useCatalogOptions('stapling-options', STAPLING_OPTIONS_FALLBACK);
+  const filmThicknessOptions = useCatalogOptions('film-thickness', FILM_THICKNESS_OPTIONS_FALLBACK);
   const paperSizes = useCatalogOptions('paper-sizes', PAPER_SIZES_FALLBACK);
   const paperTypes = useCatalogOptions('paper-types', PAPER_TYPES_FALLBACK);
   const isHardBinding = specs.serviceId === 'bind-hard';
@@ -360,6 +362,16 @@ export default function SpecificationsStep({
       option.value in selectedService.staplingOptions,
   );
 
+  // Film thickness is mandatory on Lamination: 80 micron is always offered;
+  // once the seller saves film prices, the rest follow that offer list (same
+  // rule as stapling).
+  const offeredFilmOptions = filmThicknessOptions.filter(
+    (option) =>
+      option.value === 'micron-80' ||
+      selectedService?.filmThicknessOptions === undefined ||
+      option.value in selectedService.filmThicknessOptions,
+  );
+
   // Only show cover-customization options this store actually offers.
   const offeredCoilTypes = filterOffered(spiralCoilTypes, availableCoilTypes);
   const offeredCoverTypes = filterOffered(
@@ -395,6 +407,18 @@ export default function SpecificationsStep({
       dispatch({ type: 'SET_SPEC', payload: { stapling: 'loose' } });
     }
   }, [selectedService?.id, specs.stapling, offeredStaplingOptions, dispatch]);
+
+  // Film thickness is mandatory: a choice the seller no longer offers falls
+  // back to the always-available 80 micron.
+  useEffect(() => {
+    if (selectedService?.id !== 'lam-film') return;
+    if (
+      specs.filmThickness &&
+      !offeredFilmOptions.some((option) => option.value === specs.filmThickness)
+    ) {
+      dispatch({ type: 'SET_SPEC', payload: { filmThickness: 'micron-80' } });
+    }
+  }, [selectedService?.id, specs.filmThickness, offeredFilmOptions, dispatch]);
 
   // Keep the selected paper options aligned with the seller's current menu.
   useEffect(() => {
@@ -660,6 +684,9 @@ export default function SpecificationsStep({
                       printSides: specs.printSides ?? 'single',
                       stapling: specs.stapling ?? 'loose',
                     }
+                  : {}),
+                ...(nextServiceId === 'lam-film'
+                  ? { filmThickness: specs.filmThickness ?? 'micron-80' }
                   : {}),
                 ...(nextServiceId === 'bind-tape'
                   ? { tapeCoverSource: specs.tapeCoverSource ?? 'first-page' }
@@ -931,6 +958,50 @@ export default function SpecificationsStep({
                       {price > 0 && (
                         <span className="ml-1.5 text-xs font-semibold text-blue-600">
                           +{formatCurrency(price)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-500">
+                      {option.hint}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {selectedService?.id === 'lam-film' && (
+          <section className="animate-fade-in">
+            <p className="label">
+              Film thickness <span className="text-red-500">*</span>
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {offeredFilmOptions.map((option) => {
+                const price =
+                  selectedService?.filmThicknessOptions?.[option.value] ?? option.price;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={(specs.filmThickness ?? 'micron-80') === option.value}
+                    onClick={() =>
+                      dispatch({
+                        type: 'SET_SPEC',
+                        payload: { filmThickness: option.value },
+                      })
+                    }
+                    className={`rounded-xl border p-3.5 text-left transition-all ${
+                      (specs.filmThickness ?? 'micron-80') === option.value
+                        ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                        : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold text-slate-900">
+                      {option.label}
+                      {price > 0 && (
+                        <span className="ml-1.5 text-xs font-semibold text-blue-600">
+                          +{formatCurrency(price)}/sheet
                         </span>
                       )}
                     </span>

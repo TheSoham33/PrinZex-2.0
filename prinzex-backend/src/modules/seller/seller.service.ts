@@ -77,6 +77,10 @@ export interface SellerMetadata {
      *  ₹ per set. 'loose' is the mandatory free default and is never priced
      *  here; a missing map means the platform default prices apply. */
     staplingOptions?: Record<string, number>;
+    /** Lamination film thicknesses the seller offers, option value → ₹ per
+     *  sheet. 'micron-80' is the mandatory free default and is never priced
+     *  here; a missing map means the platform default prices apply. */
+    filmThicknessOptions?: Record<string, number>;
     // Binding services: additive ₹ components set by the seller.
     // Binding (₹/binding): coverType + coilType + coverColor.
     coverType?: Record<string, number>;
@@ -1631,6 +1635,14 @@ export async function updatePricingOverrides(
     if (option === 'loose' || !Number.isFinite(price) || price < 0) {
       throw ApiError.badRequest(
         'Stapling prices must be numbers at or above 0 — Loose Sheet is always free',
+      );
+    }
+  }
+
+  for (const [option, price] of Object.entries(overrides?.filmThicknessOptions ?? {})) {
+    if (option === 'micron-80' || !Number.isFinite(price) || price < 0) {
+      throw ApiError.badRequest(
+        'Film prices must be numbers at or above 0 — 80 micron is always free',
       );
     }
   }

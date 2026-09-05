@@ -60,6 +60,9 @@ export interface ServiceOffering {
   /** Document Printing stapling styles the seller offers → ₹ per set, keyed
    *  by catalogue option value ('loose' is always free and never listed). */
   staplingOptions?: Record<string, number>;
+  /** Lamination film thicknesses the seller offers → ₹ per sheet, keyed by
+   *  catalogue option value ('micron-80' is always free and never listed). */
+  filmThicknessOptions?: Record<string, number>;
 }
 
 export interface Review {
@@ -110,6 +113,10 @@ export interface OrderSpecifications {
    *  'stapling-options' catalogue group. 'loose' (default) = Loose Sheet,
    *  free. Other styles charge the seller-set (or default) per-set price. */
   stapling?: string;
+  /** Lamination only: mandatory film thickness from the 'film-thickness'
+   *  catalogue group. 'micron-80' (default) is free. Priced films charge
+   *  the seller-set (or default) per-sheet price. */
+  filmThickness?: string;
   // New fields for Hard Binding
   colorPages?: string; // Particular pages color (e.g. "5, 10-12")
   coverColor?: string;

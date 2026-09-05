@@ -27,7 +27,10 @@ import {
 } from '@/components/order/orderReducer';
 import { IconArrowLeft, IconArrowRight, IconShoppingCart } from '@/components/icons';
 import { useCatalogOptions } from '@/lib/api/catalog';
-import { STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK } from '@/lib/domain/stores';
+import {
+  FILM_THICKNESS_OPTIONS as FILM_THICKNESS_OPTIONS_FALLBACK,
+  STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK,
+} from '@/lib/domain/stores';
 
 const TOTAL_STEPS = 3;
 
@@ -44,6 +47,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   }, [store.isOpen, store.id, router]);
 
   const staplingOptionsCatalog = useCatalogOptions('stapling-options', STAPLING_OPTIONS_FALLBACK);
+  const filmOptionsCatalog = useCatalogOptions('film-thickness', FILM_THICKNESS_OPTIONS_FALLBACK);
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get('service') ?? '';
   const token = useAppSelector((state) => state.auth.accessToken);
@@ -119,6 +123,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     colorOption: specs.colorOption,
     printSides: specs.printSides,
     stapling: specs.stapling,
+    filmThickness: specs.filmThickness,
     totalPages: specs.totalPages,
     colorPages: specs.colorPages,
     coverType: specs.coverType,
@@ -217,8 +222,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // estimate so the summary resets immediately instead of showing stale prices.
   const cost = useMemo(() => {
     if (token && quoteData && !quoteLoading) return quoteData;
-    return computeCost(specs, service, 0, 0, pageRateFallback, staplingOptionsCatalog);
-  }, [token, quoteData, quoteLoading, specs, service, pageRateFallback]);
+    return computeCost(specs, service, 0, 0, pageRateFallback, staplingOptionsCatalog, filmOptionsCatalog);
+  }, [token, quoteData, quoteLoading, specs, service, pageRateFallback, staplingOptionsCatalog, filmOptionsCatalog]);
 
   useEffect(() => {
     if (quoteData) {
@@ -261,6 +266,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         if (!specs.hardBindingProofApproved) {
           return 'Please approve the hard binding cover proof';
         }
+      }
+      if (specs.serviceId === 'lam-film' && !specs.filmThickness) {
+        return 'Please choose a film thickness';
       }
       if (specs.serviceId === 'bind-tape') {
         if (!specs.tapeColor) return 'Please choose a tape colour';

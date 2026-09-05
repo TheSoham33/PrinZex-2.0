@@ -83,6 +83,14 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
           { id: 'spec-tshirts', name: 'T shirt Print' },
         ],
       },
+      // Appended last so upgraded databases (migration appends the same row)
+      // show categories in the same order as fresh seeds.
+      {
+        id: 'lamination',
+        name: 'Lamination',
+        description: 'Protective film lamination for documents & certificates',
+        services: [{ id: 'lam-film', name: 'Lamination' }],
+      },
     ],
   },
   'paper-types': {
@@ -117,6 +125,17 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
       { value: 'loose', label: 'Loose Sheet', hint: 'No binding — sheets stay as-is', price: 0 },
       { value: 'corner-stapling', label: 'Corner Stapling', hint: 'Single staple at the top-left corner', price: 5 },
       { value: 'side-stapling', label: 'Side Stapling', hint: 'Staples along the left edge', price: 10 },
+    ],
+  },
+  // Lamination's mandatory film-thickness choice — same mandatory-radio model
+  // as stapling, but the price is charged per sheet (added to the per-page
+  // rate), not per set. 'micron-80' is the free default and stays free.
+  'film-thickness': {
+    label: 'Film thickness (Lamination)',
+    data: [
+      { value: 'micron-80', label: '80 micron', hint: 'Standard everyday film', price: 0 },
+      { value: 'micron-125', label: '125 micron', hint: 'Sturdy — certificates, ID cards', price: 2 },
+      { value: 'micron-250', label: '250 micron', hint: 'Rigid — menus, outdoor use', price: 4 },
     ],
   },
   // Tape Binding tape colours — availability-only customization (no

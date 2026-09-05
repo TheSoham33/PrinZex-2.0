@@ -50,6 +50,22 @@ const staplingOptions = z
     message: "Keep a free 'loose' (Loose Sheet) row first",
   });
 
+/**
+ * Lamination film thickness — hint + per-sheet price. Mandatory radio with
+ * 'micron-80' as the always-available free default, so that row must stay
+ * first and free (the backend also treats 'micron-80' as free no matter
+ * what a row claims).
+ */
+const filmThickness = z
+  .array(
+    pricedOption.extend({
+      hint: z.string().trim().max(200).optional(),
+    }),
+  )
+  .refine((rows) => rows[0]?.value === 'micron-80' && rows[0].price === 0, {
+    message: "Keep a free 'micron-80' (80 micron) row first",
+  });
+
 /** Colour swatches — Tailwind class / hex / premium flag. */
 const swatchOption = z.object({
   value: keyString,
@@ -85,6 +101,7 @@ export const CATALOG_GROUP_SCHEMAS: Record<string, z.ZodType<unknown>> = {
   'paper-types': multiplierOptions,
   'paper-sizes': multiplierOptions,
   'stapling-options': staplingOptions,
+  'film-thickness': filmThickness,
   'cover-types': hintOptions,
   'spiral-coil-types': hintOptions,
   'spiral-cover-types': hintOptions,
