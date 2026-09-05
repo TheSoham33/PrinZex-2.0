@@ -55,11 +55,14 @@ export default function AdminSettingsPage() {
     schedule: 'weekly' as 'weekly' | 'monthly',
     minPayout: 500,
     maintenance: false,
+    maxUploadFileSizeMb: 100,
   });
 
   useEffect(() => {
     if (settingsQ.data) {
-      setPlatform(settingsQ.data);
+      // Merge over the defaults so a field missing from an older settings
+      // document (e.g. maxUploadFileSizeMb pre-migration) keeps its default.
+      setPlatform((prev) => ({ ...prev, ...settingsQ.data }));
     }
   }, [settingsQ.data]);
 
@@ -247,6 +250,24 @@ export default function AdminSettingsPage() {
           <div>
             <label htmlFor="p-min" className="label">Minimum payout threshold (₹)</label>
             <input id="p-min" type="number" min={0} value={platform.minPayout} onChange={(e) => setPlatform({ ...platform, minPayout: Number(e.target.value) })} className="input max-w-[12rem]" />
+          </div>
+
+          <div>
+            <label htmlFor="p-maxupload" className="label">Max upload size (MB)</label>
+            <input
+              id="p-maxupload"
+              type="number"
+              min={1}
+              max={128}
+              value={platform.maxUploadFileSizeMb}
+              onChange={(e) => setPlatform({ ...platform, maxUploadFileSizeMb: Number(e.target.value) })}
+              className="input max-w-[12rem]"
+              aria-describedby="p-maxupload-hint"
+            />
+            <p id="p-maxupload-hint" className="mt-1 text-xs text-slate-500">
+              Applies to the file customers attach to an order (PDF, JPG/PNG, DOC/DOCX, PPT/PPTX).
+              Whole MB, 1–128 — 128 is the converter sidecar&apos;s hard ceiling.
+            </p>
           </div>
 
           <div className="rounded-xl border border-red-200 bg-red-50/50 p-4">

@@ -39,14 +39,21 @@ export function gotenbergUrl(): string {
 
 let warnedUnavailable = false;
 
-/** One actionable backend-console line per process when office uploads 503. */
-function warnUnavailableOnce(): void {
+/**
+ * One actionable backend-console line per process when office uploads 503.
+ * Node's undici hides the socket reason on `error.cause` — surface it:
+ * "ECONNREFUSED 127.0.0.1:3200" (container down) and a timeout read very
+ * differently from "fetch failed".
+ */
+function warnUnavailableOnce(error: unknown): void {
   if (warnedUnavailable) return;
   warnedUnavailable = true;
+  const cause = error instanceof Error && error.cause instanceof Error ? `: ${error.cause.message}` : '';
   console.warn(
     `[upload] Gotenberg conversion service unreachable — Office-file uploads are rejected (503). ` +
-      `Expected it at ${gotenbergUrl()} — start it with \`docker compose up -d gotenberg\` ` +
-      '(or set GOTENBERG_URL). Already-running uploads recover on the next request; no restart needed.',
+      `POST ${gotenbergUrl()}/forms/libreoffice/convert failed${cause}. ` +
+      'Start the sidecar with `docker compose up -d gotenberg` (or set GOTENBERG_URL); ' +
+      'no backend restart needed — the next upload retries.',
   );
 }
 
@@ -67,8 +74,8 @@ export async function convertOfficeToPdf(inputPath: string, outDir: string): Pro
       body,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-  } catch {
-    warnUnavailableOnce();
+  } catch (error) {
+    warnUnavailableOnce(error);
     throw new ApiError(
       503,
       'Office-to-PDF conversion is not available on this server — upload a PDF instead',

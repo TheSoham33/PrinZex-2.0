@@ -2,6 +2,12 @@ import { Types } from 'mongoose';
 import { prisma } from '../../../config/database';
 import { ContentModel, type IContent } from '../../../models/mongo/Content.model';
 import { ApiError } from '../../../utils/ApiError';
+import {
+  DEFAULT_MAX_UPLOAD_MB,
+  MAX_CONFIGURABLE_UPLOAD_MB,
+  invalidateUploadLimitCache,
+  parseMaxUploadMb,
+} from '../../../utils/uploadLimits';
 import type { BannerCreateBody, BannerUpdateBody, FaqCreateBody, FaqUpdateBody } from './admin-content.routes';
 
 /**
@@ -335,6 +341,8 @@ export interface PlatformSettingsDto {
   schedule: 'weekly' | 'monthly';
   minPayout: number;
   maintenance: boolean;
+  /** Admin-set cap for the customer order-file upload, in whole MB. */
+  maxUploadFileSizeMb: number;
 }
 
 export async function getSettings(): Promise<PlatformSettingsDto> {
@@ -346,6 +354,7 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
       schedule: 'weekly',
       minPayout: 500,
       maintenance: false,
+      maxUploadFileSizeMb: DEFAULT_MAX_UPLOAD_MB,
     };
   }
   return {
@@ -354,10 +363,17 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
     schedule: doc.metadata?.schedule as 'weekly' | 'monthly' ?? 'weekly',
     minPayout: doc.metadata?.minPayout as number ?? 500,
     maintenance: doc.isActive ?? false,
+    maxUploadFileSizeMb: parseMaxUploadMb(doc.metadata?.maxUploadFileSizeMb) ?? DEFAULT_MAX_UPLOAD_MB,
   };
 }
 
 export async function updateSettings(adminId: string, input: PlatformSettingsDto): Promise<PlatformSettingsDto> {
+  const maxUploadFileSizeMb = parseMaxUploadMb(input.maxUploadFileSizeMb);
+  if (maxUploadFileSizeMb === null) {
+    throw ApiError.badRequest(
+      `maxUploadFileSizeMb must be a whole number between 1 and ${MAX_CONFIGURABLE_UPLOAD_MB}`,
+    );
+  }
   await ContentModel.findOneAndUpdate(
     { type: 'settings' },
     {
@@ -369,11 +385,15 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
           supportEmail: input.supportEmail,
           schedule: input.schedule,
           minPayout: input.minPayout,
+          maxUploadFileSizeMb,
         },
         updatedBy: adminId,
       },
     },
     { upsert: true, new: true }
   );
+  // The upload path reads this value through a 60s cache — flush it so the
+  // new cap applies on the very next upload.
+  invalidateUploadLimitCache();
   return getSettings();
 }

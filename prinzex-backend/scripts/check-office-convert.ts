@@ -5,7 +5,8 @@
  *   200 + real PDF  → conversion succeeds, exact bytes stored, pages count
  *   500             → 422 user copy, input preserved, no output written
  *   200 + garbage   → 422 (a 200 is only trusted when bytes really are %PDF)
- *   server down     → 503 config error, input preserved
+ *   server down     → 503 config error, input preserved, console warn names
+ *                     the socket cause (ECONNREFUSED …) and the fix
  *
  *   npx tsx scripts/check-office-convert.ts
  */
@@ -122,9 +123,23 @@ async function main() {
     mode = 'garbage';
     await expectApiError(convertOfficeToPdf(inputDocx, dir), 422, 'garbage 200');
 
-    /* Unreachable service → 503 config error. */
+    /* Unreachable service → 503 config error, and the once-per-process
+       console warn names the socket cause (undici hides it on error.cause). */
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    await expectApiError(convertOfficeToPdf(inputDocx, dir), 503, 'service down');
+    const warns: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warns.push(args.map(String).join(' '));
+    };
+    try {
+      await expectApiError(convertOfficeToPdf(inputDocx, dir), 503, 'service down');
+    } finally {
+      console.warn = originalWarn;
+    }
+    assert.ok(
+      warns.some((line) => line.includes('ECONNREFUSED') && line.includes('docker compose up -d gotenberg')),
+      'the down-service warn must name the connection cause and the fix',
+    );
 
     console.log('check-office-convert: OK');
   } finally {

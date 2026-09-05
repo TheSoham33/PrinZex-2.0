@@ -6,6 +6,7 @@ import { getCache, setCache, invalidateCache } from '../../utils/cache';
 import { DESIGN_DIR, verifyMagicBytes } from '../../utils/fileUpload';
 import { OFFICE_CONVERTIBLE, convertOfficeToPdf } from '../../utils/gotenberg';
 import { countPdfPages } from '../../utils/pdf';
+import { getMaxUploadDesignBytes } from '../../utils/uploadLimits';
 
 /**
  * Design upload bookkeeping. Ownership metadata lives in Redis for 24h
@@ -35,6 +36,16 @@ export async function registerDesignUpload(
   userId: string,
   file: Express.Multer.File,
 ): Promise<UploadResult> {
+  // Admin-configured cap (uploadLimits.ts). Multer's own limit is only the
+  // 128MB hard ceiling, so the live setting is checked here — anything over
+  // is deleted and rejected with the current value in the message.
+  const limitBytes = await getMaxUploadDesignBytes();
+  if (file.size > limitBytes) {
+    await fs.promises.unlink(file.path).catch(() => undefined);
+    const limitMb = Math.round(limitBytes / 1024 / 1024);
+    throw new ApiError(413, `File too large — the current upload limit is ${limitMb} MB`);
+  }
+
   // Magic-byte verification happens after multer's extension filter.
   // Throws 415 (and deletes the file) on mismatch.
   await verifyMagicBytes(file.path);
