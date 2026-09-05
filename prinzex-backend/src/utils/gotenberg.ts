@@ -75,10 +75,18 @@ export async function convertOfficeToPdf(inputPath: string, outDir: string): Pro
 
   const pdf = Buffer.from(await response.arrayBuffer());
   if (!response.ok) {
+    // Log Gotenberg's own reason — the customer-facing 422 deliberately
+    // hides service internals, so the backend console is the only place a
+    // conversion root cause (corrupt/protected file, bad multipart…) shows.
+    console.warn(
+      `[upload] Gotenberg conversion failed (HTTP ${response.status}): ` +
+        `${pdf.toString('utf8', 0, 500) || '(empty body)'}`,
+    );
     throw new ApiError(422, CONVERT_ERROR_USER_COPY);
   }
   // A 200 is only trusted when the bytes really are a PDF.
   if (pdf.length === 0 || !pdf.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
+    console.warn('[upload] Gotenberg answered 200 but the body is not a PDF');
     throw new ApiError(422, CONVERT_ERROR_USER_COPY);
   }
 
