@@ -31,6 +31,7 @@ import {
   FILM_THICKNESS_OPTIONS as FILM_THICKNESS_OPTIONS_FALLBACK,
   STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK,
 } from '@/lib/domain/stores';
+import { pageCountStrategy } from '@/lib/domain/files';
 
 const TOTAL_STEPS = 3;
 
@@ -248,6 +249,12 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         return `Minimum page count should be ${service.minPages} for ${service.name}`;
       if (!state.order.file && specs.serviceId !== 'cards-business')
         return 'Please upload the file you want printed';
+      if (
+        state.order.file &&
+        pageCountStrategy(state.order.file.name) === 'manual' &&
+        (specs.totalPages ?? 0) < 1
+      )
+        return 'Please enter the number of pages/slides to print — it can\'t be read from Word/PowerPoint files';
       if (specs.serviceId === 'bind-hard') {
         if (!specs.coverColor)
           return 'Please choose a hard cover fabric colour';
