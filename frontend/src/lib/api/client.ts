@@ -112,3 +112,42 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
 
   return data.data !== undefined ? data.data : data;
 }
+
+/* ------------------------------------------------------------------ */
+/* Verb helpers — the api helper layer. Every endpoint wrapper below   */
+/* is a one-liner on these; nobody stringifies bodies by hand.         */
+/* ------------------------------------------------------------------ */
+
+type QueryParams = RequestOptions['params'];
+
+/** GET endpoint, optional query params. */
+export const get = <T = any>(endpoint: string, params?: QueryParams): Promise<T> =>
+  apiRequest<T>(endpoint, { params });
+
+/** GET list endpoint: every caller only wants the array (`res.data || res`). */
+export const getList = async <T = any>(endpoint: string, params?: QueryParams): Promise<T[]> => {
+  const res = await apiRequest<any>(endpoint, { params });
+  return res.data || res;
+};
+
+const withBody = <T>(method: string, endpoint: string, body?: unknown): Promise<T> =>
+  apiRequest<T>(endpoint, {
+    method,
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+
+/** POST endpoint with an optional JSON body. */
+export const post = <T = any>(endpoint: string, body?: unknown): Promise<T> =>
+  withBody<T>('POST', endpoint, body);
+
+/** PATCH endpoint with an optional JSON body. */
+export const patch = <T = any>(endpoint: string, body?: unknown): Promise<T> =>
+  withBody<T>('PATCH', endpoint, body);
+
+/** PUT endpoint with a JSON body. */
+export const put = <T = any>(endpoint: string, body: unknown): Promise<T> =>
+  withBody<T>('PUT', endpoint, body);
+
+/** DELETE endpoint. */
+export const del = <T = any>(endpoint: string): Promise<T> =>
+  apiRequest<T>(endpoint, { method: 'DELETE' });

@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { get, getList, post } from './client';
 
 export interface WalletTransaction {
   id: string;
@@ -26,9 +26,7 @@ export interface WalletInfo {
 }
 
 /** Get wallet balance and recent transactions. */
-export const fetchWalletInfo = async (): Promise<WalletInfo> => {
-  return apiRequest<WalletInfo>('/customer/wallet');
-};
+export const fetchWalletInfo = async (): Promise<WalletInfo> => get<WalletInfo>('/customer/wallet');
 
 /** Get just the wallet balance. */
 export const fetchWalletBalance = async (): Promise<number> => {
@@ -37,21 +35,10 @@ export const fetchWalletBalance = async (): Promise<number> => {
 };
 
 /** Get the seller's pending balance for payouts. */
-export const fetchPendingPayoutBalance = async (): Promise<any> => {
-  return apiRequest<any>('/seller/payouts/pending-balance');
-};
+export const fetchPendingPayoutBalance = async (): Promise<any> => get('/seller/payouts/pending-balance');
 
 /** Request an early payout. */
-export const requestPayout = async (): Promise<any> => {
-  return apiRequest<any>('/seller/payouts/request', {
-    method: 'POST',
-  });
-};
+export const requestPayout = async (): Promise<any> => post('/seller/payouts/request');
 
 /** Get all wallet transactions with pagination. */
-export const fetchWalletTransactions = async (page = 1, limit = 10): Promise<Transaction[]> => {
-  const res = await apiRequest<any>('/customer/wallet/transactions', {
-    params: { page, limit },
-  });
-  return res.data || res;
-};
+export const fetchWalletTransactions = async (page = 1, limit = 10): Promise<Transaction[]> => getList('/customer/wallet/transactions', { page, limit });

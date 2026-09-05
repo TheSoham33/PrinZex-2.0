@@ -10,6 +10,7 @@ import { IconAlertCircle, IconPrinter, IconCheckCircle } from '@/components/icon
 import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
 import { customerRegister } from '@/lib/api/auth';
 import { apiRequest } from '@/lib/api/client';
+import { ErrorNote } from '@/components/ui';
 
 interface FormState {
   fullName: string;
@@ -155,12 +156,7 @@ function SignupContent() {
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
-        {errors.general && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
-            <IconAlertCircle className="h-4 w-4" />
-            {errors.general}
-          </div>
-        )}
+        <ErrorNote message={errors.general} />
 
         <div>
           <label htmlFor="fullName" className="label">

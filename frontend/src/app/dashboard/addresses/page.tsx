@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAddresses, createAddress, deleteAddress, setDefaultAddress } from '@/lib/api/customer';
 import { IconAlertCircle, IconMapPin, IconPlus, IconTrash, IconX, IconRefreshCw } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 export default function AddressesPage() {
   const queryClient = useQueryClient();
@@ -106,18 +107,16 @@ export default function AddressesPage() {
             </button>
           </div>
         ) : addresses.length === 0 ? (
-          <div className="card flex flex-col items-center px-6 py-16 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <IconMapPin className="h-7 w-7" />
-            </span>
-            <p className="mt-4 font-semibold text-slate-900">No saved addresses</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Add one now to check out faster next time.
-            </p>
-            <button type="button" onClick={() => setModalOpen(true)} className="btn-primary mt-6">
-              <IconPlus className="h-4 w-4" /> Add your first address
-            </button>
-          </div>
+          <StateCard
+            icon={IconMapPin}
+            title="No saved addresses"
+            subtitle="Add one now to check out faster next time."
+            action={
+              <button type="button" onClick={() => setModalOpen(true)} className="btn-primary mt-6">
+                <IconPlus className="h-4 w-4" /> Add your first address
+              </button>
+            }
+          />
         ) : (
           addresses.map((address: any) => (
             <div key={address.id} className="card flex items-start gap-4 p-5">

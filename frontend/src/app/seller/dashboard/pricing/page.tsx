@@ -20,6 +20,7 @@ import {
   SPIRAL_COIL_TYPES,
   SPIRAL_COVER_TYPES,
   STAPLING_OPTIONS,
+  FILM_THICKNESS_OPTIONS,
   TAPE_COLORS,
   TWIN_LOOP_BACK_COVERS,
   TWIN_LOOP_FRONT_COVERS,
@@ -36,6 +37,7 @@ import SpiralBindingCustomizationPricing, {
   type PriceOptions,
 } from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
 import StaplingPricingOptions from '@/components/seller-dashboard/StaplingPricingOptions';
+import FilmThicknessPricingOptions from '@/components/seller-dashboard/FilmThicknessPricingOptions';
 import TapeBindingCustomizationOptions from '@/components/seller-dashboard/TapeBindingCustomizationOptions';
 import TwinLoopCustomizationPricing, {
   type TwinLoopPricingState,
@@ -43,6 +45,7 @@ import TwinLoopCustomizationPricing, {
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { IconAlertCircle, IconPencil, IconRefreshCw } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 export default function SellerPricingPage() {
   const { showToast } = useToast();
@@ -74,6 +77,7 @@ export default function SellerPricingPage() {
     Record<string, { price: string; enabled: boolean }>
   >({});
   const [staplingPriceOptions, setStaplingPriceOptions] = useState<PriceOptions>({});
+  const [filmPriceOptions, setFilmPriceOptions] = useState<PriceOptions>({});
   const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
   const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
   const [tapeColors, setTapeColors] = useState<string[]>([]);
@@ -148,6 +152,16 @@ export default function SellerPricingPage() {
         };
       });
       setStaplingPriceOptions(st);
+
+      const filmPrices = overrides.filmThicknessOptions ?? {};
+      const ft: PriceOptions = {};
+      FILM_THICKNESS_OPTIONS.filter((o) => o.value !== 'micron-80').forEach((o) => {
+        ft[o.value] = {
+          price: String(filmPrices[o.value] ?? ''),
+          enabled: filmPrices[o.value] !== undefined,
+        };
+      });
+      setFilmPriceOptions(ft);
 
       const coverColor = overrides.coverColor ?? {};
       const cc: Record<string, { price: string; enabled: boolean }> = {};
@@ -321,10 +335,16 @@ export default function SellerPricingPage() {
       if (v.enabled) staplingOptions[k] = Number(v.price) || 0;
     });
 
+    const filmThicknessOptions: Record<string, number> = {};
+    Object.entries(filmPriceOptions).forEach(([k, v]) => {
+      if (v.enabled) filmThicknessOptions[k] = Number(v.price) || 0;
+    });
+
     updateOverridesMutation.mutate({
       pageRate: pageRatePayload,
       documentColorModes,
       staplingOptions,
+      filmThicknessOptions,
       coverType,
       coilType,
       coverColor,
@@ -344,21 +364,16 @@ export default function SellerPricingPage() {
   if (isError) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="card flex flex-col items-center px-6 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlertCircle className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-lg font-bold text-slate-900">
-            Couldn&apos;t load pricing
-          </h1>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="btn-primary mt-6"
-          >
-            <IconRefreshCw className="h-4 w-4" /> Retry
-          </button>
-        </div>
+        <StateCard
+          icon={IconAlertCircle}
+          tone="error"
+          title="Couldn't load pricing"
+          action={
+            <button type="button" onClick={() => refetch()} className="btn-primary mt-6">
+              <IconRefreshCw className="h-4 w-4" /> Retry
+            </button>
+          }
+        />
       </div>
     );
   }
@@ -576,6 +591,15 @@ export default function SellerPricingPage() {
                     <StaplingPricingOptions
                       values={staplingPriceOptions}
                       setValues={setStaplingPriceOptions}
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
+                  )}
+
+                  {entry.serviceId === 'lam-film' && (
+                    <FilmThicknessPricingOptions
+                      values={filmPriceOptions}
+                      setValues={setFilmPriceOptions}
                       onSave={handleSaveOverrides}
                       saving={updateOverridesMutation.isPending}
                     />

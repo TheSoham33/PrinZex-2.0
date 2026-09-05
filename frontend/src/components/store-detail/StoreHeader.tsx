@@ -1,14 +1,7 @@
 import Link from 'next/link';
 import type { StoreDetail } from '@/lib/domain/stores';
 import { storeGradient } from '@/lib/domain/stores';
-import {
-  IconBadgeCheck,
-  IconChevronRight,
-  IconClock,
-  IconMapPin,
-  IconStar,
-  IconStore,
-} from '@/components/icons';
+import { IconBadgeCheck, IconClock, IconMapPin, IconStar, IconStore } from '@/components/icons';
 
 export default function StoreHeader({ store }: { store: StoreDetail }) {
   return (

@@ -1,17 +1,12 @@
-import { apiRequest } from './client';
+import { get, getList } from './client';
 
-export const fetchPayouts = async (params: any = {}): Promise<any[]> => {
-  const res = await apiRequest<any>('/admin/payouts', { params });
-  return res.data || res;
-};
+export const fetchPayouts = async (params: any = {}): Promise<any[]> => getList('/admin/payouts', params);
 
 // Aliases for frontend compatibility in Payouts page
 export const fetchSellerPayouts = async () => fetchPayouts({ recipientType: 'seller' });
 export const fetchDeliveryPayouts = async () => fetchPayouts({ recipientType: 'delivery_boy' });
 
-export const fetchAdminAnalyticsKPI = async (params: any = {}): Promise<any> => {
-  return apiRequest<any>('/admin/analytics/kpi', { params });
-};
+export const fetchAdminAnalyticsKPI = async (params: any = {}): Promise<any> => get('/admin/analytics/kpi', params);
 
 export const fetchCommissions = async (): Promise<any[]> => {
   // Mocking global commissions for now

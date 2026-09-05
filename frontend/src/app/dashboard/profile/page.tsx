@@ -6,7 +6,7 @@ import { updateUser } from '@/store/slices/authSlice';
 import { updateProfile } from '@/lib/api/customer';
 import { apiRequest } from '@/lib/api/client';
 import { getMediaUrl } from '@/lib/utils';
-import { IconAlertCircle, IconCheckCircle, IconUser, IconRefreshCw } from '@/components/icons';
+import { IconAlertCircle, IconUser, IconRefreshCw } from '@/components/icons';
 
 export default function ProfilePage() {
   const user = useAppSelector((state) => state.auth.user);

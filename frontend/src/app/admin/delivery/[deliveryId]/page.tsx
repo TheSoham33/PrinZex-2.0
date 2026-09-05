@@ -7,6 +7,7 @@ import { fetchDeliveryBoyById } from '@/lib/api/admin-delivery';
 import StatusBadge from '@/components/admin/StatusBadge';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { IconAlertCircle, IconArrowLeft, IconStar } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 export default function AdminDeliveryDetailPage({
   params,
@@ -31,18 +32,17 @@ export default function AdminDeliveryDetailPage({
   if (isError || !rider) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="card flex flex-col items-center px-6 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlertCircle className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-lg font-bold text-slate-900">Partner not found</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            No delivery partner matches <span className="font-mono">{deliveryId}</span>.
-          </p>
-          <Link href="/admin/delivery" className="btn-primary mt-6">
-            <IconArrowLeft className="h-4 w-4" /> Back to delivery partners
-          </Link>
-        </div>
+        <StateCard
+          icon={IconAlertCircle}
+          tone="error"
+          title="Partner not found"
+          subtitle={<>No delivery partner matches <span className="font-mono">{deliveryId}</span>.</>}
+          action={
+            <Link href="/admin/delivery" className="btn-primary mt-6">
+              <IconArrowLeft className="h-4 w-4" /> Back to delivery partners
+            </Link>
+          }
+        />
       </div>
     );
   }

@@ -3,9 +3,10 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { IconAlertCircle, IconArrowLeft, IconCheckCircle, IconMailCheck, IconPrinter } from '@/components/icons';
+import { IconArrowLeft, IconCheckCircle, IconPrinter } from '@/components/icons';
 import PasswordInput from '@/components/auth/PasswordInput';
 import { forgotPassword, resetPassword } from '@/lib/api/auth';
+import { ErrorNote } from '@/components/ui';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -86,12 +87,7 @@ export default function ForgotPasswordPage() {
         </p>
 
         <form onSubmit={handleResetPassword} noValidate className="mt-8 space-y-5">
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
-              <IconAlertCircle className="h-4 w-4" />
-              {error}
-            </div>
-          )}
+          <ErrorNote message={error} />
 
           <div>
             <label htmlFor="otp" className="label">
@@ -154,12 +150,7 @@ export default function ForgotPasswordPage() {
       </p>
 
       <form onSubmit={handleSendOtp} noValidate className="mt-8 space-y-5">
-        {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
-            <IconAlertCircle className="h-4 w-4" />
-            {error}
-          </div>
-        )}
+        <ErrorNote message={error} />
 
         <div>
           <label htmlFor="identifier" className="label">

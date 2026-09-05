@@ -10,13 +10,7 @@ import {
 import PayoutCard from '@/components/seller-dashboard/PayoutCard';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import {
-  IconAlertCircle,
-  IconChevronRight,
-  IconDownload,
-  IconRefreshCw,
-  IconShieldCheck,
-} from '@/components/icons';
+import { IconChevronRight, IconDownload, IconShieldCheck } from '@/components/icons';
 
 export default function SellerPayoutsPage() {
   const { showToast } = useToast();

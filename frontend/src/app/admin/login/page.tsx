@@ -8,6 +8,7 @@ import PasswordInput from '@/components/auth/PasswordInput';
 import { IconAlertCircle, IconPrinter, IconShieldCheck } from '@/components/icons';
 import { EMAIL_REGEX } from '@/lib/seller-types';
 import { adminLogin } from '@/lib/api/auth';
+import { ErrorNote } from '@/components/ui';
 
 function AdminLoginContent() {
   const router = useRouter();
@@ -69,12 +70,7 @@ function AdminLoginContent() {
 
         <div className="card p-6">
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
-            {errors.general && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
-                <IconAlertCircle className="h-4 w-4" />
-                {errors.general}
-              </div>
-            )}
+            <ErrorNote message={errors.general} />
 
             <div>
               <label htmlFor="admin-email" className="label">

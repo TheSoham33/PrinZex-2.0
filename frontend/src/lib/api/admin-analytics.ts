@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { get } from './client';
 import { fetchActivityLogs } from './admin-logs';
 import type {
   PlatformAnalytics,
@@ -68,10 +68,8 @@ function toActivity(row: any): PlatformActivity {
  */
 export const fetchPlatformAnalytics = async (): Promise<PlatformAnalytics> => {
   const [kpi, revenue, activityRows] = await Promise.all([
-    apiRequest<AdminKpi>('/admin/analytics/kpi'),
-    apiRequest<RevenuePoint[]>('/admin/analytics/revenue', {
-      params: { period: '30d', groupBy: 'day' },
-    }),
+    get<AdminKpi>('/admin/analytics/kpi'),
+    get<RevenuePoint[]>('/admin/analytics/revenue', { period: '30d', groupBy: 'day' }),
     fetchActivityLogs({ limit: 10 }).catch(() => []),
   ]);
 

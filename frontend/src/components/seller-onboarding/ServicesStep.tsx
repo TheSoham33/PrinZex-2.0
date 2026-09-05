@@ -5,7 +5,8 @@ import {
   type SelectedService,
 } from '@/lib/seller-types';
 import ServiceCategoryAccordion from './ServiceCategoryAccordion';
-import { IconAlertCircle, IconCheckCircle } from '@/components/icons';
+import { IconCheckCircle } from '@/components/icons';
+import { ErrorNote } from '@/components/ui';
 
 interface ServicesStepProps {
   selected: SelectedService[];
@@ -28,11 +29,7 @@ export default function ServicesStep({ selected, onToggle, error }: ServicesStep
         </p>
       </header>
 
-      {error && (
-        <p className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          <IconAlertCircle className="h-4 w-4 shrink-0" /> {error}
-        </p>
-      )}
+      <ErrorNote message={error} />
 
       <div
         className={`flex items-center gap-2.5 rounded-lg px-4 py-3 text-sm ${

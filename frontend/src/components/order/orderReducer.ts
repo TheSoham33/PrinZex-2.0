@@ -1,4 +1,4 @@
-import { STAPLING_OPTIONS, TAX_RATE } from '@/lib/domain/stores';
+import { FILM_THICKNESS_OPTIONS, STAPLING_OPTIONS, TAX_RATE } from '@/lib/domain/stores';
 import { countColorPages } from '@/lib/utils';
 import type {
   CostBreakdown,
@@ -240,6 +240,8 @@ export function computeCost(
   pageRateFallback?: number,
   /** Admin-catalogue stapling list; falls back to the shipped constant. */
   staplingOptions: ReadonlyArray<{ value: string; price: number }> = STAPLING_OPTIONS,
+  /** Admin-catalogue film-thickness list; falls back to the shipped constant. */
+  filmOptions: ReadonlyArray<{ value: string; price: number }> = FILM_THICKNESS_OPTIONS,
 ): CostBreakdown {
   const base = service?.startingPrice ?? 0;
   const quantity = Math.max(1, specs.quantity || 1);
@@ -287,14 +289,27 @@ export function computeCost(
   const bwPageCount = billablePages - colorPageCount;
 
   // Mandatory Document Printing stapling choice — the seller's per-set price
-  // wins over the catalogue default; 'loose' is always free. Mirrors the
-  // backend computeQuote stapling branch.
+  // wins over the catalogue default; 'loose' is always free. Scoped to
+  // doc-print like the backend: a stapling value lingering from an earlier
+  // service selection must never inflate another service's estimate.
   const staplingKey = specs.stapling ?? 'loose';
   const staplingPerUnit =
-    staplingKey === 'loose'
+    service?.id !== 'doc-print' || staplingKey === 'loose'
       ? 0
       : (service?.staplingOptions?.[staplingKey] ??
         staplingOptions.find((entry) => entry.value === staplingKey)?.price ??
+        0);
+
+  // Mandatory Lamination film choice — the seller's per-sheet price wins over
+  // the catalogue default; 'micron-80' is always free. Charged per laminated
+  // sheet (every billable page needs one film pouch). Mirrors the backend
+  // computeQuote film branch.
+  const filmKey = specs.filmThickness ?? 'micron-80';
+  const filmPerSheet =
+    service?.id !== 'lam-film' || filmKey === 'micron-80'
+      ? 0
+      : (service?.filmThicknessOptions?.[filmKey] ??
+        filmOptions.find((entry) => entry.value === filmKey)?.price ??
         0);
 
   const isBinding = Boolean(service?.id?.startsWith('bind-'));
@@ -325,7 +340,8 @@ export function computeCost(
   } else if (service?.unit.toLowerCase().includes('page')) {
     subtotal = Math.round(
       (bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity +
-        staplingPerUnit * quantity,
+        staplingPerUnit * quantity +
+        filmPerSheet * billablePages * quantity,
     );
   } else if (slabRate !== undefined) {
     // Slab-priced services (Business Cards): per-piece rate from the seller's

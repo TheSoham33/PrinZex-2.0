@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { get, patch } from './client';
 import type { SellerOrder } from '@/lib/domain/seller-orders';
 
 /** Get all orders for the authenticated seller. */
@@ -7,9 +7,7 @@ export const fetchSellerOrders = async (params: {
   isRush?: boolean;
   page?: number;
   limit?: number;
-}): Promise<any> => {
-  return apiRequest<any>('/seller/orders', { params });
-};
+}): Promise<any> => get('/seller/orders', params);
 
 /** Flatten a specs JSON blob into a short human-readable summary. */
 function summarizeSpecs(specs: unknown): string {
@@ -48,22 +46,12 @@ export function mapSellerOrderDetail(raw: any): SellerOrder {
 
 /** Get a single order detail for the seller, normalized for the detail page. */
 export const fetchSellerOrderById = async (orderId: string): Promise<SellerOrder> => {
-  const data = await apiRequest<any>(`/seller/orders/${orderId}`);
+  const data = await get(`/seller/orders/${orderId}`);
   return mapSellerOrderDetail(data);
 };
 
 /** Update order status. */
-export const updateOrderStatus = async (orderId: string, status: string): Promise<any> => {
-  return apiRequest<any>(`/seller/orders/${orderId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
-  });
-};
+export const updateOrderStatus = async (orderId: string, status: string): Promise<any> => patch(`/seller/orders/${orderId}/status`, { status });
 
 /** Reject an order. */
-export const rejectOrder = async (orderId: string, reason: string): Promise<any> => {
-  return apiRequest<any>(`/seller/orders/${orderId}/reject`, {
-    method: 'PATCH',
-    body: JSON.stringify({ reason }),
-  });
-};
+export const rejectOrder = async (orderId: string, reason: string): Promise<any> => patch(`/seller/orders/${orderId}/reject`, { reason });

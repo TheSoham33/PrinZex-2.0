@@ -28,6 +28,7 @@ import {
   emitOrderStatusChanged,
 } from '../../realtime/realtime.emitters';
 import {
+  FILM_THICKNESS_PRICES,
   STAPLING_OPTION_PRICES,
   computeQuote,
   estimatedDeliveryFor,
@@ -274,6 +275,19 @@ function assertStaplingAvailable(
   }
 }
 
+function assertFilmAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  filmThickness?: string,
+): void {
+  if (serviceId !== 'lam-film') return;
+  if (!filmThickness || filmThickness === 'micron-80') return;
+  const offered = readSellerMetadata(sellerMetadata).pricingOverrides?.filmThicknessOptions;
+  if (offered ? !(filmThickness in offered) : !(filmThickness in FILM_THICKNESS_PRICES)) {
+    throw ApiError.badRequest('This film thickness is not offered by this store');
+  }
+}
+
 function assertPaperOptionAvailable(
   sellerMetadata: Prisma.JsonValue | null,
   serviceId: string,
@@ -319,6 +333,11 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     seller.metadata,
     service.serviceId,
     input.specifications.stapling,
+  );
+  assertFilmAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.filmThickness,
   );
 
   // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
@@ -408,6 +427,11 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     seller.metadata,
     service.serviceId,
     input.specifications.stapling,
+  );
+  assertFilmAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.filmThickness,
   );
 
   if (service.serviceId === 'bind-hard') {

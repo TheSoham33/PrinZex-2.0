@@ -7,6 +7,7 @@ import { isActiveOrder } from '@/lib/domain/orders';
 import OrderStatusBadge from '@/components/dashboard/OrderStatusBadge';
 import { formatDateTime } from '@/lib/utils';
 import { IconChevronRight, IconPackageOpen, IconTruck } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 export default function TrackingIndexPage() {
   const { data, isLoading } = useQuery({ queryKey: ['dashboard-orders'], queryFn: fetchOrders });
@@ -27,18 +28,16 @@ export default function TrackingIndexPage() {
             <div key={index} className="card h-24 animate-pulse bg-slate-100" />
           ))
         ) : trackable.length === 0 ? (
-          <div className="card flex flex-col items-center px-6 py-16 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <IconPackageOpen className="h-7 w-7" />
-            </span>
-            <p className="mt-4 font-semibold text-slate-900">Nothing to track right now</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Place an order and you&apos;ll be able to follow it live here.
-            </p>
-            <Link href="/stores" className="btn-primary mt-6">
-              Browse print shops
-            </Link>
-          </div>
+          <StateCard
+            icon={IconPackageOpen}
+            title="Nothing to track right now"
+            subtitle="Place an order and you'll be able to follow it live here."
+            action={
+              <Link href="/stores" className="btn-primary mt-6">
+                Browse print shops
+              </Link>
+            }
+          />
         ) : (
           trackable.map((order) => (
             <Link

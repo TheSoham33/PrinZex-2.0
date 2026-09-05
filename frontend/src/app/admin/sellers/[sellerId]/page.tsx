@@ -27,6 +27,7 @@ import {
   IconX,
   IconRefreshCw,
 } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 const TABS = ['Overview', 'Documents', 'Orders', 'Reviews', 'Financials'] as const;
 type Tab = (typeof TABS)[number];
@@ -112,18 +113,17 @@ export default function AdminSellerDetailPage({
   if (isError || !seller) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="card flex flex-col items-center px-6 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlertCircle className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-lg font-bold text-slate-900">Seller not found</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            No seller matches <span className="font-mono">{sellerId}</span>.
-          </p>
-          <Link href="/admin/sellers" className="btn-primary mt-6">
-            <IconArrowLeft className="h-4 w-4" /> Back to sellers
-          </Link>
-        </div>
+        <StateCard
+          icon={IconAlertCircle}
+          tone="error"
+          title="Seller not found"
+          subtitle={<>No seller matches <span className="font-mono">{sellerId}</span>.</>}
+          action={
+            <Link href="/admin/sellers" className="btn-primary mt-6">
+              <IconArrowLeft className="h-4 w-4" /> Back to sellers
+            </Link>
+          }
+        />
       </div>
     );
   }

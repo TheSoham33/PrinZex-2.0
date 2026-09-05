@@ -6,7 +6,7 @@ import type {
   ServiceOffering,
 } from '@/lib/types';
 import { countColorPages, formatCurrency } from '@/lib/utils';
-import { STAPLING_OPTIONS } from '@/lib/domain/stores';
+import { FILM_THICKNESS_OPTIONS, STAPLING_OPTIONS } from '@/lib/domain/stores';
 import { IconShieldCheck, IconLock } from '@/components/icons';
 import { pickSlabRate } from './orderReducer';
 
@@ -107,6 +107,23 @@ export default function OrderSummarySidebar({
                             ?.price ??
                           0;
                         return price > 0 ? ` · +${formatCurrency(price)}/copy` : '';
+                      })()}
+                    </p>
+                  )}
+                {specs.serviceId === 'lam-film' &&
+                  specs.filmThickness &&
+                  specs.filmThickness !== 'micron-80' && (
+                    <p>
+                      Film:{' '}
+                      {FILM_THICKNESS_OPTIONS.find((o) => o.value === specs.filmThickness)
+                        ?.label ?? specs.filmThickness}
+                      {(() => {
+                        const price =
+                          service?.filmThicknessOptions?.[specs.filmThickness] ??
+                          FILM_THICKNESS_OPTIONS.find((o) => o.value === specs.filmThickness)
+                            ?.price ??
+                          0;
+                        return price > 0 ? ` · +${formatCurrency(price)}/sheet` : '';
                       })()}
                     </p>
                   )}

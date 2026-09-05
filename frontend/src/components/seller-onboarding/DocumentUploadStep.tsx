@@ -2,7 +2,8 @@
 
 import type { DocumentType, UploadedDoc } from '@/lib/seller-types';
 import DocumentUploadCard from './DocumentUploadCard';
-import { IconAlertCircle, IconShieldCheck } from '@/components/icons';
+import { IconShieldCheck } from '@/components/icons';
+import { ErrorNote } from '@/components/ui';
 
 interface DocumentUploadStepProps {
   documents: UploadedDoc[];
@@ -26,11 +27,7 @@ export default function DocumentUploadStep({
         </p>
       </header>
 
-      {error && (
-        <p className="flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          <IconAlertCircle className="h-4 w-4 shrink-0" /> {error}
-        </p>
-      )}
+      <ErrorNote message={error} />
 
       <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
         <span className="text-sm text-slate-600">

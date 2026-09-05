@@ -75,6 +75,18 @@ const GROUPS: GroupSpec[] = [
     ],
   },
   {
+    key: 'film-thickness',
+    kind: 'rows',
+    description:
+      'Lamination film choices — a mandatory radio on the order page. Sellers can override each per-sheet price from their Pricing page; keep the free 80 micron row first.',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text' },
+      { key: 'label', label: 'Label', kind: 'text' },
+      { key: 'hint', label: 'Hint', kind: 'text', optional: true },
+      { key: 'price', label: 'Default price (₹)', kind: 'number' },
+    ],
+  },
+  {
     key: 'cover-types',
     kind: 'rows',
     description: 'Cover materials for binding services.',

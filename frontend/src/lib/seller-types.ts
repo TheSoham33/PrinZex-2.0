@@ -107,7 +107,10 @@ export const REQUIRED_DOCUMENTS: UploadedDoc[] = [
   { type: 'address_proof', label: 'Address Proof', file: null, fileName: null },
 ];
 
-/** 6 categories / 19 services offered during seller onboarding. */
+/**
+ * Fallback catalogue for seller onboarding — mirrors the backend
+ * DEFAULT_CATALOG 'service-categories' group; the DB rows win when loaded.
+ */
 export const SERVICE_CATEGORIES: ServiceCategory[] = [
   {
     id: 'documents',
@@ -177,6 +180,12 @@ export const SERVICE_CATEGORIES: ServiceCategory[] = [
       { id: 'spec-photo-prints', name: 'Photo Print' },
       { id: 'spec-tshirts', name: 'T shirt Print' },
     ],
+  },
+  {
+    id: 'lamination',
+    name: 'Lamination',
+    description: 'Protective film lamination for documents & certificates',
+    services: [{ id: 'lam-film', name: 'Lamination' }],
   },
 ];
 

@@ -10,6 +10,7 @@ import {
 } from '@/lib/domain/seller-orders';
 import OrderQueueCard from '@/components/seller-dashboard/OrderQueueCard';
 import { IconAlertCircle, IconPackageOpen, IconRefreshCw } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 const TABS = ['New', 'Active', 'Dispatched', 'History'] as const;
 type Tab = (typeof TABS)[number];
@@ -120,19 +121,15 @@ export default function SellerOrdersPage() {
             </button>
           </div>
         ) : visible.length === 0 ? (
-          <div className="card flex flex-col items-center px-6 py-16 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <IconPackageOpen className="h-7 w-7" />
-            </span>
-            <p className="mt-4 font-semibold text-slate-900">
-              {tab === 'New' ? 'No new orders right now' : `Nothing in ${tab.toLowerCase()}`}
-            </p>
-            <p className="mt-1 max-w-sm text-sm text-slate-600">
-              {tab === 'New'
+          <StateCard
+            icon={IconPackageOpen}
+            title={tab === 'New' ? 'No new orders right now' : `Nothing in ${tab.toLowerCase()}`}
+            subtitle={
+              tab === 'New'
                 ? 'New customer orders will land here the moment they are placed.'
-                : 'Orders will appear here as they move through production.'}
-            </p>
-          </div>
+                : 'Orders will appear here as they move through production.'
+            }
+          />
         ) : (
           visible.map((order) => (
             <OrderQueueCard key={order.id} order={order} onAnnounce={setAnnouncement} />

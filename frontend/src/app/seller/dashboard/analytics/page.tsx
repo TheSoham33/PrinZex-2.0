@@ -25,6 +25,7 @@ import {
   IconTruck,
   IconWallet,
 } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 const MAP_RANGE_TO_PERIOD: Record<string, string> = {
   last7: '7d',
@@ -72,16 +73,17 @@ export default function SellerAnalyticsPage() {
   if (isError) {
     return (
       <div className="mx-auto max-w-5xl">
-        <div className="card flex flex-col items-center px-6 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-            <IconAlertCircle className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-lg font-bold text-slate-900">Couldn&apos;t load analytics</h1>
-          <p className="mt-1 text-sm text-slate-600">Something went wrong fetching your numbers.</p>
-          <button type="button" onClick={refetchAll} className="btn-primary mt-6">
-            <IconRefreshCw className="h-4 w-4" /> Retry
-          </button>
-        </div>
+        <StateCard
+          icon={IconAlertCircle}
+          tone="error"
+          title="Couldn't load analytics"
+          subtitle="Something went wrong fetching your numbers."
+          action={
+            <button type="button" onClick={refetchAll} className="btn-primary mt-6">
+              <IconRefreshCw className="h-4 w-4" /> Retry
+            </button>
+          }
+        />
       </div>
     );
   }

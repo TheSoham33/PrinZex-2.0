@@ -14,7 +14,7 @@ import ConfirmModal from '@/components/admin/ConfirmModal';
 import UserDetailDrawer from '@/components/admin/UserDetailDrawer';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import { IconCheckCircle, IconStar, IconRefreshCw, IconPhone, IconMapPin, IconFileText } from '@/components/icons';
+import { IconStar, IconRefreshCw } from '@/components/icons';
 
 const DELIVERY_ZONES = [
   'Salt Lake', 'New Town', 'Sector V', 'Koramangala', 'HSR Layout', 'Indiranagar'

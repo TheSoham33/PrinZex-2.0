@@ -17,6 +17,10 @@ export interface QuoteSpecifications {
   // Document printing: mandatory stapling choice ('loose' = free default).
   // Seller's staplingOptions price wins, else STAPLING_OPTION_PRICES.
   stapling?: string;
+  // Lamination: mandatory film-thickness choice ('micron-80' = free default).
+  // Seller's filmThicknessOptions price wins, else FILM_THICKNESS_PRICES.
+  // Unlike stapling (per set) the film price is charged per laminated sheet.
+  filmThickness?: string;
   totalPages?: number;
   // "1, 5, 10-15" — pages printed in colour when colorOption === 'mixed'.
   colorPages?: string;
@@ -98,6 +102,17 @@ export const GST_RATE = 0.18; // 18% GST on subtotal
 export const STAPLING_OPTION_PRICES: Record<string, number> = {
   'corner-stapling': 5,
   'side-stapling': 10,
+};
+
+/**
+ * Default per-sheet film surcharges for Lamination, used when the seller
+ * hasn't saved their own filmThicknessOptions prices. 'micron-80' (the
+ * mandatory default) is always free. Catalogue rows decide labels and
+ * availability; a price here (or a seller override) makes a key chargeable.
+ */
+export const FILM_THICKNESS_PRICES: Record<string, number> = {
+  'micron-125': 2,
+  'micron-250': 4,
 };
 
 // These are the ONLY customer-facing delivery charges and must match the
@@ -322,13 +337,27 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
 
   // Document Printing stapling is a dedicated mandatory spec: the seller's
   // price for the choice wins, else the platform default. 'loose' is always
-  // free. Priced choices are charged per set.
+  // free. Priced choices are charged per set. Scoped to doc-print like
+  // assertStaplingAvailable — a stapling value lingering in the payload from
+  // an earlier service selection must never inflate another service's quote.
   const staplingChoice = specifications.stapling ?? 'loose';
   const staplingCharge =
-    staplingChoice === 'loose'
+    input.serviceId !== 'doc-print' || staplingChoice === 'loose'
       ? 0
       : (overrides.staplingOptions?.[staplingChoice] ??
         STAPLING_OPTION_PRICES[staplingChoice] ??
+        0);
+
+  // Lamination film is a dedicated mandatory spec, scoped to lam-film:
+  // the seller's price for the choice wins, else the platform default.
+  // 'micron-80' is always free. Priced films cost per laminated sheet —
+  // every billable page needs one film pouch.
+  const filmChoice = specifications.filmThickness ?? 'micron-80';
+  const filmCharge =
+    input.serviceId !== 'lam-film' || filmChoice === 'micron-80'
+      ? 0
+      : (overrides.filmThicknessOptions?.[filmChoice] ??
+        FILM_THICKNESS_PRICES[filmChoice] ??
         0);
 
   // No uploaded file ⇒ 0 pages ⇒ page cost ₹0 (the summary resets). Once a PDF
@@ -425,9 +454,11 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     );
   } else if (unit.toLowerCase().includes('page')) {
     // ── Per-page services: B&W/colour page rates are the whole price ─────
+    //    (Lamination adds the per-sheet film surcharge on top of them.)
     subtotal = round2(
       (bwRate * split.bwPages + colorRate * split.colorPages) * quantity +
-        staplingCharge * quantity,
+        staplingCharge * quantity +
+        filmCharge * billablePages * quantity,
     );
   } else if (slabRate !== undefined) {
     // ── Slab-priced services (Business Cards): per-piece rate from the

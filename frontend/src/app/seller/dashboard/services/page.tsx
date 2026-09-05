@@ -12,15 +12,7 @@ import { SERVICE_CATEGORIES as SERVICE_CATEGORIES_FALLBACK, PRICING_UNITS } from
 import { useCatalogOptions } from '@/lib/api/catalog';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { 
-  IconAlertCircle, 
-  IconCheckCircle, 
-  IconRefreshCw, 
-  IconChevronDown, 
-  IconChevronUp,
-  IconPlus,
-  IconTrash
-} from '@/components/icons';
+import { IconChevronDown, IconChevronUp } from '@/components/icons';
 
 export default function ManageServicesPage() {
   const { showToast } = useToast();

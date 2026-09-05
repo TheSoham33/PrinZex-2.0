@@ -7,6 +7,7 @@ import { fetchOrders } from '@/lib/api/orders';
 import { isActiveOrder } from '@/lib/domain/orders';
 import OrderCard from '@/components/dashboard/OrderCard';
 import { IconAlertCircle, IconPackageOpen, IconRefreshCw } from '@/components/icons';
+import { StateCard } from '@/components/ui';
 
 const TABS = ['Active', 'History'] as const;
 
@@ -81,22 +82,20 @@ export default function DashboardOrdersPage() {
             </button>
           </div>
         ) : visible.length === 0 ? (
-          <div className="card flex flex-col items-center px-6 py-16 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <IconPackageOpen className="h-7 w-7" />
-            </span>
-            <p className="mt-4 font-semibold text-slate-900">
-              {tab === 'Active' ? 'No active orders' : 'No past orders yet'}
-            </p>
-            <p className="mt-1 max-w-sm text-sm text-slate-600">
-              {tab === 'Active'
+          <StateCard
+            icon={IconPackageOpen}
+            title={tab === 'Active' ? 'No active orders' : 'No past orders yet'}
+            subtitle={
+              tab === 'Active'
                 ? 'When you place an order it will show up here with live status.'
-                : 'Delivered and cancelled orders will appear here.'}
-            </p>
-            <Link href="/stores" className="btn-primary mt-6">
-              Browse print shops
-            </Link>
-          </div>
+                : 'Delivered and cancelled orders will appear here.'
+            }
+            action={
+              <Link href="/stores" className="btn-primary mt-6">
+                Browse print shops
+              </Link>
+            }
+          />
         ) : (
           <div className="space-y-4">
             {visible.map((order) => (
