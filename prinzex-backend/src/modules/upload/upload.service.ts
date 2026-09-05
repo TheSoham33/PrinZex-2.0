@@ -4,7 +4,7 @@ import { REDIS_KEYS, REDIS_TTL } from '../../config/redis';
 import { ApiError } from '../../utils/ApiError';
 import { getCache, setCache, invalidateCache } from '../../utils/cache';
 import { DESIGN_DIR, verifyMagicBytes } from '../../utils/fileUpload';
-import { OFFICE_CONVERTIBLE, convertOfficeToPdf } from '../../utils/libreoffice';
+import { OFFICE_CONVERTIBLE, convertOfficeToPdf } from '../../utils/gotenberg';
 import { countPdfPages } from '../../utils/pdf';
 
 /**
