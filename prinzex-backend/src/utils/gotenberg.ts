@@ -32,7 +32,9 @@ const CONVERT_ERROR_USER_COPY =
   'We could not convert this file to PDF — please convert it yourself (File → Save as PDF) and upload the PDF instead';
 
 export function gotenbergUrl(): string {
-  return (process.env.GOTENBERG_URL?.trim() || 'http://localhost:3000').replace(/\/+$/, '');
+  // 3200, not 3000 — the Next.js dev server already owns 3000 on a dev box;
+  // hitting it yields its 404 "Server action not found", not a conversion.
+  return (process.env.GOTENBERG_URL?.trim() || 'http://localhost:3200').replace(/\/+$/, '');
 }
 
 let warnedUnavailable = false;
@@ -82,6 +84,13 @@ export async function convertOfficeToPdf(inputPath: string, outDir: string): Pro
       `[upload] Gotenberg conversion failed (HTTP ${response.status}): ` +
         `${pdf.toString('utf8', 0, 500) || '(empty body)'}`,
     );
+    if (response.status === 404) {
+      console.warn(
+        `[upload] 404 from ${gotenbergUrl()} — is GOTENBERG_URL really the ` +
+          'Gotenberg container? Another app holding that port (classically the ' +
+          'Next.js dev server on :3000) answers 404 with non-Gotenberg errors.',
+      );
+    }
     throw new ApiError(422, CONVERT_ERROR_USER_COPY);
   }
   // A 200 is only trusted when the bytes really are a PDF.
