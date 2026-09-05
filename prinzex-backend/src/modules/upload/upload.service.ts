@@ -4,6 +4,8 @@ import { REDIS_KEYS, REDIS_TTL } from '../../config/redis';
 import { ApiError } from '../../utils/ApiError';
 import { getCache, setCache, invalidateCache } from '../../utils/cache';
 import { DESIGN_DIR, verifyMagicBytes } from '../../utils/fileUpload';
+import { OFFICE_CONVERTIBLE, convertOfficeToPdf } from '../../utils/libreoffice';
+import { countPdfPages } from '../../utils/pdf';
 
 /**
  * Design upload bookkeeping. Ownership metadata lives in Redis for 24h
@@ -23,6 +25,10 @@ export interface UploadResult {
   fileName: string;
   sizeKb: number;
   mimeType: string;
+  /** Office uploads only: exact pages of the converted PDF. */
+  totalPages?: number;
+  /** True when the stored file is a PDF converted from an Office original. */
+  convertedToPdf?: boolean;
 }
 
 export async function registerDesignUpload(
@@ -33,20 +39,47 @@ export async function registerDesignUpload(
   // Throws 415 (and deletes the file) on mismatch.
   await verifyMagicBytes(file.path);
 
+  // Office documents are converted to print-ready PDF before storage: the
+  // shop always receives a PDF and pricing uses its exact page count. A
+  // failed conversion rejects the upload (no file is kept).
+  let storedPath = file.path;
+  let storedName = file.filename;
+  let storedMime = file.mimetype;
+  let storedSize = file.size;
+  let totalPages: number | undefined;
+  const extension = path.extname(file.filename).toLowerCase();
+  if (OFFICE_CONVERTIBLE.has(extension)) {
+    try {
+      storedPath = await convertOfficeToPdf(file.path, DESIGN_DIR);
+      totalPages = await countPdfPages(storedPath);
+    } catch (error) {
+      await fs.promises.unlink(file.path).catch(() => undefined);
+      throw error;
+    }
+    storedName = path.basename(storedPath);
+    storedMime = 'application/pdf';
+    storedSize = (await fs.promises.stat(storedPath)).size;
+  }
+
   const metadata: UploadMetadata = {
     userId,
     originalName: file.originalname,
-    sizeBytes: file.size,
-    mimeType: file.mimetype,
+    sizeBytes: storedSize,
+    mimeType: storedMime,
     uploadedAt: new Date().toISOString(),
   };
-  await setCache(REDIS_KEYS.UPLOAD_METADATA(file.filename), metadata, REDIS_TTL.UPLOAD_METADATA);
+  // Register BEFORE dropping the original, so a cache failure keeps a retry path.
+  await setCache(REDIS_KEYS.UPLOAD_METADATA(storedName), metadata, REDIS_TTL.UPLOAD_METADATA);
+  if (storedPath !== file.path) {
+    await fs.promises.unlink(file.path).catch(() => undefined);
+  }
 
   return {
-    fileUrl: `/uploads/designs/${file.filename}`,
+    fileUrl: `/uploads/designs/${storedName}`,
     fileName: file.originalname,
-    sizeKb: Math.round(file.size / 1024),
-    mimeType: file.mimetype,
+    sizeKb: Math.round(storedSize / 1024),
+    mimeType: storedMime,
+    ...(totalPages !== undefined ? { totalPages, convertedToPdf: true } : {}),
   };
 }
 

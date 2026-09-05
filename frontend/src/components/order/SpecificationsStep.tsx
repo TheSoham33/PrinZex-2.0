@@ -12,18 +12,24 @@ import {
   FILM_THICKNESS_OPTIONS as FILM_THICKNESS_OPTIONS_FALLBACK,
 } from '@/lib/domain/stores';
 import { useCatalogOptions } from '@/lib/api/catalog';
+import { uploadDesign } from '@/lib/api/uploads';
+import { useAppSelector } from '@/store/hooks';
 import {
   ACCEPTED_DOCUMENT_TYPES,
   ACCEPTED_DOCUMENT_DESCRIPTION,
   pageCountStrategy,
-  readOfficePageCount,
 } from '@/lib/domain/files';
 import type {
   OrderSpecifications,
   ServiceOffering,
   UploadedFile,
 } from '@/lib/types';
-import { countColorPages, formatCurrency, formatFileSize } from '@/lib/utils';
+import {
+  countColorPages,
+  formatCurrency,
+  formatFileSize,
+  getMediaUrl,
+} from '@/lib/utils';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import type { OrderAction } from './orderReducer';
 import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
@@ -103,8 +109,9 @@ export default function SpecificationsStep({
   const { showToast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const [processing, setProcessing] = useState<'pdf' | 'office' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const customerToken = useAppSelector((state) => state.auth.accessToken);
 
   const acceptFile = async (selected: File | undefined) => {
     if (!selected) return;
@@ -125,39 +132,54 @@ export default function SpecificationsStep({
       return;
     }
 
+    // Office files are uploaded and converted to print-ready PDF on the
+    // server — that needs an account (the file leaves the browser early).
+    if (strategy === 'office' && !customerToken) {
+      const message =
+        'Please sign in to upload Word/PowerPoint files — we convert them into a print-ready PDF on our secure server.';
+      setLocalError(message);
+      showToast(message, 'error');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
     setLocalError(null);
-    setProcessing(true);
+    setProcessing(strategy === 'office' ? 'office' : 'pdf');
 
     try {
       let totalPages: number;
+      let previewUrl: string;
+      let serverFileUrl: string | undefined;
       if (strategy === 'pdf') {
         const arrayBuffer = await selected.arrayBuffer();
         const pdfDoc = await PDFDocument.load(arrayBuffer, {
           ignoreEncryption: true,
         });
         totalPages = pdfDoc.getPageCount();
+        previewUrl = URL.createObjectURL(selected);
       } else if (strategy === 'image') {
         totalPages = 1; // one sheet per image
+        previewUrl = URL.createObjectURL(selected);
       } else {
-        // Modern .docx/.pptx carry Office's own <Pages>/<Slides> metadata —
-        // read it here. 0 (legacy .doc/.ppt or missing metadata) means the
-        // Total pages card stays editable for the customer to type the count.
-        totalPages = (await readOfficePageCount(selected)) ?? 0;
+        // Backend converts the Office file to PDF (LibreOffice) and returns
+        // its exact page count; the stored PDF URL rides along for checkout.
+        const uploaded = await uploadDesign(selected);
+        totalPages = uploaded.totalPages ?? 0;
+        serverFileUrl = uploaded.fileUrl;
+        previewUrl = getMediaUrl(uploaded.fileUrl) ?? '';
       }
 
-      // Seller page minimum: reject the file instead of attaching it when the
-      // count is known (office files typed manually are validated later).
+      // Seller page minimum: reject the file instead of attaching it (every
+      // path above arrives here knowing its count).
       if (minPages > 0 && totalPages > 0 && totalPages < minPages) {
         const serviceName = selectedService?.name ?? 'this service';
         const message = `Minimum page count should be ${minPages} for ${serviceName}. Your file has only ${totalPages} page${totalPages === 1 ? '' : 's'}.`;
         showToast(message, 'error');
         setLocalError(message);
         if (inputRef.current) inputRef.current.value = '';
-        setProcessing(false);
+        setProcessing(null);
         return;
       }
-
-      const previewUrl = URL.createObjectURL(selected);
 
       dispatch({
         type: 'SET_FILE',
@@ -166,16 +188,21 @@ export default function SpecificationsStep({
           size: selected.size,
           type: selected.type,
           previewUrl,
+          ...(serverFileUrl ? { serverFileUrl } : {}),
         },
       });
       dispatch({ type: 'SET_SPEC', payload: { totalPages, colorPages: '' } });
     } catch (e) {
-      console.error('Error processing PDF:', e);
+      console.error('File processing failed:', e);
       setLocalError(
-        'Failed to process PDF. Please ensure it is not password protected.',
+        strategy === 'office'
+          ? (e instanceof Error && e.message
+              ? e.message
+              : 'Upload failed — please try again.')
+          : 'Failed to process PDF. Please ensure it is not password protected.',
       );
     } finally {
-      setProcessing(false);
+      setProcessing(null);
     }
   };
 
@@ -552,10 +579,12 @@ export default function SpecificationsStep({
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 py-12 text-center">
             <span className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
             <p className="mt-4 font-semibold text-slate-900">
-              Analyzing document…
+              {processing === 'office' ? 'Converting to PDF…' : 'Analyzing document…'}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Calculating final page count for pricing
+              {processing === 'office'
+                ? 'One-time conversion on our server — this can take a few seconds'
+                : 'Calculating final page count for pricing'}
             </p>
           </div>
         ) : file ? (
@@ -612,48 +641,20 @@ export default function SpecificationsStep({
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">
-                    Total pages{' '}
-                    {attachedStrategy === 'office' && (
-                      <span className="text-red-500">*</span>
-                    )}
+                    Total pages
                   </p>
                   <p className="text-xs text-slate-500">
                     {attachedStrategy === 'office'
-                      ? specs.totalPages
-                        ? 'Detected automatically — adjust if needed'
-                        : 'Can\'t be read from this file — type the pages or slides to print'
+                      ? 'Converted to PDF on our server — pages counted exactly'
                       : attachedStrategy === 'image'
                         ? 'Each image prints as one sheet'
                         : 'Automatically calculated from PDF'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {attachedStrategy === 'office' ? (
-                    <input
-                      id="officePageCount"
-                      type="number"
-                      min={Math.max(1, minPages)}
-                      max={9999}
-                      inputMode="numeric"
-                      value={specs.totalPages || ''}
-                      onChange={(e) =>
-                        dispatch({
-                          type: 'SET_SPEC',
-                          payload: {
-                            totalPages: Math.max(0, Math.floor(Number(e.target.value) || 0)),
-                            colorPages: '',
-                          },
-                        })
-                      }
-                      placeholder="1"
-                      aria-label="Number of pages or slides to print"
-                      className="input h-10 w-20 text-center font-bold"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-20 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-900">
-                      {specs.totalPages || 1}
-                    </div>
-                  )}
+                  <div className="flex h-10 w-20 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-900">
+                    {specs.totalPages || 1}
+                  </div>
                   <span className="text-sm font-medium text-slate-600">
                     pages
                   </span>

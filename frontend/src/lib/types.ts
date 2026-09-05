@@ -211,6 +211,9 @@ export interface UploadedFile {
   size: number;
   type: string;
   previewUrl?: string;
+  /** Set when the file already reached the server (Office uploads convert to
+   *  PDF at attach time) — order placement uses it instead of re-uploading. */
+  serverFileUrl?: string;
 }
 
 export interface DeliveryAddress {
