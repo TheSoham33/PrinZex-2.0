@@ -28,7 +28,26 @@ export const OFFICE_CONVERTIBLE: ReadonlySet<string> = new Set([
   '.pptx',
 ]);
 
-const WINDOWS_SOFFICE = 'C:\\Program Files\\LibreOffice\\program\\soffice.exe';
+const WINDOWS_SOFFICE_CANDIDATES = [
+  'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+  'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+] as const;
+
+let warnedMissingBinary = false;
+
+/** One actionable backend-console line per process when office uploads 503. */
+function warnMissingBinaryOnce(): void {
+  if (warnedMissingBinary) return;
+  warnedMissingBinary = true;
+  console.warn(
+    '[upload] LibreOffice not found — Office-file uploads are rejected (503). ' +
+      `Checked: LIBREOFFICE_PATH="${process.env.LIBREOFFICE_PATH ?? ''}", PATH (soffice/libreoffice)` +
+      (process.platform === 'win32'
+        ? `, ${WINDOWS_SOFFICE_CANDIDATES.join(', ')}`
+        : '') +
+      '. Fix: install LibreOffice or set LIBREOFFICE_PATH to its soffice binary in .env, then restart the backend.',
+  );
+}
 
 /** Absolute path of `binary` anywhere on PATH, or null. */
 function findOnPath(binary: string): string | null {
@@ -54,8 +73,9 @@ export function resolveSofficePath(): string | null {
   if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
   const onPath = findOnPath('soffice') ?? findOnPath('libreoffice');
   if (onPath) return onPath;
-  if (process.platform === 'win32' && fs.existsSync(WINDOWS_SOFFICE)) {
-    return WINDOWS_SOFFICE;
+  if (process.platform === 'win32') {
+    const installed = WINDOWS_SOFFICE_CANDIDATES.find((candidate) => fs.existsSync(candidate));
+    if (installed) return installed;
   }
   return null;
 }
@@ -71,6 +91,7 @@ export function resolveSofficePath(): string | null {
 export async function convertOfficeToPdf(inputPath: string, outDir: string): Promise<string> {
   const soffice = resolveSofficePath();
   if (!soffice) {
+    warnMissingBinaryOnce();
     throw new ApiError(
       503,
       'Office-to-PDF conversion is not available on this server — upload a PDF instead',
