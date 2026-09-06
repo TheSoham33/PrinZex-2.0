@@ -116,16 +116,19 @@ export default function OrderSummarySidebar({
                     {PHOTO_TYPES.find((o) => o.value === specs.photoType)?.label ??
                       specs.photoType}
                     {' · '}
-                    {specs.photosPerSheet ??
-                      PHOTO_TYPES.find((o) => o.value === specs.photoType)?.layouts[0] ??
-                      2}{' '}
-                    per sheet
+                    {specs.photosPerSheet ?? 8} per sheet
                     {(() => {
+                      const count = specs.photosPerSheet ?? 8;
+                      const combos = service?.photoTypeOptions?.[specs.photoType];
+                      const sellerPrice =
+                        typeof combos === 'object' && combos !== null
+                          ? combos[String(count)]
+                          : undefined;
                       const price =
-                        service?.photoTypeOptions?.[specs.photoType] ??
-                        PHOTO_TYPES.find((o) => o.value === specs.photoType)?.price ??
-                        0;
-                      return price > 0 ? ` · ${formatCurrency(price)}/photo` : '';
+                        sellerPrice ??
+                        (PHOTO_TYPES.find((o) => o.value === specs.photoType)?.price ?? 0) *
+                          count;
+                      return price > 0 ? ` · ${formatCurrency(price)}/sheet` : '';
                     })()}
                   </p>
                 )}

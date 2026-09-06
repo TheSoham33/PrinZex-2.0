@@ -1,26 +1,33 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
-import { PHOTO_TYPES as PHOTO_TYPES_FALLBACK } from '@/lib/domain/stores';
-import { useCatalogOptions } from '@/lib/api/catalog';
 import {
-  OptionGrid,
-  type PriceOptions,
-} from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
+  PHOTO_TYPES as PHOTO_TYPES_FALLBACK,
+  PHOTO_LAYOUTS as PHOTO_LAYOUTS_FALLBACK,
+} from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
+import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
+
+/** Matrix state: photo type → enabled? + per-count ₹/sheet string inputs. */
+export type PhotoComboMatrix = Record<
+  string,
+  { enabled: boolean; prices: Record<string, string> }
+>;
 
 interface PhotoTypePricingOptionsProps {
-  values: PriceOptions;
-  setValues: Dispatch<SetStateAction<PriceOptions>>;
+  values: PhotoComboMatrix;
+  setValues: Dispatch<SetStateAction<PhotoComboMatrix>>;
   onSave: () => void;
   saving: boolean;
 }
 
 /**
- * Photo Print photo type is a mandatory customer choice (passport photo,
- * postcard size, …). Sellers tick the photo types they can print and set a
- * per-photo price for each; unticked types stay hidden from their store.
- * Photos-per-sheet layouts (2/4/6/8) come from the admin catalogue — the
- * seller only chooses availability and price, exactly like film thickness.
+ * Photo Print prices a (photo type × photos-per-sheet) COMBO directly — no
+ * per-photo billing. Sellers tick the types they can print and set one
+ * ₹-per-sheet price for every photos-per-sheet count they offer (counts
+ * themselves are added/deleted by the platform admin in the catalogue).
+ * Enabling a type pre-fills the platform default (rate × count); clear a
+ * cell to stop offering that count for the type.
  */
 export default function PhotoTypePricingOptions({
   values,
@@ -29,29 +36,108 @@ export default function PhotoTypePricingOptions({
   saving,
 }: PhotoTypePricingOptionsProps) {
   const photoTypes = useCatalogOptions('photo-types', PHOTO_TYPES_FALLBACK);
+  const photoLayouts = useCatalogOptions('photo-layouts', PHOTO_LAYOUTS_FALLBACK);
 
   return (
     <div className="space-y-5 border-t border-slate-100 bg-blue-50/40 px-4 py-4">
       <div>
-        <h3 className="text-sm font-bold text-slate-900">Photo type prices</h3>
+        <h3 className="text-sm font-bold text-slate-900">Photo print prices</h3>
         <p className="mt-0.5 text-xs text-slate-500">
-          Every Photo Print order picks a photo type and a photos-per-sheet
-          layout; the customer pays rate × photos-per-sheet per sheet. Tick the
-          photo types you offer and set your price per printed photo.
+          A sheet repeats the customer&apos;s photo 8, 12 (or any count the
+          platform admin adds) times. Set one price per sheet for each type +
+          count you print — unticked types stay hidden from your store, and a
+          cleared price stops that count for the type.
         </p>
       </div>
 
-      <OptionGrid
-        title="Photo types"
-        description="Set your charge per printed photo for each type."
-        options={photoTypes.map((option) => ({
-          value: option.value,
-          label: option.label,
-          hint: option.hint,
-        }))}
-        values={values}
-        setValues={setValues}
-      />
+      <div className="space-y-4">
+        {photoTypes.map((type) => {
+          const current = values[type.value] ?? { enabled: false, prices: {} };
+          return (
+            <div
+              key={type.value}
+              className="rounded-xl border border-slate-200 bg-white p-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p
+                    className={`text-sm font-semibold ${
+                      current.enabled ? 'text-slate-800' : 'text-slate-400'
+                    }`}
+                  >
+                    {type.label}
+                  </p>
+                  {type.hint && (
+                    <p className="text-xs text-slate-400">{type.hint}</p>
+                  )}
+                </div>
+                <ToggleSwitch
+                  checked={current.enabled}
+                  label={`Offer ${type.label}`}
+                  hideLabel
+                  onChange={(enabled) =>
+                    setValues((previous) => ({
+                      ...previous,
+                      [type.value]: {
+                        enabled,
+                        prices: enabled
+                          ? {
+                              // Pre-fill the platform default (rate × count)
+                              // so a freshly offered combo is never free.
+                              ...Object.fromEntries(
+                                photoLayouts.map((layout) => [
+                                  layout.value,
+                                  current.prices[layout.value] ??
+                                    String(type.price * Number(layout.value)),
+                                ]),
+                              ),
+                            }
+                          : current.prices,
+                      },
+                    }))
+                  }
+                />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {photoLayouts.map((layout) => (
+                  <label key={layout.value} className="block">
+                    <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                      {layout.value}/sheet
+                    </span>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                        ₹
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={current.prices[layout.value] ?? ''}
+                        disabled={!current.enabled}
+                        placeholder="not offered"
+                        onChange={(event) =>
+                          setValues((previous) => ({
+                            ...previous,
+                            [type.value]: {
+                              ...current,
+                              prices: {
+                                ...current.prices,
+                                [layout.value]: event.target.value,
+                              },
+                            },
+                          }))
+                        }
+                        aria-label={`${type.label} price per sheet at ${layout.value} photos`}
+                        className="input w-full py-1 pl-6 text-right text-sm disabled:opacity-40"
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       <div className="flex justify-end border-t border-slate-200 pt-4">
         <button

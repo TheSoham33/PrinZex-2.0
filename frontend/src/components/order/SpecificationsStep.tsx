@@ -11,6 +11,7 @@ import {
   STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK,
   FILM_THICKNESS_OPTIONS as FILM_THICKNESS_OPTIONS_FALLBACK,
   PHOTO_TYPES as PHOTO_TYPES_FALLBACK,
+  PHOTO_LAYOUTS as PHOTO_LAYOUTS_FALLBACK,
 } from '@/lib/domain/stores';
 import { useCatalogOptions } from '@/lib/api/catalog';
 import { uploadDesign, useUploadLimits } from '@/lib/api/uploads';
@@ -74,6 +75,28 @@ function filterOffered<T extends { value: string }>(
   return options.filter((option) => available.includes(option.value));
 }
 
+/** Photos-per-sheet counts a store offers for a photo type: the seller's
+ *  priced (type × count) combos win, else the platform 'photo-layouts'
+ *  catalogue. Legacy flat ₹/photo seller values degrade to the catalogue.
+ *  Sorted ascending so 8 sits before 12. */
+function offeredSheetCounts(
+  combos: Record<string, number> | number | undefined,
+  catalogCounts: readonly number[],
+): number[] {
+  const fromSeller =
+    typeof combos === 'object' && combos !== null
+      ? Object.keys(combos)
+          .map(Number)
+          .filter((n) => Number.isInteger(n) && n >= 2 && n <= 60)
+      : [];
+  return (fromSeller.length ? fromSeller : [...catalogCounts]).sort((a, b) => a - b);
+}
+
+/** 8 photos per sheet is the platform preselect when the store offers it. */
+function preferredSheetCount(counts: readonly number[]): number {
+  return counts.includes(8) ? 8 : (counts[0] ?? 8);
+}
+
 export default function SpecificationsStep({
   specs,
   services,
@@ -96,6 +119,7 @@ export default function SpecificationsStep({
   const staplingOptions = useCatalogOptions('stapling-options', STAPLING_OPTIONS_FALLBACK);
   const filmThicknessOptions = useCatalogOptions('film-thickness', FILM_THICKNESS_OPTIONS_FALLBACK);
   const photoTypesCatalog = useCatalogOptions('photo-types', PHOTO_TYPES_FALLBACK);
+  const photoLayoutsCatalog = useCatalogOptions('photo-layouts', PHOTO_LAYOUTS_FALLBACK);
   const paperSizes = useCatalogOptions('paper-sizes', PAPER_SIZES_FALLBACK);
   const paperTypes = useCatalogOptions('paper-types', PAPER_TYPES_FALLBACK);
   const isHardBinding = specs.serviceId === 'bind-hard';
@@ -474,6 +498,31 @@ export default function SpecificationsStep({
   const chosenPhotoType = offeredPhotoTypes.find(
     (option) => option.value === specs.photoType,
   );
+  // Photos-per-sheet counts for the chosen type — seller combo keys when
+  // priced, else the admin-managed catalogue (8 and 12 until edited).
+  const photoSheetCountsCatalog = photoLayoutsCatalog
+    .map((option) => Number(option.value))
+    .filter((count) => Number.isInteger(count) && count >= 2 && count <= 60);
+  const offeredPhotoCounts = offeredSheetCounts(
+    selectedService?.photoTypeOptions === undefined
+      ? undefined
+      : selectedService.photoTypeOptions[specs.photoType ?? ''],
+    photoSheetCountsCatalog,
+  );
+  const chosenPhotoCount =
+    specs.photosPerSheet && offeredPhotoCounts.includes(specs.photosPerSheet)
+      ? specs.photosPerSheet
+      : preferredSheetCount(offeredPhotoCounts);
+  // ₹ per sheet for (chosen type, count): seller combo wins, else the
+  // platform default — the type's per-photo rate × count.
+  const photoSheetPriceFor = (count: number): number => {
+    const combos = selectedService?.photoTypeOptions?.[specs.photoType ?? ''];
+    const sellerPrice =
+      typeof combos === 'object' && combos !== null
+        ? combos[String(count)]
+        : undefined;
+    return sellerPrice ?? (chosenPhotoType?.price ?? 0) * count;
+  };
   // Sheet-preview inputs: the picked paper size shapes the sheet, and the
   // first uploaded image fills each tile so the layout reads as WYSIWYG.
   const chosenPaperSize = offeredPaperSizes.find(
@@ -533,26 +582,42 @@ export default function SpecificationsStep({
 
   // Photo Print is mandatory-configured: a photo type the seller no longer
   // offers falls back to the first still offered, and the photos-per-sheet
-  // layout always snaps to one the chosen type actually allows.
+  // count always snaps to one priced for it — preferring 8, the platform
+  // preselect.
   useEffect(() => {
     if (selectedService?.id !== 'spec-photo-prints') return;
     if (offeredPhotoTypes.length === 0) return;
     const fixes: Partial<OrderSpecifications> = {};
     if (!chosenPhotoType) {
-      fixes.photoType = offeredPhotoTypes[0].value;
-      fixes.photosPerSheet = offeredPhotoTypes[0].layouts[0];
+      const nextType = offeredPhotoTypes[0].value;
+      fixes.photoType = nextType;
+      fixes.photosPerSheet = preferredSheetCount(
+        offeredSheetCounts(
+          selectedService?.photoTypeOptions === undefined
+            ? undefined
+            : selectedService.photoTypeOptions[nextType],
+          photoSheetCountsCatalog,
+        ),
+      );
     } else if (
       !specs.photosPerSheet ||
-      // layouts arrive as literal tuples from the `as const` fallback —
-      // includes() would then only type-check the literal members.
-      !(chosenPhotoType.layouts as ReadonlyArray<number>).includes(specs.photosPerSheet)
+      !offeredPhotoCounts.includes(specs.photosPerSheet)
     ) {
-      fixes.photosPerSheet = chosenPhotoType.layouts[0];
+      fixes.photosPerSheet = preferredSheetCount(offeredPhotoCounts);
     }
     if (Object.keys(fixes).length > 0) {
       dispatch({ type: 'SET_SPEC', payload: fixes });
     }
-  }, [selectedService?.id, offeredPhotoTypes, chosenPhotoType, specs.photosPerSheet, dispatch]);
+  }, [
+    selectedService?.id,
+    selectedService?.photoTypeOptions,
+    offeredPhotoTypes,
+    chosenPhotoType,
+    specs.photosPerSheet,
+    photoSheetCountsCatalog,
+    offeredPhotoCounts,
+    dispatch,
+  ]);
 
   // Keep the selected paper options aligned with the seller's current menu.
   useEffect(() => {
@@ -846,7 +911,10 @@ export default function SpecificationsStep({
                   ? { filmThickness: specs.filmThickness ?? 'micron-80' }
                   : {}),
                 ...(nextServiceId === 'spec-photo-prints'
-                  ? { photoType: specs.photoType ?? offeredPhotoTypes[0]?.value }
+                  ? {
+                      photoType: specs.photoType ?? offeredPhotoTypes[0]?.value,
+                      photosPerSheet: specs.photosPerSheet ?? 8,
+                    }
                   : {}),
                 ...(nextServiceId === 'bind-tape'
                   ? { tapeCoverSource: specs.tapeCoverSource ?? 'first-page' }
@@ -1121,33 +1189,34 @@ export default function SpecificationsStep({
                 <select
                   id="photo-type"
                   value={specs.photoType ?? ''}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const nextType = event.target.value;
                     dispatch({
                       type: 'SET_SPEC',
                       payload: {
-                        photoType: event.target.value,
-                        photosPerSheet: offeredPhotoTypes.find(
-                          (option) => option.value === event.target.value,
-                        )?.layouts[0],
+                        photoType: nextType,
+                        photosPerSheet: preferredSheetCount(
+                          offeredSheetCounts(
+                            selectedService?.photoTypeOptions === undefined
+                              ? undefined
+                              : selectedService.photoTypeOptions[nextType],
+                            photoSheetCountsCatalog,
+                          ),
+                        ),
                       },
-                    })
-                  }
+                    });
+                  }}
                   className="input"
                 >
                   <option value="" disabled>
                     Choose a photo type…
                   </option>
-                  {offeredPhotoTypes.map((option) => {
-                    const price =
-                      selectedService?.photoTypeOptions?.[option.value] ?? option.price;
-                    return (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                        {option.hint ? ` — ${option.hint}` : ''} (
-                        {formatCurrency(price)}/photo)
-                      </option>
-                    );
-                  })}
+                  {offeredPhotoTypes.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                      {option.hint ? ` — ${option.hint}` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1157,34 +1226,38 @@ export default function SpecificationsStep({
                 <div
                   role="group"
                   aria-labelledby="photo-layout-label"
-                  className="grid grid-cols-4 gap-2"
+                  className="grid grid-cols-2 gap-2"
                 >
-                  {(chosenPhotoType?.layouts ?? []).map((count) => (
+                  {offeredPhotoCounts.map((count) => (
                     <button
                       key={count}
                       type="button"
-                      aria-pressed={(specs.photosPerSheet ?? chosenPhotoType?.layouts[0]) === count}
+                      aria-pressed={chosenPhotoCount === count}
                       onClick={() =>
                         dispatch({ type: 'SET_SPEC', payload: { photosPerSheet: count } })
                       }
-                      className={`rounded-xl border p-3 text-center text-sm font-semibold transition-all ${
-                        (specs.photosPerSheet ?? chosenPhotoType?.layouts[0]) === count
+                      className={`rounded-xl border p-3 text-center transition-all ${
+                        chosenPhotoCount === count
                           ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
                           : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
                       }`}
                     >
-                      {count}
+                      <span className="block text-sm font-semibold">{count} photos</span>
+                      <span className="mt-0.5 block text-[11px] text-slate-500">
+                        {formatCurrency(photoSheetPriceFor(count))}/sheet
+                      </span>
                     </button>
                   ))}
                 </div>
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Each sheet repeats your photo {specs.photosPerSheet ?? chosenPhotoType?.layouts[0] ?? 2} times — billed per
-                  photo per sheet.
+                  One sheet prints {chosenPhotoCount} copies of your photo at{' '}
+                  {formatCurrency(photoSheetPriceFor(chosenPhotoCount))} per sheet —
+                  the preview below shows how they fit.
                 </p>
               </div>
             </div>
             <PhotoSheetPreview
-              count={specs.photosPerSheet ?? chosenPhotoType?.layouts[0] ?? 2}
+              count={chosenPhotoCount}
               photoLabel={chosenPhotoType?.label}
               photoHint={chosenPhotoType?.hint}
               sheetLabel={chosenPaperSize?.label}

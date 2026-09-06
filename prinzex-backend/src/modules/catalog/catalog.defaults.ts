@@ -138,17 +138,28 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
       { value: 'micron-250', label: '250 micron', hint: 'Rigid — menus, outdoor use', price: 4 },
     ],
   },
-  // Photo Print's mandatory photo-type choice: each row carries the platform
-  // default price PER PHOTO (sellers override per type — same model as film
-  // thickness) plus which photos-per-sheet layouts ('layouts') the customer
-  // may pick for it. Price = sheets × photos-per-sheet × rate.
+  // Photo Print's mandatory photo-type choice: each row's `price` is the
+  // platform default RATE PER PHOTO — the default per-sheet price for a
+  // layout is rate × photos-per-sheet until the seller overrides that
+  // (type × count) combo from their Pricing page.
   'photo-types': {
     label: 'Photo types (Photo Print)',
     data: [
-      { value: 'passport-photo', label: 'Passport Photo', hint: '35 × 45 mm', price: 12, layouts: [4, 8] },
-      { value: 'postcard-size', label: 'Postcard Size', hint: '10 × 15 cm', price: 20, layouts: [2, 4] },
-      { value: 'photo-4x6', label: '4×6″ Photo', hint: '10.2 × 15.2 cm', price: 25, layouts: [4, 6] },
-      { value: 'photo-5x7', label: '5×7″ Photo', hint: '12.7 × 17.8 cm', price: 35, layouts: [2, 4] },
+      { value: 'passport-photo', label: 'Passport Photo', hint: '35 × 45 mm', price: 12 },
+      { value: 'postcard-size', label: 'Postcard Size', hint: '10 × 15 cm', price: 20 },
+      { value: 'photo-4x6', label: '4×6″ Photo', hint: '10.2 × 15.2 cm', price: 25 },
+      { value: 'photo-5x7', label: '5×7″ Photo', hint: '12.7 × 17.8 cm', price: 35 },
+    ],
+  },
+  // Photo Print's photos-per-sheet choices — the `value` IS the count
+  // ('8' = 8 photos per printed sheet). Admin-managed: add/delete rows and
+  // stores/sellers follow. Sellers checklist the counts they print and set
+  // a per-sheet price per (photo type × count) combo.
+  'photo-layouts': {
+    label: 'Photos per sheet (Photo Print)',
+    data: [
+      { value: '8', label: '8 photos', hint: '8 prints on one sheet' },
+      { value: '12', label: '12 photos', hint: '12 prints on one sheet' },
     ],
   },
   // Tape Binding tape colours — availability-only customization (no

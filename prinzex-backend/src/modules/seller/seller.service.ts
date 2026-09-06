@@ -81,10 +81,11 @@ export interface SellerMetadata {
      *  sheet. 'micron-80' is the mandatory free default and is never priced
      *  here; a missing map means the platform default prices apply. */
     filmThicknessOptions?: Record<string, number>;
-    /** Photo Print photo types the seller offers, option value → ₹ per
-     *  photo. A missing map means every platform photo type at platform
-     *  default prices; presence both prices AND limits what's offered. */
-    photoTypeOptions?: Record<string, number>;
+    /** Photo Print combos the seller offers: photo type → photos-per-sheet
+     *  → ₹ per sheet. A missing map means every platform type at platform
+     *  defaults (rate × count); presence both prices AND limits what's
+     *  offered (a type with no counts is effectively not offered). */
+    photoTypeOptions?: Record<string, Record<string, number>>;
     // Binding services: additive ₹ components set by the seller.
     // Binding (₹/binding): coverType + coilType + coverColor.
     coverType?: Record<string, number>;
@@ -1654,9 +1655,22 @@ export async function updatePricingOverrides(
     }
   }
 
-  for (const price of Object.values(overrides?.photoTypeOptions ?? {})) {
-    if (!Number.isFinite(price) || price < 0) {
-      throw ApiError.badRequest('Photo type prices must be numbers at or above 0');
+  for (const [option, combos] of Object.entries(overrides?.photoTypeOptions ?? {})) {
+    if (typeof combos !== 'object' || combos === null || Array.isArray(combos)) {
+      throw ApiError.badRequest(
+        `Photo type '${option}' must price each photos-per-sheet count (₹ per sheet)`,
+      );
+    }
+    for (const [count, price] of Object.entries(combos)) {
+      const perSheet = Number(count);
+      if (
+        !Number.isInteger(perSheet) || perSheet < 2 || perSheet > 60 ||
+        !Number.isFinite(price) || price < 0
+      ) {
+        throw ApiError.badRequest(
+          'Photo prices must be numbers at or above 0 — photos per sheet is a whole number 2–60',
+        );
+      }
     }
   }
 

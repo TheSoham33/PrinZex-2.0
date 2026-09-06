@@ -22,8 +22,8 @@ export interface QuoteSpecifications {
   // Unlike stapling (per set) the film price is charged per laminated sheet.
   filmThickness?: string;
   // Photo Print: mandatory photo type + photos-per-sheet layout. The seller's
-  // photoTypeOptions per-photo rate wins, else PHOTO_TYPE_PRICES; billing is
-  // rate × photosPerSheet × sheets(quantity).
+  // photoTypeOptions combo price (type × count → ₹/sheet) wins, else the
+  // platform default (per-photo rate × count); billing is per sheet.
   photoType?: string;
   photosPerSheet?: number;
   totalPages?: number;
@@ -122,8 +122,16 @@ export const FILM_THICKNESS_PRICES: Record<string, number> = {
 
 // Photo Print constants and math live in photoPricing.ts (pure, import-safe
 // for offline checks); re-exported so existing import sites keep working.
-export { PHOTO_TYPE_LAYOUTS, PHOTO_TYPE_PRICES, photoPrintSubtotal } from './photoPricing';
-import { PHOTO_TYPE_LAYOUTS, photoPrintSubtotal } from './photoPricing';
+export {
+  DEFAULT_PHOTOS_PER_SHEET,
+  PHOTO_SHEET_COUNTS,
+  PHOTO_TYPE_PRICES,
+  photoPrintSubtotal,
+  photoSheetPrice,
+  preferredPhotoCount,
+  type PhotoComboPrices,
+} from './photoPricing';
+import { photoPrintSubtotal } from './photoPricing';
 
 // These are the ONLY customer-facing delivery charges and must match the
 // DELIVERY_SPEEDS costs shown on the store page and at checkout.
@@ -471,16 +479,15 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
         filmCharge * billablePages * quantity,
     );
   } else if (input.serviceId === 'spec-photo-prints') {
-    // ── Photo Print: per-photo rate × photos-per-sheet × sheets ──────────
-    //    (photoPricing.ts — seller's per-type price wins, platform default
-    //    otherwise; paper type/size extras add per sheet.)
+    // ── Photo Print: seller's (type × count) combo ₹/sheet wins, else the
+    //    platform default rate × count; paper extras add per sheet.
     subtotal = round2(
       photoPrintSubtotal({
         photoType: specifications.photoType,
         photosPerSheet: specifications.photosPerSheet,
         quantity,
         paperOptionExtra,
-        sellerPrices: overrides.photoTypeOptions,
+        sellerCombos: overrides.photoTypeOptions,
       }),
     );
   } else if (slabRate !== undefined) {

@@ -66,27 +66,39 @@ const filmThickness = z
     message: "Keep a free 'micron-80' (80 micron) row first",
   });
 
-/** Valid photos-per-sheet layouts (Photo Print). */
-export const PHOTO_LAYOUT_VALUES = [2, 4, 6, 8] as const;
-
 /**
  * Photo types — mandatory choice for Photo Print. `price` is the platform
- * default rate PER PHOTO (sellers override per type); `layouts` names which
- * photos-per-sheet choices the type offers, from the fixed 2/4/6/8 set.
+ * default rate PER PHOTO: the default per-sheet price for a layout is
+ * rate × photos-per-sheet, and sellers override per (type × count) combo.
  */
 const photoTypes = z
   .array(
     pricedOption.extend({
       hint: z.string().trim().max(80).optional(),
-      layouts: z
-        .array(z.union([z.literal(2), z.literal(4), z.literal(6), z.literal(8)]))
-        .min(1, 'Every photo type needs at least one photos-per-sheet layout')
-        .refine((layouts) => new Set(layouts).size === layouts.length, {
-          message: 'Layouts must not repeat',
-        }),
     }),
   )
   .min(1, 'The photo-types list needs at least one row');
+
+/** A photos-per-sheet count (`value` is the count, e.g. '8' = 8 photos). */
+const photoLayoutOption = hintOption.extend({
+  value: keyString
+    .regex(/^\d+$/, 'Value must be the photo count, e.g. 8')
+    .refine((value) => {
+      const count = Number(value);
+      return count >= 2 && count <= 60;
+    }, 'Photos per sheet must be between 2 and 60'),
+});
+
+/**
+ * Photos-per-sheet choices for Photo Print — admin-managed (add/delete).
+ * Order validation falls back to the shipped 8/12 when this is unreadable.
+ */
+const photoLayouts = z
+  .array(photoLayoutOption)
+  .min(1, 'Keep at least one photos-per-sheet choice')
+  .refine((rows) => new Set(rows.map((row) => row.value)).size === rows.length, {
+    message: 'Photos-per-sheet counts must not repeat',
+  });
 
 /** Colour swatches — Tailwind class / hex / premium flag. */
 const swatchOption = z.object({
@@ -160,6 +172,7 @@ export const CATALOG_GROUP_SCHEMAS: Record<string, z.ZodType<unknown>> = {
   'stapling-options': staplingOptions,
   'film-thickness': filmThickness,
   'photo-types': photoTypes,
+  'photo-layouts': photoLayouts,
   'cover-types': hintOptions,
   'spiral-coil-types': hintOptions,
   'spiral-cover-types': hintOptions,

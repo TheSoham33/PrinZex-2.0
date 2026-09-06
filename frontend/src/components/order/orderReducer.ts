@@ -242,12 +242,8 @@ export function computeCost(
   staplingOptions: ReadonlyArray<{ value: string; price: number }> = STAPLING_OPTIONS,
   /** Admin-catalogue film-thickness list; falls back to the shipped constant. */
   filmOptions: ReadonlyArray<{ value: string; price: number }> = FILM_THICKNESS_OPTIONS,
-  /** Admin-catalogue photo-type list (with layouts); falls back to the shipped constant. */
-  photoTypes: ReadonlyArray<{
-    value: string;
-    price: number;
-    layouts: ReadonlyArray<number>;
-  }> = PHOTO_TYPES,
+  /** Admin-catalogue photo-type list (default per-photo rates). */
+  photoTypes: ReadonlyArray<{ value: string; price: number }> = PHOTO_TYPES,
 ): CostBreakdown {
   const base = service?.startingPrice ?? 0;
   const quantity = Math.max(1, specs.quantity || 1);
@@ -350,19 +346,20 @@ export function computeCost(
         filmPerSheet * billablePages * quantity,
     );
   } else if (service?.id === 'spec-photo-prints') {
-    // Photo Print: per-photo rate × photos-per-sheet × sheets — mirrors the
-    // backend computeQuote branch. The seller's per-type price wins, else
-    // the catalogue default; paper options add per sheet (quantity = sheets).
+    // Photo Print: seller's (type × count) combo ₹/sheet wins, else the
+    // platform default (type rate × count) — mirrors the backend
+    // computeQuote branch; paper options add per sheet (quantity = sheets).
     const photoKey = specs.photoType ?? '';
-    const photoRate =
-      service?.photoTypeOptions?.[photoKey] ??
-      photoTypes.find((entry) => entry.value === photoKey)?.price ??
-      0;
-    const layout =
-      specs.photosPerSheet ??
-      photoTypes.find((entry) => entry.value === photoKey)?.layouts[0] ??
-      2;
-    subtotal = Math.round((photoRate * layout + paperOptionExtra) * quantity);
+    const layout = specs.photosPerSheet ?? 8;
+    const sellerCombos = service?.photoTypeOptions?.[photoKey];
+    const sellerSheetPrice =
+      typeof sellerCombos === 'object' && sellerCombos !== null
+        ? sellerCombos[String(layout)]
+        : undefined;
+    const sheetPrice =
+      sellerSheetPrice ??
+      (photoTypes.find((entry) => entry.value === photoKey)?.price ?? 0) * layout;
+    subtotal = Math.round((sheetPrice + paperOptionExtra) * quantity);
   } else if (slabRate !== undefined) {
     // Slab-priced services (Business Cards): per-piece rate from the seller's
     // quantity tiers — mirrors the backend quote branch.
