@@ -626,6 +626,12 @@ function ServiceCategoriesEditor({
                     }
                     className={`${inputCls} min-w-0 flex-1`}
                   />
+                  <span
+                    className="shrink-0 text-[11px] font-medium text-slate-400"
+                    title="Documents a customer may attach to one order of this service"
+                  >
+                    max files
+                  </span>
                   <input
                     type="number"
                     min={1}
