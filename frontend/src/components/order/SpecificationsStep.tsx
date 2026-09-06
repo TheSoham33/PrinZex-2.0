@@ -822,82 +822,62 @@ export default function SpecificationsStep({
 
       <div className={`grid gap-6 sm:grid-cols-2 ${isBusinessCard ? 'hidden' : ''}`}>
         <section>
-          <p className="label">
+          <label htmlFor="order-paper-type" className="label">
             Paper type <span className="text-red-500">*</span>
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {offeredPaperTypes.map((type) => (
-              <button
-                key={type.value}
-                type="button"
-                onClick={() =>
-                  dispatch({
-                    type: 'SET_SPEC',
-                    payload: { paperType: type.value },
-                  })
-                }
-                className={`rounded-xl border p-3.5 text-left transition-all ${
-                  specs.paperType === type.value
-                    ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
-                    : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
-                }`}
-              >
-                <span className="block text-sm font-semibold text-slate-900">
+          </label>
+          <select
+            id="order-paper-type"
+            value={specs.paperType}
+            onChange={(event) =>
+              dispatch({
+                type: 'SET_SPEC',
+                payload: {
+                  paperType: event.target
+                    .value as OrderSpecifications['paperType'],
+                },
+              })
+            }
+            className="input"
+          >
+            {offeredPaperTypes.map((type) => {
+              const extra = selectedService?.paperTypePrices?.[type.value] ?? 0;
+              return (
+                <option key={type.value} value={type.value}>
                   {type.label}
-                </span>
-                <span className="mt-0.5 block text-xs text-slate-500">
-                  {type.hint}
-                  {(selectedService?.paperTypePrices?.[type.value] ?? 0) >
-                    0 && (
-                    <strong className="ml-1 text-blue-600">
-                      +
-                      {formatCurrency(
-                        selectedService!.paperTypePrices![type.value],
-                      )}
-                    </strong>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
+                  {type.hint ? ` — ${type.hint}` : ''}
+                  {extra > 0 ? ` (+${formatCurrency(extra)})` : ''}
+                </option>
+              );
+            })}
+          </select>
         </section>
 
         <section>
-          <p className="label">
+          <label htmlFor="order-paper-size" className="label">
             Size <span className="text-red-500">*</span>
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {offeredPaperSizes.map((size) => (
-              <button
-                key={size.value}
-                type="button"
-                onClick={() =>
-                  dispatch({ type: 'SET_SPEC', payload: { size: size.value } })
-                }
-                className={`rounded-xl border p-3.5 text-left transition-all ${
-                  specs.size === size.value
-                    ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
-                    : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
-                }`}
-              >
-                <span className="block text-sm font-semibold text-slate-900">
+          </label>
+          <select
+            id="order-paper-size"
+            value={specs.size}
+            onChange={(event) =>
+              dispatch({
+                type: 'SET_SPEC',
+                payload: { size: event.target.value },
+              })
+            }
+            className="input"
+          >
+            {offeredPaperSizes.map((size) => {
+              const extra = selectedService?.paperSizePrices?.[size.value] ?? 0;
+              return (
+                <option key={size.value} value={size.value}>
                   {size.label}
-                </span>
-                <span className="mt-0.5 block text-xs text-slate-500">
-                  {size.hint}
-                  {(selectedService?.paperSizePrices?.[size.value] ?? 0) >
-                    0 && (
-                    <strong className="ml-1 text-blue-600">
-                      +
-                      {formatCurrency(
-                        selectedService!.paperSizePrices![size.value],
-                      )}
-                    </strong>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
+                  {size.hint ? ` — ${size.hint}` : ''}
+                  {extra > 0 ? ` (+${formatCurrency(extra)})` : ''}
+                </option>
+              );
+            })}
+          </select>
         </section>
       </div>
 
