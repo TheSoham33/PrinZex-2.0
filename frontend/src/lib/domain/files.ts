@@ -37,3 +37,54 @@ export const pageCountStrategy = (fileName: string): PageCountStrategy => {
   if (OFFICE_EXTENSIONS.has(extension)) return 'office';
   return null;
 };
+
+/* ── Multi-file orders ─────────────────────────────────────────────────── */
+
+/** Mirrors the backend zod hard ceiling (catalog.schemas.ts). */
+export const MAX_FILES_PER_ORDER = 10;
+
+/** Subset of a 'service-categories' catalogue row the order page needs for
+ *  the multi-file policy. */
+export interface ServiceCatalogCategory {
+  id: string;
+  name: string;
+  services: ReadonlyArray<{ id: string; name: string; maxFilesPerOrder?: number }>;
+}
+
+/**
+ * How many files the customer may attach to one order of a service. The
+ * admin sets it per service in the catalogue (absent = 1, the original
+ * single-file flow); the backend independently enforces the same rule at
+ * order placement, so being defensive here is about UX, not security.
+ */
+export function maxFilesForService(
+  categories: ReadonlyArray<ServiceCatalogCategory> | undefined,
+  serviceId: string | null | undefined,
+): number {
+  if (!categories || !serviceId) return 1;
+  for (const category of categories) {
+    for (const service of category.services ?? []) {
+      if (service.id === serviceId) {
+        const n = service.maxFilesPerOrder;
+        return typeof n === 'number' && Number.isInteger(n)
+          ? Math.min(Math.max(1, n), MAX_FILES_PER_ORDER)
+          : 1;
+      }
+    }
+  }
+  return 1;
+}
+
+/** Pages across every attached file (files whose count isn't known yet
+ *  contribute 0) — feeds specs.totalPages, which pricing already reads. */
+export function totalPagesOf(files: ReadonlyArray<{ pages?: number }>): number {
+  return files.reduce((sum, file) => sum + (file.pages ?? 0), 0);
+}
+
+/** URLs sent at order placement: files already uploaded (Office conversions)
+ *  carry their real URL; browser-side files keep the pre-existing stub. */
+export function fileUrlsForOrder(
+  files: ReadonlyArray<{ serverFileUrl?: string }>,
+): string[] {
+  return files.map((file) => file.serverFileUrl ?? '/uploads/designs/demo.pdf');
+}

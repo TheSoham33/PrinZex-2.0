@@ -11,6 +11,7 @@ import { getOrderQuote, placeOrder as placeOrderApi } from '@/lib/api/orders';
 import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
+import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, toApiDeliverySpeed } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
@@ -246,7 +247,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         return `Minimum order quantity for this service is ${service?.minQuantity}`;
       if (service?.minPages && (specs.totalPages ?? 0) < service.minPages)
         return `Minimum page count should be ${service.minPages} for ${service.name}`;
-      if (!state.order.file && specs.serviceId !== 'cards-business')
+      if ((state.order.files?.length ?? 0) === 0 && specs.serviceId !== 'cards-business')
         return 'Please upload the file you want printed';
       if (specs.serviceId === 'bind-hard') {
         if (!specs.coverColor)
@@ -415,7 +416,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         couponCode: couponCode || undefined,
         // Office files were converted to PDF and stored at attach time;
         // other types keep the pre-existing client-side stub for now.
-        fileUrl: state.order.file?.serverFileUrl ?? '/uploads/designs/demo.pdf',
+        fileUrls: fileUrlsForOrder(state.order.files ?? []),
       });
 
       const orderId = result.order.id;
@@ -481,7 +482,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       return;
     }
 
-    if (!state.order.file) {
+    if ((state.order.files?.length ?? 0) === 0) {
       dispatch({
         type: 'SET_ERROR',
         payload: 'Please upload a file before adding to cart',
@@ -497,7 +498,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         serviceId: specs.serviceId,
         serviceName: service?.name || 'Document Printing',
         specifications: specs,
-        file: state.order.file,
+        files: state.order.files ?? [],
         specialInstructions: state.order.specialInstructions || '',
         costBreakdown: cost,
       }),
@@ -532,7 +533,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
             <SpecificationsStep
               specs={specs}
               services={store.services}
-              file={state.order.file ?? null}
+              files={state.order.files ?? []}
               instructions={state.order.specialInstructions ?? ''}
               dispatch={dispatch}
               error={state.error}

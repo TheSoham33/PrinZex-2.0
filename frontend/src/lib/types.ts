@@ -214,6 +214,9 @@ export interface UploadedFile {
   /** Set when the file already reached the server (Office uploads convert to
    *  PDF at attach time) — order placement uses it instead of re-uploading. */
   serverFileUrl?: string;
+  /** Pages counted at attach time (PDF exact, image = 1, Office = converted
+   *  server's count). Summed across files into specs.totalPages. */
+  pages?: number;
 }
 
 export interface DeliveryAddress {
@@ -247,7 +250,9 @@ export interface Order {
   storeId: string;
   storeName: string;
   specifications: OrderSpecifications;
-  file: UploadedFile | null;
+  /** Design files attached to this order (multi-file when the service's
+   *  catalogue entry allows it; all files share the same specifications). */
+  files: UploadedFile[];
   specialInstructions: string;
   address: DeliveryAddress | null;
   deliverySpeed: DeliverySpeed;

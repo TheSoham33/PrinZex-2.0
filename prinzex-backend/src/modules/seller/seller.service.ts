@@ -1152,6 +1152,8 @@ export interface SellerOrderDetail {
     total: number;
     specifications: Prisma.JsonValue;
     fileUrl: string | null;
+    /** Every design file attached to this item (multi-file orders). */
+    fileUrls: string[];
   }>;
   timeline: Array<{
     status: string;
@@ -1210,6 +1212,7 @@ export async function getOrderDetail(
       total: Number(item.total),
       specifications: item.specifications,
       fileUrl: item.fileUrl,
+      fileUrls: item.fileUrls,
     })),
     timeline: (mongoDoc?.timeline ?? []).map((event) => ({
       status: event.status,

@@ -75,16 +75,51 @@ const swatchOption = z.object({
   premium: z.boolean().optional(),
 });
 
+/** Hard ceiling for multi-file orders — also the zod cap on order payloads
+ *  (orders.schema.ts) and the admin-catalog editor input. */
+export const MAX_FILES_PER_ORDER = 10;
+
 const serviceCategories = z.array(
   z.object({
     id: keyString,
     name: labelString,
     description: z.string().trim().max(200).optional(),
     services: z
-      .array(z.object({ id: keyString, name: labelString }))
+      .array(
+        z.object({
+          id: keyString,
+          name: labelString,
+          /** Admin knob: how many documents a customer may attach to one
+           *  order of this service. Absent = 1 (single-file, the original
+           *  behaviour). All files share the order's specifications. */
+          maxFilesPerOrder: z.number().int().min(1).max(MAX_FILES_PER_ORDER).optional(),
+        }),
+      )
       .min(1, 'A category needs at least one service'),
   }),
 );
+
+/**
+ * How many files a service accepts per order, read straight from a
+ * 'service-categories' group's data. Pure + defensive: unknown services,
+ * malformed groups and out-of-range values fall back to 1 (single-file) so
+ * order placement stays conservative when the catalogue misbehaves.
+ */
+export function serviceMaxFilesPerOrder(categoriesData: unknown, serviceId: string): number {
+  if (!Array.isArray(categoriesData)) return 1;
+  for (const category of categoriesData) {
+    const services = (category as { services?: unknown } | null)?.services;
+    if (!Array.isArray(services)) continue;
+    for (const entry of services) {
+      const s = entry as { id?: unknown; maxFilesPerOrder?: unknown } | null;
+      if (s?.id !== serviceId) continue;
+      return typeof s.maxFilesPerOrder === 'number' && Number.isInteger(s.maxFilesPerOrder)
+        ? Math.min(Math.max(1, s.maxFilesPerOrder), MAX_FILES_PER_ORDER)
+        : 1;
+    }
+  }
+  return 1;
+}
 
 /** Corners-style options — may declare shapes they can't combine with. */
 const hintOptionWithIncompatible = hintOption.extend({

@@ -23,7 +23,7 @@ export interface OrderState {
  */
 export type OrderAction =
   | { type: 'SET_SPEC'; payload: Partial<OrderSpecifications> }
-  | { type: 'SET_FILE'; payload: UploadedFile | null }
+  | { type: 'SET_FILES'; payload: UploadedFile[] }
   | { type: 'SET_INSTRUCTIONS'; payload: string }
   | { type: 'SET_ADDRESS'; payload: DeliveryAddress }
   | { type: 'SET_SPEED'; payload: DeliverySpeed }
@@ -98,7 +98,7 @@ export function createInitialState(
         twinLoopBleedAcknowledged: false,
         twinLoopFlipAcknowledged: false,
       },
-      file: null,
+      files: [],
       specialInstructions: '',
       address: null,
       deliverySpeed: 'standard',
@@ -126,11 +126,11 @@ export function orderReducer(
         },
       };
 
-    case 'SET_FILE':
+    case 'SET_FILES':
       return {
         ...state,
         error: null,
-        order: { ...state.order, file: action.payload },
+        order: { ...state.order, files: action.payload },
       };
 
     case 'SET_INSTRUCTIONS':

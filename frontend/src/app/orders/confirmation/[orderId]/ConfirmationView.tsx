@@ -131,8 +131,14 @@ export default function ConfirmationView({ orderId }: { orderId: string }) {
                           : 'B&W'}
                       {order.specifications.paperType ? `, ${order.specifications.paperType}` : ''}
                     </dd>
-                    {order.file && (
-                      <dd className="mt-0.5 truncate text-sm text-slate-600">{order.file.name}</dd>
+                    {(order.files ?? []).length > 0 && (
+                      <dd className="mt-0.5 space-y-0.5 text-sm text-slate-600">
+                        {order.files.map((attachedFile, index) => (
+                          <p key={`${attachedFile.name}-${index}`} className="truncate">
+                            {attachedFile.name}
+                          </p>
+                        ))}
+                      </dd>
                     )}
                   </div>
                 </div>

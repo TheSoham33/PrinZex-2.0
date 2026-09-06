@@ -8,7 +8,7 @@ export interface CartItem {
   serviceId: string;
   serviceName: string;
   specifications: OrderSpecifications;
-  file: UploadedFile | null;
+  files: UploadedFile[];
   specialInstructions: string;
   costBreakdown: CostBreakdown;
 }
