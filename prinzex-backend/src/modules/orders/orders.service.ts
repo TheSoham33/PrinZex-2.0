@@ -31,6 +31,8 @@ import {
 } from '../../realtime/realtime.emitters';
 import {
   FILM_THICKNESS_PRICES,
+  PHOTO_TYPE_LAYOUTS,
+  PHOTO_TYPE_PRICES,
   STAPLING_OPTION_PRICES,
   computeQuote,
   estimatedDeliveryFor,
@@ -290,6 +292,36 @@ function assertFilmAvailable(
   }
 }
 
+/** Photo Print: the chosen photo type must be offered (seller list wins,
+ *  else platform defaults) and the layout must be one of that type's
+ *  photos-per-sheet choices — else a crafted payload picks an impossible
+ *  layout or an unpriced type. */
+function assertPhotoSpecValid(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  specifications: { photoType?: string; photosPerSheet?: number },
+): void {
+  if (serviceId !== 'spec-photo-prints') return;
+  const photoType = specifications.photoType;
+  if (!photoType) {
+    throw ApiError.badRequest('Choose a photo type');
+  }
+  const offered = readSellerMetadata(sellerMetadata).pricingOverrides?.photoTypeOptions;
+  if (offered ? !(photoType in offered) : !(photoType in PHOTO_TYPE_PRICES)) {
+    throw ApiError.badRequest('This photo type is not offered by this store');
+  }
+  const layouts = PHOTO_TYPE_LAYOUTS[photoType];
+  if (!layouts?.length) {
+    throw ApiError.badRequest('This photo type is missing its layout configuration');
+  }
+  const photosPerSheet = specifications.photosPerSheet ?? layouts[0];
+  if (!layouts.includes(photosPerSheet)) {
+    throw ApiError.badRequest(
+      `That layout does not exist for this photo type — choose ${layouts.join(' or ')} photos per sheet`,
+    );
+  }
+}
+
 function assertPaperOptionAvailable(
   sellerMetadata: Prisma.JsonValue | null,
   serviceId: string,
@@ -340,6 +372,11 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     seller.metadata,
     service.serviceId,
     input.specifications.filmThickness,
+  );
+  assertPhotoSpecValid(
+    seller.metadata,
+    service.serviceId,
+    input.specifications,
   );
 
   // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
@@ -434,6 +471,11 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     seller.metadata,
     service.serviceId,
     input.specifications.filmThickness,
+  );
+  assertPhotoSpecValid(
+    seller.metadata,
+    service.serviceId,
+    input.specifications,
   );
 
   if (service.serviceId === 'bind-hard') {

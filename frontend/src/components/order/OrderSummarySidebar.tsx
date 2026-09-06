@@ -6,7 +6,7 @@ import type {
   ServiceOffering,
 } from '@/lib/types';
 import { countColorPages, formatCurrency } from '@/lib/utils';
-import { FILM_THICKNESS_OPTIONS, STAPLING_OPTIONS } from '@/lib/domain/stores';
+import { FILM_THICKNESS_OPTIONS, PHOTO_TYPES, STAPLING_OPTIONS } from '@/lib/domain/stores';
 import { IconShieldCheck, IconLock } from '@/components/icons';
 import { pickSlabRate } from './orderReducer';
 
@@ -110,12 +110,31 @@ export default function OrderSummarySidebar({
                       })()}
                     </p>
                   )}
+                {specs.serviceId === 'spec-photo-prints' && specs.photoType && (
+                  <p>
+                    Photo:{' '}
+                    {PHOTO_TYPES.find((o) => o.value === specs.photoType)?.label ??
+                      specs.photoType}
+                    {' · '}
+                    {specs.photosPerSheet ??
+                      PHOTO_TYPES.find((o) => o.value === specs.photoType)?.layouts[0] ??
+                      2}{' '}
+                    per sheet
+                    {(() => {
+                      const price =
+                        service?.photoTypeOptions?.[specs.photoType] ??
+                        PHOTO_TYPES.find((o) => o.value === specs.photoType)?.price ??
+                        0;
+                      return price > 0 ? ` · ${formatCurrency(price)}/photo` : '';
+                    })()}
+                  </p>
+                )}
                 {specs.serviceId === 'lam-film' &&
                   specs.filmThickness &&
                   specs.filmThickness !== 'micron-80' && (
                     <p>
                       Film:{' '}
-                      {FILM_THICKNESS_OPTIONS.find((o) => o.value === specs.filmThickness)
+                          {FILM_THICKNESS_OPTIONS.find((o) => o.value === specs.filmThickness)
                         ?.label ?? specs.filmThickness}
                       {(() => {
                         const price =

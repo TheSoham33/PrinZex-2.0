@@ -81,6 +81,10 @@ export interface SellerMetadata {
      *  sheet. 'micron-80' is the mandatory free default and is never priced
      *  here; a missing map means the platform default prices apply. */
     filmThicknessOptions?: Record<string, number>;
+    /** Photo Print photo types the seller offers, option value → ₹ per
+     *  photo. A missing map means every platform photo type at platform
+     *  default prices; presence both prices AND limits what's offered. */
+    photoTypeOptions?: Record<string, number>;
     // Binding services: additive ₹ components set by the seller.
     // Binding (₹/binding): coverType + coilType + coverColor.
     coverType?: Record<string, number>;
@@ -1647,6 +1651,12 @@ export async function updatePricingOverrides(
       throw ApiError.badRequest(
         'Film prices must be numbers at or above 0 — 80 micron is always free',
       );
+    }
+  }
+
+  for (const price of Object.values(overrides?.photoTypeOptions ?? {})) {
+    if (!Number.isFinite(price) || price < 0) {
+      throw ApiError.badRequest('Photo type prices must be numbers at or above 0');
     }
   }
 

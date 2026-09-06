@@ -32,6 +32,8 @@ export const updatePricingOverrides = async (overrides: {
   documentColorModes?: { bw: boolean; color: boolean };
   staplingOptions?: Record<string, number>;
   filmThicknessOptions?: Record<string, number>;
+  /** Photo Print checklist: value → ₹ per photo. Omitted key = platform defaults. */
+  photoTypeOptions?: Record<string, number>;
   coverType?: Record<string, number>;
   coilType?: Record<string, number>;
   coverColor?: Record<string, number>;
