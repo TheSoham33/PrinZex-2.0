@@ -40,6 +40,7 @@ import TwinLoopCustomizationPanel from './TwinLoopCustomizationPanel';
 import TapeBindingCustomizationPanel from './TapeBindingCustomizationPanel';
 import GlueBindingCustomizationPanel from './GlueBindingCustomizationPanel';
 import BusinessCardCustomizationPanel from './BusinessCardCustomizationPanel';
+import PhotoSheetPreview from './PhotoSheetPreview';
 import { IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { PDFDocument } from 'pdf-lib';
@@ -473,6 +474,14 @@ export default function SpecificationsStep({
   const chosenPhotoType = offeredPhotoTypes.find(
     (option) => option.value === specs.photoType,
   );
+  // Sheet-preview inputs: the picked paper size shapes the sheet, and the
+  // first uploaded image fills each tile so the layout reads as WYSIWYG.
+  const chosenPaperSize = offeredPaperSizes.find(
+    (option) => option.value === specs.size,
+  );
+  const firstImagePreviewUrl =
+    files.find((file) => file.type.startsWith('image/') && file.previewUrl)
+      ?.previewUrl ?? null;
 
   // Only show cover-customization options this store actually offers.
   const offeredCoilTypes = filterOffered(spiralCoilTypes, availableCoilTypes);
@@ -1103,75 +1112,86 @@ export default function SpecificationsStep({
         )}
 
         {selectedService?.id === 'spec-photo-prints' && (
-          <section className="animate-fade-in grid gap-6 sm:grid-cols-2">
-            <div>
-              <label htmlFor="photo-type" className="label">
-                Photo type <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="photo-type"
-                value={specs.photoType ?? ''}
-                onChange={(event) =>
-                  dispatch({
-                    type: 'SET_SPEC',
-                    payload: {
-                      photoType: event.target.value,
-                      photosPerSheet: offeredPhotoTypes.find(
-                        (option) => option.value === event.target.value,
-                      )?.layouts[0],
-                    },
-                  })
-                }
-                className="input"
-              >
-                <option value="" disabled>
-                  Choose a photo type…
-                </option>
-                {offeredPhotoTypes.map((option) => {
-                  const price =
-                    selectedService?.photoTypeOptions?.[option.value] ?? option.price;
-                  return (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                      {option.hint ? ` — ${option.hint}` : ''} (
-                      {formatCurrency(price)}/photo)
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-            <div>
-              <p className="label" id="photo-layout-label">
-                Photos per sheet <span className="text-red-500">*</span>
-              </p>
-              <div
-                role="group"
-                aria-labelledby="photo-layout-label"
-                className="grid grid-cols-4 gap-2"
-              >
-                {(chosenPhotoType?.layouts ?? []).map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    aria-pressed={(specs.photosPerSheet ?? chosenPhotoType?.layouts[0]) === count}
-                    onClick={() =>
-                      dispatch({ type: 'SET_SPEC', payload: { photosPerSheet: count } })
-                    }
-                    className={`rounded-xl border p-3 text-center text-sm font-semibold transition-all ${
-                      (specs.photosPerSheet ?? chosenPhotoType?.layouts[0]) === count
-                        ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
-                        : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {count}
-                  </button>
-                ))}
+          <section className="animate-fade-in space-y-6">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label htmlFor="photo-type" className="label">
+                  Photo type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="photo-type"
+                  value={specs.photoType ?? ''}
+                  onChange={(event) =>
+                    dispatch({
+                      type: 'SET_SPEC',
+                      payload: {
+                        photoType: event.target.value,
+                        photosPerSheet: offeredPhotoTypes.find(
+                          (option) => option.value === event.target.value,
+                        )?.layouts[0],
+                      },
+                    })
+                  }
+                  className="input"
+                >
+                  <option value="" disabled>
+                    Choose a photo type…
+                  </option>
+                  {offeredPhotoTypes.map((option) => {
+                    const price =
+                      selectedService?.photoTypeOptions?.[option.value] ?? option.price;
+                    return (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                        {option.hint ? ` — ${option.hint}` : ''} (
+                        {formatCurrency(price)}/photo)
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
-              <p className="mt-1.5 text-xs text-slate-500">
-                Each sheet repeats your photo {specs.photosPerSheet ?? chosenPhotoType?.layouts[0] ?? 2} times — billed per
-                photo per sheet.
-              </p>
+              <div>
+                <p className="label" id="photo-layout-label">
+                  Photos per sheet <span className="text-red-500">*</span>
+                </p>
+                <div
+                  role="group"
+                  aria-labelledby="photo-layout-label"
+                  className="grid grid-cols-4 gap-2"
+                >
+                  {(chosenPhotoType?.layouts ?? []).map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      aria-pressed={(specs.photosPerSheet ?? chosenPhotoType?.layouts[0]) === count}
+                      onClick={() =>
+                        dispatch({ type: 'SET_SPEC', payload: { photosPerSheet: count } })
+                      }
+                      className={`rounded-xl border p-3 text-center text-sm font-semibold transition-all ${
+                        (specs.photosPerSheet ?? chosenPhotoType?.layouts[0]) === count
+                          ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+                          : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {count}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Each sheet repeats your photo {specs.photosPerSheet ?? chosenPhotoType?.layouts[0] ?? 2} times — billed per
+                  photo per sheet.
+                </p>
+              </div>
             </div>
+            <PhotoSheetPreview
+              count={specs.photosPerSheet ?? chosenPhotoType?.layouts[0] ?? 2}
+              photoLabel={chosenPhotoType?.label}
+              photoHint={chosenPhotoType?.hint}
+              sheetLabel={chosenPaperSize?.label}
+              sheetHint={chosenPaperSize?.hint}
+              imageUrl={firstImagePreviewUrl}
+              quantity={specs.quantity}
+            />
           </section>
         )}
 
