@@ -24,6 +24,13 @@ export const specificationsSchema = z.object({
   // Lamination: mandatory film thickness ('micron-80' = free default).
   // String (not enum) — the option list is admin-catalogue managed.
   filmThickness: z.string().optional(),
+  // Photo Print: mandatory photo type + photos-per-sheet layout. String for
+  // the same catalogue reason; layout is validated against the type's own
+  // 'layouts' list in orders.service (never trusted blindly).
+  photoType: z.string().optional(),
+  photosPerSheet: z.number().int().refine((n) => [2, 4, 6, 8].includes(n), {
+    message: 'Photos per sheet must be 2, 4, 6 or 8',
+  }).optional(),
   // Page count auto-detected from the uploaded PDF. Drives per-page pricing
   // and must flow through so removing/replacing the file updates the quote.
   totalPages: z.number().int().min(0).optional(),

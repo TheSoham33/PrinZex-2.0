@@ -21,6 +21,7 @@ import {
   SPIRAL_COVER_TYPES,
   STAPLING_OPTIONS,
   FILM_THICKNESS_OPTIONS,
+  PHOTO_TYPES,
   TAPE_COLORS,
   TWIN_LOOP_BACK_COVERS,
   TWIN_LOOP_FRONT_COVERS,
@@ -38,6 +39,7 @@ import SpiralBindingCustomizationPricing, {
 } from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
 import StaplingPricingOptions from '@/components/seller-dashboard/StaplingPricingOptions';
 import FilmThicknessPricingOptions from '@/components/seller-dashboard/FilmThicknessPricingOptions';
+import PhotoTypePricingOptions from '@/components/seller-dashboard/PhotoTypePricingOptions';
 import TapeBindingCustomizationOptions from '@/components/seller-dashboard/TapeBindingCustomizationOptions';
 import TwinLoopCustomizationPricing, {
   type TwinLoopPricingState,
@@ -78,6 +80,7 @@ export default function SellerPricingPage() {
   >({});
   const [staplingPriceOptions, setStaplingPriceOptions] = useState<PriceOptions>({});
   const [filmPriceOptions, setFilmPriceOptions] = useState<PriceOptions>({});
+  const [photoPriceOptions, setPhotoPriceOptions] = useState<PriceOptions>({});
   const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
   const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
   const [tapeColors, setTapeColors] = useState<string[]>([]);
@@ -162,6 +165,16 @@ export default function SellerPricingPage() {
         };
       });
       setFilmPriceOptions(ft);
+
+      const photoPrices = overrides.photoTypeOptions ?? {};
+      const pt: PriceOptions = {};
+      PHOTO_TYPES.forEach((o) => {
+        pt[o.value] = {
+          price: String(photoPrices[o.value] ?? ''),
+          enabled: photoPrices[o.value] !== undefined,
+        };
+      });
+      setPhotoPriceOptions(pt);
 
       const coverColor = overrides.coverColor ?? {};
       const cc: Record<string, { price: string; enabled: boolean }> = {};
@@ -340,11 +353,21 @@ export default function SellerPricingPage() {
       if (v.enabled) filmThicknessOptions[k] = Number(v.price) || 0;
     });
 
+    const photoTypeOptions: Record<string, number> = {};
+    Object.entries(photoPriceOptions).forEach(([k, v]) => {
+      if (v.enabled) photoTypeOptions[k] = Number(v.price) || 0;
+    });
+
     updateOverridesMutation.mutate({
       pageRate: pageRatePayload,
       documentColorModes,
       staplingOptions,
       filmThicknessOptions,
+      // Omitted entirely when nothing is ticked — the backend replaces the
+      // whole overrides object, so a missing key means \"no store opinion\"
+      // and the platform default photo types/prices apply (never an empty
+      // store). Sellers who tick types both price AND limit what's offered.
+      ...(Object.keys(photoTypeOptions).length > 0 ? { photoTypeOptions } : {}),
       coverType,
       coilType,
       coverColor,
@@ -600,6 +623,15 @@ export default function SellerPricingPage() {
                     <FilmThicknessPricingOptions
                       values={filmPriceOptions}
                       setValues={setFilmPriceOptions}
+                      onSave={handleSaveOverrides}
+                      saving={updateOverridesMutation.isPending}
+                    />
+                  )}
+
+                  {entry.serviceId === 'spec-photo-prints' && (
+                    <PhotoTypePricingOptions
+                      values={photoPriceOptions}
+                      setValues={setPhotoPriceOptions}
                       onSave={handleSaveOverrides}
                       saving={updateOverridesMutation.isPending}
                     />

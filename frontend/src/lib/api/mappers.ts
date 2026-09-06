@@ -223,6 +223,10 @@ export function mapBackendStoreDetailToFrontend(
             service.serviceId === 'lam-film'
               ? pricingOverrides.filmThicknessOptions
               : undefined,
+          photoTypeOptions:
+            service.serviceId === 'spec-photo-prints'
+              ? pricingOverrides.photoTypeOptions
+              : undefined,
         };
       }) || [],
     reviews: reviews.map(mapBackendReviewToFrontend),

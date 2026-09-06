@@ -116,6 +116,17 @@ export const FILM_THICKNESS_OPTIONS = [
   { value: 'micron-250', label: '250 micron', hint: 'Rigid — menus, outdoor use', price: 4 },
 ] as const;
 
+// Photo Print photo types (fallback for the DB-managed 'photo-types'
+// catalogue group). `layouts` = photos-per-sheet choices per type; `price` is
+// the platform default rate per photo, overridable per seller. Pricing:
+// sheets(quantity) × photos-per-sheet × rate, billed per sheet.
+export const PHOTO_TYPES = [
+  { value: 'passport-photo', label: 'Passport Photo', hint: '35 × 45 mm', price: 12, layouts: [4, 8] },
+  { value: 'postcard-size', label: 'Postcard Size', hint: '10 × 15 cm', price: 20, layouts: [2, 4] },
+  { value: 'photo-4x6', label: '4×6″ Photo', hint: '10.2 × 15.2 cm', price: 25, layouts: [4, 6] },
+  { value: 'photo-5x7', label: '5×7″ Photo', hint: '12.7 × 17.8 cm', price: 35, layouts: [2, 4] },
+] as const;
+
 // Tape Binding tape colours (fall back for the DB-managed 'tape-colors'
 // catalogue group) — availability-only customization, no surcharge.
 export const TAPE_COLORS = [

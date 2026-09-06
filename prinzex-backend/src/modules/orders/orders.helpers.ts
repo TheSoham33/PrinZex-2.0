@@ -21,6 +21,11 @@ export interface QuoteSpecifications {
   // Seller's filmThicknessOptions price wins, else FILM_THICKNESS_PRICES.
   // Unlike stapling (per set) the film price is charged per laminated sheet.
   filmThickness?: string;
+  // Photo Print: mandatory photo type + photos-per-sheet layout. The seller's
+  // photoTypeOptions per-photo rate wins, else PHOTO_TYPE_PRICES; billing is
+  // rate × photosPerSheet × sheets(quantity).
+  photoType?: string;
+  photosPerSheet?: number;
   totalPages?: number;
   // "1, 5, 10-15" — pages printed in colour when colorOption === 'mixed'.
   colorPages?: string;
@@ -114,6 +119,11 @@ export const FILM_THICKNESS_PRICES: Record<string, number> = {
   'micron-125': 2,
   'micron-250': 4,
 };
+
+// Photo Print constants and math live in photoPricing.ts (pure, import-safe
+// for offline checks); re-exported so existing import sites keep working.
+export { PHOTO_TYPE_LAYOUTS, PHOTO_TYPE_PRICES, photoPrintSubtotal } from './photoPricing';
+import { PHOTO_TYPE_LAYOUTS, photoPrintSubtotal } from './photoPricing';
 
 // These are the ONLY customer-facing delivery charges and must match the
 // DELIVERY_SPEEDS costs shown on the store page and at checkout.
@@ -459,6 +469,19 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
       (bwRate * split.bwPages + colorRate * split.colorPages) * quantity +
         staplingCharge * quantity +
         filmCharge * billablePages * quantity,
+    );
+  } else if (input.serviceId === 'spec-photo-prints') {
+    // ── Photo Print: per-photo rate × photos-per-sheet × sheets ──────────
+    //    (photoPricing.ts — seller's per-type price wins, platform default
+    //    otherwise; paper type/size extras add per sheet.)
+    subtotal = round2(
+      photoPrintSubtotal({
+        photoType: specifications.photoType,
+        photosPerSheet: specifications.photosPerSheet,
+        quantity,
+        paperOptionExtra,
+        sellerPrices: overrides.photoTypeOptions,
+      }),
     );
   } else if (slabRate !== undefined) {
     // ── Slab-priced services (Business Cards): per-piece rate from the

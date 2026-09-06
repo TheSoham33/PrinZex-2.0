@@ -138,6 +138,19 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
       { value: 'micron-250', label: '250 micron', hint: 'Rigid — menus, outdoor use', price: 4 },
     ],
   },
+  // Photo Print's mandatory photo-type choice: each row carries the platform
+  // default price PER PHOTO (sellers override per type — same model as film
+  // thickness) plus which photos-per-sheet layouts ('layouts') the customer
+  // may pick for it. Price = sheets × photos-per-sheet × rate.
+  'photo-types': {
+    label: 'Photo types (Photo Print)',
+    data: [
+      { value: 'passport-photo', label: 'Passport Photo', hint: '35 × 45 mm', price: 12, layouts: [4, 8] },
+      { value: 'postcard-size', label: 'Postcard Size', hint: '10 × 15 cm', price: 20, layouts: [2, 4] },
+      { value: 'photo-4x6', label: '4×6″ Photo', hint: '10.2 × 15.2 cm', price: 25, layouts: [4, 6] },
+      { value: 'photo-5x7', label: '5×7″ Photo', hint: '12.7 × 17.8 cm', price: 35, layouts: [2, 4] },
+    ],
+  },
   // Tape Binding tape colours — availability-only customization (no
   // surcharge), the same model as Hard Binding cover fabrics.
   'tape-colors': {
