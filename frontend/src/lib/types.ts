@@ -63,9 +63,11 @@ export interface ServiceOffering {
   /** Lamination film thicknesses the seller offers → ₹ per sheet, keyed by
    *  catalogue option value ('micron-80' is always free and never listed). */
   filmThicknessOptions?: Record<string, number>;
-  /** Photo Print: photo types the seller offers, value → ₹ per photo.
-   *  Presence both prices AND limits what's offered (checklist semantics). */
-  photoTypeOptions?: Record<string, number>;
+  /** Photo Print combos the seller offers: type value → photos-per-sheet
+   *  → ₹ per sheet. Presence both prices AND limits what's offered
+   *  (checklist semantics) — a legacy flat ₹/photo map degrades to
+   *  platform defaults. */
+  photoTypeOptions?: Record<string, Record<string, number>>;
 }
 
 export interface Review {
@@ -121,7 +123,9 @@ export interface OrderSpecifications {
    *  the seller-set (or default) per-sheet price. */
   filmThickness?: string;
   /** Photo Print: mandatory photo type from the 'photo-types' catalogue
-   *  group and the photos-per-sheet layout chosen from that type's layouts. */
+   *  group and a photos-per-sheet count from the admin-managed
+   *  'photo-layouts' group (8 by default), priced per sheet per
+   *  (type × count) combo. */
   photoType?: string;
   photosPerSheet?: number;
   // New fields for Hard Binding

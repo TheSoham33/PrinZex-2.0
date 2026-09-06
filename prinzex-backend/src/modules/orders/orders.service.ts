@@ -31,9 +31,10 @@ import {
 } from '../../realtime/realtime.emitters';
 import {
   FILM_THICKNESS_PRICES,
-  PHOTO_TYPE_LAYOUTS,
+  PHOTO_SHEET_COUNTS,
   PHOTO_TYPE_PRICES,
   STAPLING_OPTION_PRICES,
+  preferredPhotoCount,
   computeQuote,
   estimatedDeliveryFor,
   validateCoupon,
@@ -292,15 +293,32 @@ function assertFilmAvailable(
   }
 }
 
-/** Photo Print: the chosen photo type must be offered (seller list wins,
- *  else platform defaults) and the layout must be one of that type's
- *  photos-per-sheet choices — else a crafted payload picks an impossible
- *  layout or an unpriced type. */
-function assertPhotoSpecValid(
+/** 'photo-layouts' catalogue values as ints; falls back to the shipped
+ *  8/12 when the catalogue is unreadable — fail-closed so a crafted count
+ *  never slips through during a Mongo hiccup. */
+async function photoLayoutCounts(): Promise<number[]> {
+  try {
+    const entry = await getCatalogEntry('photo-layouts');
+    const counts = (Array.isArray(entry.data) ? entry.data : [])
+      .map((row: unknown) => Number((row as { value?: unknown })?.value))
+      .filter((n: number) => Number.isInteger(n) && n >= 2 && n <= 60);
+    return counts.length ? counts : [...PHOTO_SHEET_COUNTS];
+  } catch {
+    return [...PHOTO_SHEET_COUNTS];
+  }
+}
+
+/** Photo Print: the chosen photo type must be offered (seller checklist
+ *  wins, else platform defaults) and the photos-per-sheet count must be one
+ *  the seller prices for that type (else the platform 'photo-layouts'
+ *  catalogue) — a crafted payload never picks an unpriced combo.
+ *  Legacy flat ₹-per-photo seller maps (pre-combo pricing) degrade to the
+ *  platform counts/defaults instead of soft-locking the store. */
+async function assertPhotoSpecValid(
   sellerMetadata: Prisma.JsonValue | null,
   serviceId: string,
   specifications: { photoType?: string; photosPerSheet?: number },
-): void {
+): Promise<void> {
   if (serviceId !== 'spec-photo-prints') return;
   const photoType = specifications.photoType;
   if (!photoType) {
@@ -310,14 +328,23 @@ function assertPhotoSpecValid(
   if (offered ? !(photoType in offered) : !(photoType in PHOTO_TYPE_PRICES)) {
     throw ApiError.badRequest('This photo type is not offered by this store');
   }
-  const layouts = PHOTO_TYPE_LAYOUTS[photoType];
-  if (!layouts?.length) {
-    throw ApiError.badRequest('This photo type is missing its layout configuration');
+  let counts: number[];
+  if (offered) {
+    const perType = offered[photoType];
+    const keys =
+      typeof perType === 'object' && perType !== null
+        ? Object.keys(perType)
+            .map(Number)
+            .filter((n) => Number.isInteger(n) && n >= 2 && n <= 60)
+        : [];
+    counts = keys.length ? keys : await photoLayoutCounts();
+  } else {
+    counts = await photoLayoutCounts();
   }
-  const photosPerSheet = specifications.photosPerSheet ?? layouts[0];
-  if (!layouts.includes(photosPerSheet)) {
+  const photosPerSheet = specifications.photosPerSheet ?? preferredPhotoCount(counts);
+  if (!counts.includes(photosPerSheet)) {
     throw ApiError.badRequest(
-      `That layout does not exist for this photo type — choose ${layouts.join(' or ')} photos per sheet`,
+      `That photos-per-sheet option is not offered here — choose ${counts.join(' or ')} photos per sheet`,
     );
   }
 }
@@ -373,7 +400,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     service.serviceId,
     input.specifications.filmThickness,
   );
-  assertPhotoSpecValid(
+  await assertPhotoSpecValid(
     seller.metadata,
     service.serviceId,
     input.specifications,
@@ -472,7 +499,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     service.serviceId,
     input.specifications.filmThickness,
   );
-  assertPhotoSpecValid(
+  await assertPhotoSpecValid(
     seller.metadata,
     service.serviceId,
     input.specifications,

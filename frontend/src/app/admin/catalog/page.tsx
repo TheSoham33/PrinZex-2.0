@@ -87,6 +87,29 @@ const GROUPS: GroupSpec[] = [
     ],
   },
   {
+    key: 'photo-types',
+    kind: 'rows',
+    description:
+      'Photo Print photo types — a mandatory dropdown on the order page. Default price is ₹ PER PHOTO: until a seller sets their own per-sheet combo prices, a sheet costs rate × photos-per-sheet.',
+    fields: [
+      { key: 'value', label: 'Value', kind: 'text', placeholder: 'e.g. photo-8x10' },
+      { key: 'label', label: 'Label', kind: 'text', placeholder: 'e.g. 8×10″ Photo' },
+      { key: 'hint', label: 'Hint (dimensions)', kind: 'text', optional: true, placeholder: '20.3 × 25.4 cm' },
+      { key: 'price', label: 'Default rate per photo (₹)', kind: 'number' },
+    ],
+  },
+  {
+    key: 'photo-layouts',
+    kind: 'rows',
+    description:
+      'Photo Print photos-per-sheet choices — the VALUE IS THE COUNT (e.g. 8 = 8 photos on one sheet). Add or delete counts here; sellers then checklist the counts they print and price each per sheet. Ships with 8 and 12; 8 is the customer preselect.',
+    fields: [
+      { key: 'value', label: 'Count (e.g. 8)', kind: 'text', placeholder: 'e.g. 16' },
+      { key: 'label', label: 'Label', kind: 'text', placeholder: 'e.g. 16 photos' },
+      { key: 'hint', label: 'Hint', kind: 'text', optional: true, placeholder: '16 prints on one sheet' },
+    ],
+  },
+  {
     key: 'cover-types',
     kind: 'rows',
     description: 'Cover materials for binding services.',

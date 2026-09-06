@@ -21,7 +21,7 @@ import {
   SPIRAL_COVER_TYPES,
   STAPLING_OPTIONS,
   FILM_THICKNESS_OPTIONS,
-  PHOTO_TYPES,
+  PHOTO_LAYOUTS,
   TAPE_COLORS,
   TWIN_LOOP_BACK_COVERS,
   TWIN_LOOP_FRONT_COVERS,
@@ -39,7 +39,9 @@ import SpiralBindingCustomizationPricing, {
 } from '@/components/seller-dashboard/SpiralBindingCustomizationPricing';
 import StaplingPricingOptions from '@/components/seller-dashboard/StaplingPricingOptions';
 import FilmThicknessPricingOptions from '@/components/seller-dashboard/FilmThicknessPricingOptions';
-import PhotoTypePricingOptions from '@/components/seller-dashboard/PhotoTypePricingOptions';
+import PhotoTypePricingOptions, {
+  type PhotoComboMatrix,
+} from '@/components/seller-dashboard/PhotoTypePricingOptions';
 import TapeBindingCustomizationOptions from '@/components/seller-dashboard/TapeBindingCustomizationOptions';
 import TwinLoopCustomizationPricing, {
   type TwinLoopPricingState,
@@ -80,7 +82,7 @@ export default function SellerPricingPage() {
   >({});
   const [staplingPriceOptions, setStaplingPriceOptions] = useState<PriceOptions>({});
   const [filmPriceOptions, setFilmPriceOptions] = useState<PriceOptions>({});
-  const [photoPriceOptions, setPhotoPriceOptions] = useState<PriceOptions>({});
+  const [photoPriceOptions, setPhotoPriceOptions] = useState<PhotoComboMatrix>({});
   const [hardCoverColors, setHardCoverColors] = useState<string[]>([]);
   const [hardFoilColors, setHardFoilColors] = useState<string[]>([]);
   const [tapeColors, setTapeColors] = useState<string[]>([]);
@@ -166,13 +168,30 @@ export default function SellerPricingPage() {
       });
       setFilmPriceOptions(ft);
 
+      // Combo matrix: only saved types need an entry — unticked types read
+      // as disabled at render. Legacy flat ₹/photo values (pre-combo pricing)
+      // are converted into per-sheet cells at rate × count.
       const photoPrices = overrides.photoTypeOptions ?? {};
-      const pt: PriceOptions = {};
-      PHOTO_TYPES.forEach((o) => {
-        pt[o.value] = {
-          price: String(photoPrices[o.value] ?? ''),
-          enabled: photoPrices[o.value] !== undefined,
-        };
+      const pt: PhotoComboMatrix = {};
+      Object.entries(photoPrices).forEach(([type, combos]) => {
+        if (typeof combos === 'number') {
+          pt[type] = {
+            enabled: true,
+            prices: Object.fromEntries(
+              PHOTO_LAYOUTS.map((layout) => [
+                layout.value,
+                String(combos * Number(layout.value)),
+              ]),
+            ),
+          };
+        } else if (typeof combos === 'object' && combos !== null) {
+          pt[type] = {
+            enabled: true,
+            prices: Object.fromEntries(
+              Object.entries(combos).map(([count, price]) => [count, String(price)]),
+            ),
+          };
+        }
       });
       setPhotoPriceOptions(pt);
 
@@ -353,9 +372,16 @@ export default function SellerPricingPage() {
       if (v.enabled) filmThicknessOptions[k] = Number(v.price) || 0;
     });
 
-    const photoTypeOptions: Record<string, number> = {};
-    Object.entries(photoPriceOptions).forEach(([k, v]) => {
-      if (v.enabled) photoTypeOptions[k] = Number(v.price) || 0;
+    // Combo map: enabled type → per-sheet ₹ per count. A cleared cell drops
+    // that count; a type with no priced cells is dropped entirely.
+    const photoTypeOptions: Record<string, Record<string, number>> = {};
+    Object.entries(photoPriceOptions).forEach(([type, row]) => {
+      if (!row.enabled) return;
+      const combos: Record<string, number> = {};
+      Object.entries(row.prices).forEach(([count, price]) => {
+        if (price.trim() !== '') combos[count] = Number(price) || 0;
+      });
+      if (Object.keys(combos).length > 0) photoTypeOptions[type] = combos;
     });
 
     updateOverridesMutation.mutate({
