@@ -474,7 +474,11 @@ model OrderItem {
   unitPrice       Decimal       @db.Decimal(10, 2)
   total           Decimal       @db.Decimal(10, 2)
   specifications  Json // paper type, size, color, finishing etc.
+  // Design files attached to this item. fileUrl is the legacy single-file
+  // read path (mirrored to fileUrls[0] on write); multi-file orders read
+  // fileUrls. Same specifications apply to every file in the item.
   fileUrl         String? // uploaded design file URL
+  fileUrls        String[]  @default([])
 
   order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   sellerService   SellerService @relation(fields: [sellerServiceId], references: [id])

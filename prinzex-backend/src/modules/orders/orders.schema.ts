@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_FILES_PER_ORDER } from '../catalog/catalog.schemas';
 import { ORDER_STATUSES } from '../../types';
 
 /**
@@ -111,6 +112,11 @@ export const createOrderBody = z.object({
   // for card-*) before the server-side re-quote.
   specifications: specificationsSchema,
   fileUrl: z.string().optional(),
+  /** Multi-file orders: every design file attached (same specifications).
+   *  The service's catalogue entry sets the real cap (<= this hard ceiling);
+   *  orders.service enforces it. Legacy single-file clients may still send
+   *  only fileUrl. */
+  fileUrls: z.array(z.string().min(1)).max(MAX_FILES_PER_ORDER).optional(),
   specialInstructions: z.string().max(500).optional(),
   deliveryAddressId: z.string(),
   deliverySpeed: z.enum(DELIVERY_SPEEDS),

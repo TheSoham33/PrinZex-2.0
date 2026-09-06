@@ -9,6 +9,8 @@ import type { DeliveryAddressSnapshot, OrderStatus } from '../../types';
 import { ApiError } from '../../utils/ApiError';
 import { setCache } from '../../utils/cache';
 import { isValidTransition } from '../../utils/stateMachine';
+import { getCatalogEntry } from '../catalog/catalog.service';
+import { serviceMaxFilesPerOrder } from '../catalog/catalog.schemas';
 import {
   buildPaginatedResponse,
   toSkipTake,
@@ -495,6 +497,25 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     }
   }
 
+  // Multi-file orders: the service's catalogue entry caps how many design
+  // files one item may carry (absent = 1, the original single-file flow; all
+  // files share the order's specifications). Fail CLOSED to that
+  // conservative default when the catalogue is unreadable — order placement
+  // must never drop a file-count check because Mongo/Postgres hiccuped.
+  const fileUrls = input.fileUrls ?? (input.fileUrl ? [input.fileUrl] : []);
+  let maxFiles = 1;
+  try {
+    const categories = await getCatalogEntry('service-categories');
+    maxFiles = serviceMaxFilesPerOrder(categories.data, service.serviceId);
+  } catch {
+    maxFiles = 1;
+  }
+  if (fileUrls.length > maxFiles) {
+    throw ApiError.badRequest(
+      `${service.serviceName} accepts at most ${maxFiles} file${maxFiles === 1 ? '' : 's'} per order — this order has ${fileUrls.length}`,
+    );
+  }
+
   // SAME_DAY only when the store actually delivers to the address pincode.
   if (input.deliverySpeed === 'SAME_DAY') {
     const pincodes = await prisma.sellerPincode.findMany({
@@ -603,7 +624,10 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
               unitPrice: Number(service.basePrice),
               total: quote.subtotal,
               specifications: input.specifications as unknown as Prisma.InputJsonValue,
-              fileUrl: input.fileUrl ?? null,
+              // Legacy single-file readers keep working: fileUrl mirrors the
+              // first attachment; the full set lives in fileUrls.
+              fileUrl: fileUrls[0] ?? null,
+              fileUrls,
             },
           ],
         },

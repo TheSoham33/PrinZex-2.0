@@ -5,6 +5,7 @@ import { clearCart, setCartOpen } from '@/store/slices/cartSlice';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAddresses } from '@/lib/api/customer';
 import { placeOrder } from '@/lib/api/orders';
+import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/landing/Navbar';
@@ -72,7 +73,7 @@ export default function CheckoutPage() {
         specialInstructions: item.specialInstructions,
         // Office files were converted to PDF and stored at attach time;
         // other types keep the pre-existing client-side stub for now.
-        fileUrl: item.file?.serverFileUrl ?? "/uploads/designs/demo.pdf"
+        fileUrls: fileUrlsForOrder(item.files)
       }));
 
       const results = await Promise.all(orderPromises);

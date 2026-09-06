@@ -241,7 +241,7 @@ interface ServiceCategoryRow {
   id: string;
   name: string;
   description?: string;
-  services: { id: string; name: string }[];
+  services: { id: string; name: string; maxFilesPerOrder?: number }[];
 }
 
 const inputCls = 'input py-1.5 text-xs';
@@ -529,7 +529,7 @@ function ServiceCategoriesEditor({
   const updateService = (
     catIndex: number,
     serviceIndex: number,
-    patch: Partial<{ id: string; name: string }>,
+    patch: Partial<{ id: string; name: string; maxFilesPerOrder?: number }>,
   ) => {
     onChange(
       rows.map((row, i) =>
@@ -625,6 +625,24 @@ function ServiceCategoriesEditor({
                       })
                     }
                     className={`${inputCls} min-w-0 flex-1`}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={service.maxFilesPerOrder ?? 1}
+                    placeholder="1"
+                    title="Max files per order (1–10) — above 1 lets customers attach several documents to one order"
+                    aria-label={`Max files per order for ${service.name || 'this service'}`}
+                    onChange={(event) =>
+                      updateService(catIndex, serviceIndex, {
+                        maxFilesPerOrder: Math.max(
+                          1,
+                          Math.min(10, Math.trunc(Number(event.target.value)) || 1),
+                        ),
+                      })
+                    }
+                    className={`${inputCls} w-16 text-center`}
                   />
                   <button
                     type="button"

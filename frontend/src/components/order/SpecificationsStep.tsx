@@ -17,7 +17,10 @@ import { useAppSelector } from '@/store/hooks';
 import {
   ACCEPTED_DOCUMENT_TYPES,
   ACCEPTED_DOCUMENT_DESCRIPTION,
+  maxFilesForService,
   pageCountStrategy,
+  totalPagesOf,
+  type ServiceCatalogCategory,
 } from '@/lib/domain/files';
 import type {
   OrderSpecifications,
@@ -46,7 +49,8 @@ const ACCEPTED = ACCEPTED_DOCUMENT_TYPES;
 interface SpecificationsStepProps {
   specs: OrderSpecifications;
   services: ServiceOffering[];
-  file: UploadedFile | null;
+  /** Design files attached so far; the service's catalogue entry caps the count. */
+  files: UploadedFile[];
   instructions: string;
   dispatch: React.Dispatch<OrderAction>;
   error: string | null;
@@ -71,7 +75,7 @@ function filterOffered<T extends { value: string }>(
 export default function SpecificationsStep({
   specs,
   services,
-  file,
+  files,
   instructions,
   dispatch,
   error,
@@ -109,6 +113,10 @@ export default function SpecificationsStep({
   // Live, admin-configured cap (GET /upload/limits); shipped default until it answers.
   const { maxDesignFileSizeMb } = useUploadLimits();
   const maxFileBytes = maxDesignFileSizeMb * 1024 * 1024;
+  // Per-service multi-file policy from the admin catalogue — the backend
+  // independently enforces the same rule at order placement.
+  const serviceCategories = useCatalogOptions<ServiceCatalogCategory>('service-categories', []);
+  const maxFiles = maxFilesForService(serviceCategories, specs.serviceId);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState<'pdf' | 'office' | null>(null);
@@ -131,6 +139,17 @@ export default function SpecificationsStep({
       setLocalError(
         `That file is larger than ${maxDesignFileSizeMb} MB. Please compress it and try again.`,
       );
+      return;
+    }
+
+    // Multi-file policy (admin catalogue): reject beyond the service's cap.
+    if (files.length >= maxFiles) {
+      setLocalError(
+        maxFiles === 1
+          ? 'This service takes one file per order — remove the attached file to replace it.'
+          : `This service takes up to ${maxFiles} files per order — that's the limit reached.`,
+      );
+      if (inputRef.current) inputRef.current.value = '';
       return;
     }
 
@@ -183,17 +202,24 @@ export default function SpecificationsStep({
         return;
       }
 
-      dispatch({
-        type: 'SET_FILE',
-        payload: {
+      // Multi-file: append to the job; the page total pricing reads is the
+      // sum across files (all files share these specifications).
+      const nextFiles = [
+        ...files,
+        {
           name: selected.name,
           size: selected.size,
           type: selected.type,
           previewUrl,
+          pages: totalPages,
           ...(serverFileUrl ? { serverFileUrl } : {}),
         },
+      ];
+      dispatch({ type: 'SET_FILES', payload: nextFiles });
+      dispatch({
+        type: 'SET_SPEC',
+        payload: { totalPages: totalPagesOf(nextFiles), colorPages: '' },
       });
-      dispatch({ type: 'SET_SPEC', payload: { totalPages, colorPages: '' } });
     } catch (e) {
       console.error('File processing failed:', e);
       setLocalError(
@@ -206,6 +232,19 @@ export default function SpecificationsStep({
     } finally {
       setProcessing(null);
     }
+  };
+
+  /** Detach one file and re-aggregate the page total pricing reads. */
+  const removeFile = (index: number) => {
+    const removed = files[index];
+    if (removed?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(removed.previewUrl);
+    const nextFiles = files.filter((_, i) => i !== index);
+    dispatch({ type: 'SET_FILES', payload: nextFiles });
+    dispatch({
+      type: 'SET_SPEC',
+      payload: { totalPages: totalPagesOf(nextFiles), colorPages: '' },
+    });
+    if (inputRef.current) inputRef.current.value = '';
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -328,8 +367,8 @@ export default function SpecificationsStep({
   const shownError = localError ?? error;
 
   const totalPages = specs.totalPages || 0;
-  /** How the attached file's pages are counted (drives the Total pages card). */
-  const attachedStrategy = file ? pageCountStrategy(file.name) : null;
+  /** How the first attached file's pages are counted (drives the Total pages card copy). */
+  const attachedStrategy = files[0] ? pageCountStrategy(files[0].name) : null;
   const colorPageCount = countColorPages(specs.colorPages, totalPages);
   const paperGsm = specs.paperGsm ?? 75;
   // Approximation based on sheets (two pages per sheet) and common paper caliper.
@@ -589,55 +628,70 @@ export default function SpecificationsStep({
                 : 'Calculating final page count for pricing'}
             </p>
           </div>
-        ) : file ? (
+        ) : files.length > 0 ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-                <IconFileText className="h-6 w-6" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-slate-900">
-                  {file.name}
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  {formatFileSize(file.size)} · Ready to print
-                </p>
+            {files.map((attachedFile, index) => (
+              <div
+                key={`${attachedFile.name}-${index}`}
+                className="flex items-center gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                  <IconFileText className="h-6 w-6" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-slate-900">
+                    {attachedFile.name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {formatFileSize(attachedFile.size)}
+                    {attachedFile.pages
+                      ? ` · ${attachedFile.pages} page${attachedFile.pages === 1 ? '' : 's'}`
+                      : ''}
+                    {' · Ready to print'}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <a
+                    href={attachedFile.previewUrl || '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`rounded-lg p-2 transition-colors ${
+                      attachedFile.previewUrl
+                        ? 'text-slate-400 hover:bg-blue-50 hover:text-blue-600'
+                        : 'pointer-events-none text-slate-200'
+                    }`}
+                    aria-label={`View ${attachedFile.name}`}
+                    title={
+                      attachedFile.previewUrl
+                        ? 'View file'
+                        : 'Preview not available'
+                    }
+                  >
+                    <IconEye className="h-5 w-5" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(index)}
+                    className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                    aria-label={`Remove ${attachedFile.name}`}
+                    title="Remove file"
+                  >
+                    <IconTrash className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-1">
-                <a
-                  href={file.previewUrl || '#'}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`rounded-lg p-2 transition-colors ${
-                    file.previewUrl
-                      ? 'text-slate-400 hover:bg-blue-50 hover:text-blue-600'
-                      : 'pointer-events-none text-slate-200'
-                  }`}
-                  aria-label="View uploaded file"
-                  title={
-                    file.previewUrl ? 'View file' : 'Preview not available'
-                  }
-                >
-                  <IconEye className="h-5 w-5" />
-                </a>
-                <button
-                  type="button"
-                  onClick={() => {
-                    dispatch({ type: 'SET_FILE', payload: null });
-                    dispatch({
-                      type: 'SET_SPEC',
-                      payload: { totalPages: 0, colorPages: '' },
-                    });
-                    if (inputRef.current) inputRef.current.value = '';
-                  }}
-                  className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                  aria-label="Remove file"
-                  title="Remove file"
-                >
-                  <IconTrash className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
+            ))}
+
+            {files.length < maxFiles && (
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-white p-4 text-sm font-semibold text-slate-500 transition-colors hover:border-blue-300 hover:text-blue-600"
+              >
+                <IconUpload className="h-5 w-5" />
+                Add another document ({files.length} of {maxFiles})
+              </button>
+            )}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-4">
@@ -646,11 +700,13 @@ export default function SpecificationsStep({
                     Total pages
                   </p>
                   <p className="text-xs text-slate-500">
-                    {attachedStrategy === 'office'
-                      ? 'Converted to PDF on our server — pages counted exactly'
-                      : attachedStrategy === 'image'
-                        ? 'Each image prints as one sheet'
-                        : 'Automatically calculated from PDF'}
+                    {files.length > 1
+                      ? `Sum across ${files.length} files — all share these specifications`
+                      : attachedStrategy === 'office'
+                        ? 'Converted to PDF on our server — pages counted exactly'
+                        : attachedStrategy === 'image'
+                          ? 'Each image prints as one sheet'
+                          : 'Automatically calculated from PDF'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
