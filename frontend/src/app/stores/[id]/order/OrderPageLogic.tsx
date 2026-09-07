@@ -251,8 +251,14 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         return `Minimum order quantity for this service is ${service?.minQuantity}`;
       if (service?.minPages && (specs.totalPages ?? 0) < service.minPages)
         return `Minimum page count should be ${service.minPages} for ${service.name}`;
-      if (specs.serviceId === 'spec-photo-prints' && !specs.photoType)
-        return 'Choose a photo type';
+      if (specs.serviceId === 'spec-photo-prints') {
+        const configuredTypes = photoTypesCatalog.filter(
+          (option) => option.value in (service?.photoTypeOptions ?? {}),
+        );
+        if (configuredTypes.length === 0)
+          return 'This store has not set up Photo Print yet — try another store';
+        if (!specs.photoType) return 'Choose a photo type';
+      }
       if ((state.order.files?.length ?? 0) === 0 && specs.serviceId !== 'cards-business')
         return 'Please upload the file you want printed';
       if (specs.serviceId === 'bind-hard') {

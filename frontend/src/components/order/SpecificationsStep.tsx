@@ -487,13 +487,11 @@ export default function SpecificationsStep({
       option.value in selectedService.filmThicknessOptions,
   );
 
-  // Photo Print photo types: once the seller saves their checklist, only those
-  // types are offered (with the seller's per-photo prices). Checklist semantics:
-  // an undefined map means every catalogue type at default prices.
+  // Photo Print is seller-configured: ONLY the types the seller ticked on
+  // their Pricing page are offered. An unconfigured store shows nothing —
+  // platform defaults never leak onto the customer flow.
   const offeredPhotoTypes = photoTypesCatalog.filter(
-    (option) =>
-      selectedService?.photoTypeOptions === undefined ||
-      option.value in selectedService.photoTypeOptions,
+    (option) => option.value in (selectedService?.photoTypeOptions ?? {}),
   );
   const chosenPhotoType = offeredPhotoTypes.find(
     (option) => option.value === specs.photoType,
@@ -1181,6 +1179,10 @@ export default function SpecificationsStep({
 
         {selectedService?.id === 'spec-photo-prints' && (
           <section className="animate-fade-in space-y-6">
+            {offeredPhotoTypes.length === 0 ? (
+              <ErrorNote message="This store hasn't set up its photo print prices yet — the shop must configure photo types and prices before you can order them." />
+            ) : (
+              <>
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label htmlFor="photo-type" className="label">
@@ -1265,6 +1267,8 @@ export default function SpecificationsStep({
               imageUrl={firstImagePreviewUrl}
               quantity={specs.quantity}
             />
+              </>
+            )}
           </section>
         )}
 

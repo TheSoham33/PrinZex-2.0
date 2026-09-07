@@ -21,6 +21,7 @@ import {
   DEFAULT_PHOTOS_PER_SHEET,
   PHOTO_SHEET_COUNTS,
   PHOTO_TYPE_PRICES,
+  photoPrintSetupError,
   photoPrintSubtotal,
   photoSheetPrice,
   preferredPhotoCount,
@@ -102,6 +103,32 @@ assert.ok(types?.length >= 2, 'photo-types catalogue defaults shipped');
   assert.equal(preferredPhotoCount([12, 16]), 12);
   assert.equal(preferredPhotoCount([]), 8);
 }
+
+/* ── Seller-configured setup rule (updatePricingOverrides gate) ────────── */
+
+assert.equal(
+  photoPrintSetupError(false, undefined),
+  null,
+  'no photo service → no requirement',
+);
+assert.ok(
+  photoPrintSetupError(true, undefined),
+  'active photo service with no saved combos is rejected',
+);
+assert.ok(photoPrintSetupError(true, {}), 'empty map rejected');
+assert.ok(
+  photoPrintSetupError(true, { 'passport-photo': {} }),
+  'type with no priced counts rejected',
+);
+assert.ok(
+  photoPrintSetupError(true, { 'passport-photo': 10 }),
+  'legacy flat ₹/photo map must migrate to combos first',
+);
+assert.equal(
+  photoPrintSetupError(true, { 'passport-photo': { '8': 96 } }),
+  null,
+  'one priced combo satisfies the rule',
+);
 
 /* ── Catalogue glue ────────────────────────────────────────────────────── */
 

@@ -325,7 +325,12 @@ async function assertPhotoSpecValid(
     throw ApiError.badRequest('Choose a photo type');
   }
   const offered = readSellerMetadata(sellerMetadata).pricingOverrides?.photoTypeOptions;
-  if (offered ? !(photoType in offered) : !(photoType in PHOTO_TYPE_PRICES)) {
+  // Never configured → nothing is offered (the storefront mirrors this by
+  // hiding the photo types) — platform defaults no longer leak onto orders.
+  if (!offered) {
+    throw ApiError.badRequest('This store has not set up Photo Print yet');
+  }
+  if (!(photoType in offered)) {
     throw ApiError.badRequest('This photo type is not offered by this store');
   }
   let counts: number[];
