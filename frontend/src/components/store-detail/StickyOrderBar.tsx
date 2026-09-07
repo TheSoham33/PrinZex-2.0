@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import type { ServiceOffering } from '@/lib/domain/stores';
+import { PHOTO_TYPES } from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
+import { photoFromPrice } from '@/lib/domain/photos';
 import { formatCurrency } from '@/lib/utils';
 import { IconArrowRight, IconHelpCircle } from '@/components/icons';
 
@@ -12,6 +15,12 @@ interface StickyOrderBarProps {
 }
 
 export default function StickyOrderBar({ storeId, selectedService, isOpen = true }: StickyOrderBarProps) {
+  const photoTypes = useCatalogOptions('photo-types', PHOTO_TYPES);
+  // Photo Print: never the seller's base price — the 8-per-sheet anchor.
+  const photoAnchor =
+    selectedService?.id === 'spec-photo-prints'
+      ? photoFromPrice(photoTypes, selectedService.photoTypeOptions)
+      : null;
   const href = selectedService
     ? `/stores/${storeId}/order?service=${selectedService.id}`
     : `/stores/${storeId}/order`;
@@ -41,9 +50,9 @@ export default function StickyOrderBar({ storeId, selectedService, isOpen = true
               <p className="mt-1 text-sm text-slate-600">
                 From{' '}
                 <span className="font-bold text-slate-900">
-                  {formatCurrency(selectedService.startingPrice)}
+                  {formatCurrency(photoAnchor?.price ?? selectedService.startingPrice)}
                 </span>{' '}
-                {selectedService.unit}
+                {photoAnchor ? '/sheet' : selectedService.unit}
               </p>
             </div>
           ) : (
@@ -84,7 +93,8 @@ export default function StickyOrderBar({ storeId, selectedService, isOpen = true
                   {selectedService.name}
                 </p>
                 <p className="text-xs text-slate-500">
-                  From {formatCurrency(selectedService.startingPrice)} {selectedService.unit}
+                  From {formatCurrency(photoAnchor?.price ?? selectedService.startingPrice)}{' '}
+                  {photoAnchor ? '/sheet' : selectedService.unit}
                 </p>
               </>
             ) : (

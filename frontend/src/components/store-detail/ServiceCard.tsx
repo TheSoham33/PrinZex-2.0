@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import type { ServiceOffering } from '@/lib/domain/stores';
-import { SERVICE_IMAGE_MAP } from '@/lib/domain/stores';
+import { PHOTO_TYPES, SERVICE_IMAGE_MAP } from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
+import { photoFromPrice } from '@/lib/domain/photos';
 import { formatCurrency } from '@/lib/utils';
 import {
   IconBadgeCheck,
@@ -32,6 +34,7 @@ export default function ServiceCard({ service, selected, onSelect }: ServiceCard
   const Icon = ICON_MAP[service.icon as keyof typeof ICON_MAP] ?? IconFileText;
   const image = SERVICE_IMAGE_MAP[service.id];
   const [imageFailed, setImageFailed] = useState(false);
+  const photoTypes = useCatalogOptions('photo-types', PHOTO_TYPES);
 
   return (
     <button
@@ -67,10 +70,23 @@ export default function ServiceCard({ service, selected, onSelect }: ServiceCard
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h4 className="font-semibold text-slate-900">{service.name}</h4>
-          <p className="text-sm font-bold text-slate-900">
-            {formatCurrency(service.startingPrice)}
-            <span className="ml-1 text-xs font-normal text-slate-500">{service.unit}</span>
-          </p>
+          {(() => {
+            // Photo Print: never the seller's base price — the 8-per-sheet
+            // anchor (combos ignore the base price entirely).
+            const photoAnchor =
+              service.id === 'spec-photo-prints'
+                ? photoFromPrice(photoTypes, service.photoTypeOptions)
+                : null;
+            return (
+              <p className="text-sm font-bold text-slate-900">
+                {photoAnchor ? 'from ' : ''}
+                {formatCurrency(photoAnchor?.price ?? service.startingPrice)}
+                <span className="ml-1 text-xs font-normal text-slate-500">
+                  {photoAnchor ? '/sheet' : service.unit}
+                </span>
+              </p>
+            );
+          })()}
         </div>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">{service.description}</p>
         {(service.minQuantity ?? 1) > 1 && (

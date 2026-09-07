@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {
   hintDimensions,
   layoutPhotoSheet,
+  photoFromPrice,
   PHOTO_SHEET_FALLBACK,
 } from '../src/lib/domain/photos';
 import { PHOTO_TYPES, PAPER_SIZES } from '../src/lib/domain/stores';
@@ -50,5 +51,36 @@ assert.deepEqual(
 
 // Fallback sheet is portrait A4.
 assert.ok(PHOTO_SHEET_FALLBACK.h > PHOTO_SHEET_FALLBACK.w);
+
+/* ── photoFromPrice — the "from ₹X/sheet" anchor (never the base price) ── */
+
+assert.deepEqual(
+  photoFromPrice(PHOTO_TYPES, undefined),
+  { count: 8, price: 96 },
+  'unconfigured store anchors at 8 × lowest rate (passport ₹12)',
+);
+assert.deepEqual(
+  photoFromPrice(PHOTO_TYPES, { 'passport-photo': { '8': 100, '12': 150 } }),
+  { count: 8, price: 100 },
+  'seller 8-price anchors directly',
+);
+assert.deepEqual(
+  photoFromPrice(PHOTO_TYPES, { 'passport-photo': { '12': 150 } }),
+  { count: 12, price: 150 },
+  'seller pricing only 12 anchors on 12',
+);
+assert.deepEqual(
+  photoFromPrice(PHOTO_TYPES, { 'photo-4x6': { '8': 90 } }),
+  { count: 8, price: 90 },
+  'only ticked types count',
+);
+assert.deepEqual(
+  photoFromPrice(PHOTO_TYPES, {
+    'passport-photo': 10,
+  } as unknown as Record<string, Record<string, number>>),
+  { count: 8, price: 96 },
+  'legacy flat ₹/photo map ignores the stale rate',
+);
+assert.equal(photoFromPrice([], undefined), null, 'no types → no anchor');
 
 console.log('photo sheet preview domain checks passed');

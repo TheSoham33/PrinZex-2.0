@@ -7,6 +7,8 @@ import type {
 } from '@/lib/types';
 import { countColorPages, formatCurrency } from '@/lib/utils';
 import { FILM_THICKNESS_OPTIONS, PHOTO_TYPES, STAPLING_OPTIONS } from '@/lib/domain/stores';
+import { useCatalogOptions } from '@/lib/api/catalog';
+import { photoFromPrice } from '@/lib/domain/photos';
 import { IconShieldCheck, IconLock } from '@/components/icons';
 import { pickSlabRate } from './orderReducer';
 
@@ -27,6 +29,12 @@ export default function OrderSummarySidebar({
   isLoggedIn = true,
   specs,
 }: OrderSummarySidebarProps) {
+  const photoTypes = useCatalogOptions('photo-types', PHOTO_TYPES);
+  const photoAnchor =
+    service?.id === 'spec-photo-prints'
+      ? photoFromPrice(photoTypes, service.photoTypeOptions)
+      : null;
+
   const rows = [
     { label: 'Subtotal', value: cost.subtotal },
     ...(cost.rushFee > 0 ? [{ label: 'Rush fee', value: cost.rushFee }] : []),
@@ -63,14 +71,20 @@ export default function OrderSummarySidebar({
                   {service.name}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {/* Slab-priced services (Business Cards): the rate follows
-                      the quantity range, not the static base price. */}
-                  {formatCurrency(
-                    pickSlabRate(service.quantitySlabs, quantity) ?? service.startingPrice,
-                  )}{' '}
-                  {service.unit} ·{' '}
-                  {specs?.totalPages ? `${specs.totalPages} pages · ` : ''}Qty{' '}
-                  {quantity}
+                  {photoAnchor ? (
+                    <>from {formatCurrency(photoAnchor.price)}/sheet · Qty {quantity}</>
+                  ) : (
+                    <>
+                      {/* Slab-priced services (Business Cards): the rate follows
+                          the quantity range, not the static base price. */}
+                      {formatCurrency(
+                        pickSlabRate(service.quantitySlabs, quantity) ?? service.startingPrice,
+                      )}{' '}
+                      {service.unit} ·{' '}
+                      {specs?.totalPages ? `${specs.totalPages} pages · ` : ''}Qty{' '}
+                      {quantity}
+                    </>
+                  )}
                 </p>
               </div>
             </div>

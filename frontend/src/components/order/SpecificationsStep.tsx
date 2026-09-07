@@ -42,6 +42,7 @@ import TapeBindingCustomizationPanel from './TapeBindingCustomizationPanel';
 import GlueBindingCustomizationPanel from './GlueBindingCustomizationPanel';
 import BusinessCardCustomizationPanel from './BusinessCardCustomizationPanel';
 import PhotoSheetPreview from './PhotoSheetPreview';
+import { photoFromPrice } from '@/lib/domain/photos';
 import { IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { PDFDocument } from 'pdf-lib';
@@ -926,12 +927,22 @@ export default function SpecificationsStep({
           className="input"
         >
           <option value="">Choose a service…</option>
-          {services.map((service) => (
-            <option key={service.id} value={service.id}>
-              {service.name} — {formatCurrency(service.startingPrice)}{' '}
-              {service.unit}
-            </option>
-          ))}
+          {services.map((service) => {
+            // Photo Print never shows the seller's service base price (combos
+            // ignore it) — the 8-per-sheet anchor is the from-price.
+            const photoAnchor =
+              service.id === 'spec-photo-prints'
+                ? photoFromPrice(photoTypesCatalog, service.photoTypeOptions)
+                : null;
+            return (
+              <option key={service.id} value={service.id}>
+                {service.name} —{' '}
+                {photoAnchor
+                  ? `from ${formatCurrency(photoAnchor.price)}/sheet`
+                  : `${formatCurrency(service.startingPrice)} ${service.unit}`}
+              </option>
+            );
+          })}
         </select>
       </section>
 
