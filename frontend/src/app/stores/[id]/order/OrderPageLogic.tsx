@@ -127,6 +127,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     printSides: specs.printSides,
     stapling: specs.stapling,
     filmThickness: specs.filmThickness,
+    photoType: specs.photoType,
+    photosPerSheet: specs.photosPerSheet,
     totalPages: specs.totalPages,
     colorPages: specs.colorPages,
     coverType: specs.coverType,
