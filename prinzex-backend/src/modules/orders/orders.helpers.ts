@@ -436,7 +436,21 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   let pageCost: number | undefined;
   let bindingCost: number | undefined;
 
-  if (isBindingService(input.categoryId, input.serviceId)) {
+  if (input.serviceId === 'spec-photo-prints') {
+    // ── Photo Print: seller's (type × count) combo ₹/sheet wins, else the
+    //    platform default rate × count; paper extras add per sheet.
+    //    FIRST in the chain: the seller-chosen unit label (e.g. a stray
+    //    "per page") must never divert photo pricing into the page branch.
+    subtotal = round2(
+      photoPrintSubtotal({
+        photoType: specifications.photoType,
+        photosPerSheet: specifications.photosPerSheet,
+        quantity,
+        paperOptionExtra,
+        sellerCombos: overrides.photoTypeOptions,
+      }),
+    );
+  } else if (isBindingService(input.categoryId, input.serviceId)) {
     // ── Binding services: pages + binding priced separately ──────────────
     //   pages    = (bwRate × B&W pages + colorRate × colour pages) × N
     //   binding  = (coverType + coilType + coverColor) ₹/binding × N
@@ -477,18 +491,6 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
       (bwRate * split.bwPages + colorRate * split.colorPages) * quantity +
         staplingCharge * quantity +
         filmCharge * billablePages * quantity,
-    );
-  } else if (input.serviceId === 'spec-photo-prints') {
-    // ── Photo Print: seller's (type × count) combo ₹/sheet wins, else the
-    //    platform default rate × count; paper extras add per sheet.
-    subtotal = round2(
-      photoPrintSubtotal({
-        photoType: specifications.photoType,
-        photosPerSheet: specifications.photosPerSheet,
-        quantity,
-        paperOptionExtra,
-        sellerCombos: overrides.photoTypeOptions,
-      }),
     );
   } else if (slabRate !== undefined) {
     // ── Slab-priced services (Business Cards): per-piece rate from the

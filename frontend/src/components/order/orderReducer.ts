@@ -330,7 +330,24 @@ export function computeCost(
   let pageCost: number | undefined;
   let bindingCost: number | undefined;
 
-  if (isBinding) {
+  if (service?.id === 'spec-photo-prints') {
+    // Photo Print FIRST in the chain: the seller-chosen unit label (e.g. a
+    // stray "per page") must never divert photo pricing into the page
+    // branch. Seller's (type × count) combo ₹/sheet wins, else the platform
+    // default (type rate × count); paper options add per sheet. Mirrors the
+    // backend computeQuote branch.
+    const photoKey = specs.photoType ?? '';
+    const layout = specs.photosPerSheet ?? 8;
+    const sellerCombos = service?.photoTypeOptions?.[photoKey];
+    const sellerSheetPrice =
+      typeof sellerCombos === 'object' && sellerCombos !== null
+        ? sellerCombos[String(layout)]
+        : undefined;
+    const sheetPrice =
+      sellerSheetPrice ??
+      (photoTypes.find((entry) => entry.value === photoKey)?.price ?? 0) * layout;
+    subtotal = Math.round((sheetPrice + paperOptionExtra) * quantity);
+  } else if (isBinding) {
     pageCost = Math.round(
       (bwPageRate * bwPageCount + colorPageRate * colorPageCount) * quantity,
     );
@@ -345,21 +362,6 @@ export function computeCost(
         staplingPerUnit * quantity +
         filmPerSheet * billablePages * quantity,
     );
-  } else if (service?.id === 'spec-photo-prints') {
-    // Photo Print: seller's (type × count) combo ₹/sheet wins, else the
-    // platform default (type rate × count) — mirrors the backend
-    // computeQuote branch; paper options add per sheet (quantity = sheets).
-    const photoKey = specs.photoType ?? '';
-    const layout = specs.photosPerSheet ?? 8;
-    const sellerCombos = service?.photoTypeOptions?.[photoKey];
-    const sellerSheetPrice =
-      typeof sellerCombos === 'object' && sellerCombos !== null
-        ? sellerCombos[String(layout)]
-        : undefined;
-    const sheetPrice =
-      sellerSheetPrice ??
-      (photoTypes.find((entry) => entry.value === photoKey)?.price ?? 0) * layout;
-    subtotal = Math.round((sheetPrice + paperOptionExtra) * quantity);
   } else if (slabRate !== undefined) {
     // Slab-priced services (Business Cards): per-piece rate from the seller's
     // quantity tiers — mirrors the backend quote branch.
