@@ -65,10 +65,18 @@ export default function PricingEditor({
           </p>
         </div>
 
-        <div className="w-28">
+        <div className="w-40">
           <label htmlFor={`price-${entry.serviceId}`} className="label text-xs">
             Price (₹)
           </label>
+          {entry.serviceId === 'spec-photo-prints' ? (
+            // Photo Print prices per sheet via the photo combos below — the
+            // service base price is ignored, so it's not editable here; the
+            // stored value passes through unchanged on save.
+            <p className="rounded-lg bg-slate-50 px-2.5 py-2 text-[11px] leading-snug text-slate-500">
+              Set per sheet via the photo combos below — no base price
+            </p>
+          ) : (
           <input
             ref={priceRef}
             id={`price-${entry.serviceId}`}
@@ -83,6 +91,7 @@ export default function PricingEditor({
             }}
             className="input py-2 text-sm"
           />
+          )}
         </div>
 
         <div className="w-36">
@@ -145,12 +154,16 @@ export default function PricingEditor({
       <p className="min-w-[10rem] flex-1 text-sm font-medium text-slate-900">
         {entry.serviceName}
       </p>
-      <p className="text-sm font-bold text-slate-900">
-        {formatCurrency(entry.basePrice)}
-        <span className="ml-1 text-xs font-normal text-slate-500">
-          {entry.unit}
-        </span>
-      </p>
+      {entry.serviceId === 'spec-photo-prints' ? (
+        <p className="text-xs font-medium text-slate-500">per-sheet combo pricing</p>
+      ) : (
+        <p className="text-sm font-bold text-slate-900">
+          {formatCurrency(entry.basePrice)}
+          <span className="ml-1 text-xs font-normal text-slate-500">
+            {entry.unit}
+          </span>
+        </p>
+      )}
       {entry.minPages ? (
         <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
           Min. {entry.minPages} pages
