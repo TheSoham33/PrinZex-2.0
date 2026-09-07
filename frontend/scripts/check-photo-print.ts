@@ -53,6 +53,20 @@ const spec = {
   );
   assert.equal(overridden.subtotal, 150, 'seller combo price wins');
 
+  // A seller-typed "per page" unit label must NOT divert photo pricing into
+  // the per-page branch — combos always price per sheet (reported live bug).
+  const pageUnitLabel = computeCost(
+    { ...spec, photosPerSheet: 12 },
+    {
+      ...photoService,
+      unit: 'per page',
+      photoTypeOptions: { 'passport-photo': { '12': 150 } },
+    },
+    0,
+    0,
+  );
+  assert.equal(pageUnitLabel.subtotal, 150, 'photo pricing ignores a "per page" unit label');
+
   // Combos are per (type × count): an 8-price never leaks onto 12 —
   // 4×6 @12 without a seller 12-price falls back to rate × 12 = 300.
   const noCombo = computeCost(
