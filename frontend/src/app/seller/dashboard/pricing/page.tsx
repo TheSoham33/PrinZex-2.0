@@ -384,6 +384,19 @@ export default function SellerPricingPage() {
       if (Object.keys(combos).length > 0) photoTypeOptions[type] = combos;
     });
 
+    // Photo Print is seller-configured: with the service active, saving
+    // without a single ticked type would show customers an empty offer.
+    if (
+      pricing.some((entry) => entry.id === 'spec-photo-prints') &&
+      Object.keys(photoTypeOptions).length === 0
+    ) {
+      showToast(
+        'Your shop offers Photo Print — tick at least one photo type and set its per-sheet price before saving.',
+        'error',
+      );
+      return;
+    }
+
     updateOverridesMutation.mutate({
       pageRate: pageRatePayload,
       documentColorModes,

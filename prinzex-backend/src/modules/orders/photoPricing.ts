@@ -38,6 +38,30 @@ export const DEFAULT_PHOTOS_PER_SHEET = 8;
 /** Seller's combo prices: photo type → photos-per-sheet → ₹ per sheet. */
 export type PhotoComboPrices = Record<string, Record<string, number>>;
 
+/**
+ * Photo Print is seller-configured: a store whose photo service is ACTIVE
+ * must save at least one (type × count) combo — otherwise the storefront
+ * would show photo options the shop never priced. Returns the rejection
+ * message, or null when the setup is acceptable. An inactive service has no
+ * requirement. Legacy flat ₹/photo maps don't count: the Pricing page
+ * converts them into per-sheet cells on load, so one save migrates them.
+ */
+export function photoPrintSetupError(
+  serviceActive: boolean,
+  combos: PhotoComboPrices | Record<string, number> | undefined,
+): string | null {
+  if (!serviceActive) return null;
+  const configured = Object.values(combos ?? {}).some(
+    (perType) =>
+      typeof perType === 'object' &&
+      perType !== null &&
+      Object.keys(perType).length > 0,
+  );
+  return configured
+    ? null
+    : 'Photo Print is enabled for your store — tick at least one photo type and set its per-sheet price before saving';
+}
+
 /** Prefer the default count when offered, else the first offered count. */
 export function preferredPhotoCount(offered: readonly number[]): number {
   return offered.includes(DEFAULT_PHOTOS_PER_SHEET)

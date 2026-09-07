@@ -17,6 +17,7 @@ import {
   type PaginatedResponse,
   type PaginationParams,
 } from '../../utils/pagination';
+import { photoPrintSetupError } from '../orders/photoPricing';
 import type {
   AnalyticsPeriod,
   BulkDiscountsInput,
@@ -1632,6 +1633,21 @@ export async function updatePricingOverrides(
 
   if (overrides?.tapeColors && overrides.tapeColors.length === 0) {
     throw ApiError.badRequest('Keep at least one Tape Binding colour enabled');
+  }
+
+  // Photo Print is seller-configured: an active photo service with no priced
+  // (type × count) combo would show customers an empty offer — the seller
+  // must tick at least one type before saving.
+  const photoServiceActive = await prisma.sellerService.findFirst({
+    where: { sellerId, serviceId: 'spec-photo-prints', isActive: true },
+    select: { id: true },
+  });
+  const photoSetupError = photoPrintSetupError(
+    Boolean(photoServiceActive),
+    overrides?.photoTypeOptions,
+  );
+  if (photoSetupError) {
+    throw ApiError.badRequest(photoSetupError);
   }
 
   const bwRate = overrides?.pageRate?.bw;

@@ -37,6 +37,7 @@ export default function PhotoTypePricingOptions({
 }: PhotoTypePricingOptionsProps) {
   const photoTypes = useCatalogOptions('photo-types', PHOTO_TYPES_FALLBACK);
   const photoLayouts = useCatalogOptions('photo-layouts', PHOTO_LAYOUTS_FALLBACK);
+  const noneOffered = !photoTypes.some((type) => values[type.value]?.enabled);
 
   return (
     <div className="space-y-5 border-t border-slate-100 bg-blue-50/40 px-4 py-4">
@@ -49,6 +50,14 @@ export default function PhotoTypePricingOptions({
           cleared price stops that count for the type.
         </p>
       </div>
+
+      {noneOffered && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+          Your shop offers Photo Print — tick at least one photo type and set
+          its price, or saving will be rejected and customers can&apos;t order
+          photo prints.
+        </p>
+      )}
 
       <div className="space-y-4">
         {photoTypes.map((type) => {
