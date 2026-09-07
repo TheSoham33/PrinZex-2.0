@@ -3,6 +3,8 @@ import { prisma } from '../../config/database';
 import { ApiError } from '../../utils/ApiError';
 import { DEFAULT_CATALOG } from './catalog.defaults';
 import { CATALOG_GROUP_SCHEMAS } from './catalog.schemas';
+import { REDIS_KEYS } from '../../config/redis';
+import { invalidateCachePattern } from '../../utils/cache';
 
 /**
  * Insert defaults for any catalogue group the database doesn't know yet.
@@ -57,7 +59,7 @@ export async function replaceCatalogEntry(
     );
   }
 
-  return prisma.catalogEntry.upsert({
+  const saved = await prisma.catalogEntry.upsert({
     where: { key },
     create: {
       key,
@@ -69,4 +71,15 @@ export async function replaceCatalogEntry(
       data: parsed.data as object[],
     },
   });
+
+  // The service kill switch affects every storefront: drop the Redis store
+  // caches immediately instead of waiting out their TTLs.
+  if (key === 'service-categories') {
+    await Promise.all([
+      invalidateCachePattern(REDIS_KEYS.STORE_LIST_PATTERN()),
+      invalidateCachePattern('cache:store:*'),
+    ]);
+  }
+
+  return saved;
 }

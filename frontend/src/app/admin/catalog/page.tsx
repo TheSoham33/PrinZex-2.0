@@ -264,7 +264,7 @@ interface ServiceCategoryRow {
   id: string;
   name: string;
   description?: string;
-  services: { id: string; name: string; maxFilesPerOrder?: number }[];
+  services: { id: string; name: string; isActive?: boolean; maxFilesPerOrder?: number }[];
 }
 
 const inputCls = 'input py-1.5 text-xs';
@@ -552,7 +552,7 @@ function ServiceCategoriesEditor({
   const updateService = (
     catIndex: number,
     serviceIndex: number,
-    patch: Partial<{ id: string; name: string; maxFilesPerOrder?: number }>,
+    patch: Partial<{ id: string; name: string; isActive?: boolean; maxFilesPerOrder?: number }>,
   ) => {
     onChange(
       rows.map((row, i) =>
@@ -649,6 +649,25 @@ function ServiceCategoriesEditor({
                     }
                     className={`${inputCls} min-w-0 flex-1`}
                   />
+                  <label
+                    className={`flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-medium ${
+                      service.isActive === false ? 'text-amber-600' : 'text-green-600'
+                    }`}
+                    title="Platform kill switch — an inactive service is hidden and blocked at every shop"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={service.isActive !== false}
+                      onChange={(event) =>
+                        updateService(catIndex, serviceIndex, {
+                          isActive: event.target.checked,
+                        })
+                      }
+                      aria-label={`${service.name || 'Service'} active platform-wide`}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    {service.isActive === false ? 'inactive' : 'active'}
+                  </label>
                   <span
                     className="shrink-0 text-[11px] font-medium text-slate-400"
                     title="Documents a customer may attach to one order of this service"

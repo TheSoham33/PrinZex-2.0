@@ -10,7 +10,7 @@ import { ApiError } from '../../utils/ApiError';
 import { setCache } from '../../utils/cache';
 import { isValidTransition } from '../../utils/stateMachine';
 import { getCatalogEntry } from '../catalog/catalog.service';
-import { serviceMaxFilesPerOrder } from '../catalog/catalog.schemas';
+import { serviceIsActive, serviceMaxFilesPerOrder } from '../catalog/catalog.schemas';
 import {
   buildPaginatedResponse,
   toSkipTake,
@@ -293,6 +293,25 @@ function assertFilmAvailable(
   }
 }
 
+/** Admin kill switch: an admin-deactivated platform service rejects both
+ *  quotes and orders, at every store. Fail-OPEN when the catalogue itself
+ *  is unreadable — a Mongo/Postgres hiccup must not take ordering offline. */
+async function assertPlatformServiceActive(
+  serviceId: string,
+  serviceName: string,
+): Promise<void> {
+  let active = true;
+  try {
+    const categories = await getCatalogEntry('service-categories');
+    active = serviceIsActive(categories.data, serviceId);
+  } catch {
+    active = true;
+  }
+  if (!active) {
+    throw ApiError.badRequest(`${serviceName} is not available right now`);
+  }
+}
+
 /** 'photo-layouts' catalogue values as ints; falls back to the shipped
  *  8/12 when the catalogue is unreadable — fail-closed so a crafted count
  *  never slips through during a Mongo hiccup. */
@@ -395,6 +414,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     service.serviceId,
     input.specifications,
   );
+  await assertPlatformServiceActive(service.serviceId, service.serviceName);
   assertStaplingAvailable(
     seller.metadata,
     service.serviceId,
@@ -494,6 +514,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     service.serviceId,
     input.specifications,
   );
+  await assertPlatformServiceActive(service.serviceId, service.serviceName);
   assertStaplingAvailable(
     seller.metadata,
     service.serviceId,
