@@ -9,6 +9,8 @@ import {
   ORDER_DRAFT_TTL_MS,
   ORDER_DRAFT_VERSION,
   clearAllOrderDrafts,
+  consumeKeepOrderDraft,
+  keepOrderDraftOnce,
   loadOrderDraft,
   orderDraftKey,
   parseOrderDraft,
@@ -97,16 +99,19 @@ assert.equal(ORDER_DRAFT_VERSION, 1, 'bump the version when the shape changes');
 
 /* ── Sign-out wipe: every draft key goes, unrelated keys survive ─────── */
 const storage = new Map<string, string>();
-(globalThis as Record<string, unknown>).window = {
-  localStorage: {
-    get length() {
-      return storage.size;
-    },
-    key: (index: number) => [...storage.keys()][index] ?? null,
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => void storage.set(key, value),
-    removeItem: (key: string) => void storage.delete(key),
+const session = new Map<string, string>();
+const makeStorage = (map: Map<string, string>) => ({
+  get length() {
+    return map.size;
   },
+  key: (index: number) => [...map.keys()][index] ?? null,
+  getItem: (key: string) => map.get(key) ?? null,
+  setItem: (key: string, value: string) => void map.set(key, value),
+  removeItem: (key: string) => void map.delete(key),
+});
+(globalThis as Record<string, unknown>).window = {
+  localStorage: makeStorage(storage),
+  sessionStorage: makeStorage(session),
 };
 saveOrderDraft(orderDraftKey('store-1', 'user-9'), draft);
 saveOrderDraft(orderDraftKey('store-1', null), draft);
@@ -118,5 +123,12 @@ assert.equal(loadOrderDraft(orderDraftKey('store-1', 'user-9'), 'store-1'), null
 assert.equal(loadOrderDraft(orderDraftKey('store-1', null), 'store-1'), null, 'guest draft wiped');
 assert.equal(loadOrderDraft(orderDraftKey('store-2', 'user-9'), 'store-2'), null, 'other store wiped too');
 assert.ok(storage.has('prinzex_auth_state'), 'unrelated localStorage keys untouched');
+
+/* ── One-shot keep-draft shield for the forced login hop ─────────────── */
+assert.equal(consumeKeepOrderDraft('store-1'), false, 'nothing armed → false');
+keepOrderDraftOnce('store-1');
+assert.equal(consumeKeepOrderDraft('store-1'), true, 'armed flag consumed true');
+assert.equal(consumeKeepOrderDraft('store-1'), false, 'one-shot only — second read is false');
+assert.equal(consumeKeepOrderDraft('store-2'), false, 'per-store isolation');
 
 console.log('order draft checks: OK');

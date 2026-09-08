@@ -28,6 +28,8 @@ import {
 } from '@/components/order/orderReducer';
 import {
   clearOrderDraft,
+  consumeKeepOrderDraft,
+  keepOrderDraftOnce,
   loadOrderDraft,
   orderDraftKey,
   saveOrderDraft,
@@ -128,7 +130,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // Restore runs AFTER hydration (localStorage is client-only), then every
   // change writes back. Browser-side PDF/image files can't survive refresh
   // — only Office files already on the server persist, and the customer is
-  // asked to re-attach the rest in step 1.
+  // asked to re-attach the rest in step 1. NAVIGATING AWAY from the page
+  // resets the flow (unmount cleanup below) — the draft exists only to
+  // survive a refresh of THIS page.
   //
   // NOTE the key includes the user id, and auth rehydrates ASYNC
   // (ClientWrapper#restoreSession runs after this page mounts): the first
@@ -209,6 +213,25 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     if (draftRestoredKeyRef.current !== draftKey) return;
     saveOrderDraft(draftKey, serializeDraft(state, { agreed, couponCode }));
   }, [state, agreed, couponCode, draftKey]);
+
+  // Leaving the order page (in-app navigation, store switch, closing the
+  // flow) resets everything: the draft is wiped on unmount, so coming back
+  // starts a clean order. A hard refresh/breakdown never runs React
+  // cleanups, which is exactly why refresh keeps working. The closure must
+  // NOT depend on draftKey — the cleanup for the old key would run on every
+  // login/logout key flip and wipe the draft before adoption reads it — so
+  // the latest key is tracked in a ref instead.
+  const draftKeyLiveRef = useRef(draftKey);
+  useEffect(() => {
+    draftKeyLiveRef.current = draftKey;
+  }, [draftKey]);
+  useEffect(() => {
+    return () => {
+      // The forced sign-in hop is part of checkout — keep the draft once.
+      if (consumeKeepOrderDraft(store.id)) return;
+      clearOrderDraft(draftKeyLiveRef.current);
+    };
+  }, [store.id]);
 
   const specs = state.order.specifications as any;
   const service = store.services.find((entry) => entry.id === specs.serviceId);
@@ -481,8 +504,11 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       return;
     }
 
-    // Require login to proceed to Delivery (Step 2)
+    // Require login to proceed to Delivery (Step 2). The redirect leaves
+    // the order page, which normally resets the flow — shield the draft
+    // once so the details entered as a guest survive the login hop.
     if (state.step === 1 && !token) {
+      keepOrderDraftOnce(store.id);
       router.push(
         `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`,
       );
