@@ -11,8 +11,9 @@ const SLIDE_MS = 5000;
 /**
  * Homepage promo carousel — the banners an admin manages in
  * Admin → Content, active ones only (the public API filters), shown in the
- * admin's order. Auto-rotates; dots jump to a slide. Renders nothing when
- * there are no active banners (skeleton while the first fetch is in flight).
+ * admin's order. Auto-rotates every 5s, dots jump to a slide, and clicking
+ * a banner opens its Link URL (when the admin set one). Renders nothing
+ * when there are no active banners (skeleton while the first fetch runs).
  */
 export default function PromoBanners() {
   const { data, isLoading, isError } = useQuery({
@@ -39,7 +40,7 @@ export default function PromoBanners() {
     return (
       <section aria-hidden className="py-6 sm:py-8">
         <div className="container-page">
-          <div className="aspect-[3/1] animate-pulse rounded-3xl bg-slate-100" />
+          <div className="aspect-[6/1] min-h-[64px] animate-pulse rounded-2xl bg-slate-100" />
         </div>
       </section>
     );
@@ -52,7 +53,7 @@ export default function PromoBanners() {
   return (
     <section className="py-6 sm:py-8" aria-label="Current offers" aria-roledescription="carousel">
       <div className="container-page">
-        <div className="relative aspect-[3/1] overflow-hidden rounded-3xl bg-slate-100 shadow-sm">
+        <div className="relative aspect-[6/1] min-h-[64px] overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
           {banners.map((banner, slideIndex) => {
             const isCurrent = slideIndex === active;
             const visibility = isCurrent
@@ -63,9 +64,9 @@ export default function PromoBanners() {
               /* Image missing or refused to load — fall back to a branded
                  gradient + title card (matches the admin preview's look),
                  so a bad URL can never leave a broken image on the
-                 homepage. The slide stays clickable. */
+                 homepage. */
               <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 px-6">
-                <span className="max-w-2xl text-center text-xl font-bold text-white sm:text-3xl">
+                <span className="max-w-2xl text-center text-lg font-bold text-white sm:text-2xl">
                   {banner.title}
                 </span>
               </div>
@@ -85,7 +86,7 @@ export default function PromoBanners() {
                   }
                   className="object-cover"
                 />
-                <span className="absolute bottom-3 left-3 rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+                <span className="absolute bottom-2 left-2 rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium text-white backdrop-blur">
                   {banner.title}
                 </span>
               </>
@@ -112,7 +113,7 @@ export default function PromoBanners() {
           })}
 
           {count > 1 && (
-            <div className="absolute bottom-3 right-3 flex gap-1.5">
+            <div className="absolute bottom-2 right-2 flex gap-1.5">
               {banners.map((banner, dotIndex) => (
                 <button
                   key={banner.id}
