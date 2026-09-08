@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +26,13 @@ import {
   EMPTY_COST,
   computeCost,
 } from '@/components/order/orderReducer';
+import {
+  clearOrderDraft,
+  loadOrderDraft,
+  orderDraftKey,
+  saveOrderDraft,
+  serializeDraft,
+} from '@/lib/domain/orderDraft';
 import { IconArrowLeft, IconArrowRight, IconShoppingCart } from '@/components/icons';
 import { useCatalogOptions } from '@/lib/api/catalog';
 import {
@@ -54,6 +61,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get('service') ?? '';
   const token = useAppSelector((state) => state.auth.accessToken);
+  const draftUserId = useAppSelector((state) => state.auth.user?.id);
 
   const [state, dispatch] = useReducer(
     orderReducer,
@@ -115,6 +123,38 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const [maxReached, setMaxReached] = useState(1);
   const [placing, setPlacing] = useState(false);
   const [couponCode, setCouponCode] = useState('');
+
+  // ── Draft persistence: refresh keeps the step + all entered details ──
+  // Restore runs AFTER hydration (localStorage is client-only), then every
+  // change writes back. Browser-side PDF/image files can't survive refresh
+  // — only Office files already on the server persist, and the customer is
+  // asked to re-attach the rest in step 1.
+  const draftKey = useMemo(
+    () => orderDraftKey(store.id, draftUserId),
+    [store.id, draftUserId],
+  );
+  const draftRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+    const draft = loadOrderDraft(draftKey, store.id);
+    if (!draft) return;
+    dispatch({ type: 'RESTORE', payload: { step: draft.step, order: draft.order } });
+    setMaxReached((previous) => Math.max(previous, draft.step));
+    setAgreed(draft.agreed);
+    setCouponCode(draft.couponCode);
+    if (draft.droppedFiles > 0) {
+      showToast(
+        `Your details were kept — please re-attach your ${draft.droppedFiles} file(s) in step 1 (browsers clear files on refresh).`,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, store.id]);
+
+  useEffect(() => {
+    saveOrderDraft(draftKey, serializeDraft(state, { agreed, couponCode }));
+  }, [state, agreed, couponCode, draftKey]);
 
   const specs = state.order.specifications as any;
   const service = store.services.find((entry) => entry.id === specs.serviceId);
@@ -460,6 +500,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
                   razorpayPaymentId: response.razorpay_payment_id,
                   razorpaySignature: response.razorpay_signature,
                 });
+                clearOrderDraft(draftKey);
                 router.push(`/orders/confirmation/${orderId}`);
               } catch (err: any) {
                 dispatch({
@@ -479,6 +520,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         }
       }
 
+      clearOrderDraft(draftKey);
       router.push(`/orders/confirmation/${orderId}`);
     } catch (err: any) {
       dispatch({ type: 'SET_ERROR', payload: err.message });
@@ -517,6 +559,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     );
 
     showToast('Added to cart successfully!');
+    clearOrderDraft(draftKey);
     router.push(`/stores/${store.id}`);
   };
 
