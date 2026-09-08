@@ -10,6 +10,7 @@ import { toggleCart } from '@/store/slices/cartSlice';
 import { getMediaUrl } from '@/lib/utils';
 import {
   IconChevronDown,
+  IconLayoutDashboard,
   IconLogOut,
   IconMenu,
   IconPackage,
@@ -166,6 +167,13 @@ export default function Navbar() {
                     <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>
                     <p className="truncate text-xs text-slate-500">{user.email}</p>
                   </div>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <IconLayoutDashboard className="h-4 w-4 text-slate-400" /> Dashboard
+                  </Link>
                   <Link
                     href="/dashboard/orders"
                     onClick={() => setDropdownOpen(false)}
