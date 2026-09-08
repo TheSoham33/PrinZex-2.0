@@ -56,7 +56,7 @@ export default function AdminContentPage() {
   const [faqs, setFaqs] = useState<FaqCategory[]>([]);
 
   const [bannerModal, setBannerModal] = useState(false);
-  const [bannerForm, setBannerForm] = useState({ title: '', linkUrl: '', isActive: true, imageUrl: 'https://placehold.co/1200x400' });
+  const [bannerForm, setBannerForm] = useState({ title: '', linkUrl: '', isActive: true, imageUrl: '' });
   const [tplModal, setTplModal] = useState(false);
   const [tplForm, setTplForm] = useState({ name: '', category: '' });
   const [deleteTarget, setDeleteTarget] = useState<{ kind: string; id: string; name: string } | null>(null);
@@ -80,7 +80,7 @@ export default function AdminContentPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-banners'] });
       showToast('Banner added');
       setBannerModal(false);
-      setBannerForm({ title: '', linkUrl: '', isActive: true, imageUrl: 'https://placehold.co/1200x400' });
+      setBannerForm({ title: '', linkUrl: '', isActive: true, imageUrl: '' });
     },
     onError: (err: any) => showToast(err.message, 'error'),
   });
@@ -420,7 +420,7 @@ export default function AdminContentPage() {
               title: bannerForm.title,
               linkUrl: bannerForm.linkUrl,
               isActive: bannerForm.isActive,
-              imageUrl: bannerForm.imageUrl,
+              ...(bannerForm.imageUrl.trim() ? { imageUrl: bannerForm.imageUrl.trim() } : {}),
               order: banners.length
             });
           }}
@@ -433,6 +433,11 @@ export default function AdminContentPage() {
           <div>
             <label htmlFor="bn-link" className="label">Link URL</label>
             <input id="bn-link" type="text" value={bannerForm.linkUrl} onChange={(e) => setBannerForm({ ...bannerForm, linkUrl: e.target.value })} placeholder="/stores" className="input" />
+          </div>
+          <div>
+            <label htmlFor="bn-image" className="label">Image URL <span className="font-normal text-slate-400">(optional)</span></label>
+            <input id="bn-image" type="text" value={bannerForm.imageUrl} onChange={(e) => setBannerForm({ ...bannerForm, imageUrl: e.target.value })} placeholder="https://… a 1200×400 banner image" className="input" />
+            <p className="mt-1 text-xs text-slate-400">Leave empty to show a coloured card with the title instead of an image.</p>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-slate-700">Active</span>

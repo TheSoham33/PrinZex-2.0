@@ -25,6 +25,9 @@ export default function PromoBanners() {
     .sort((a, b) => a.order - b.order);
   const count = banners.length;
   const [index, setIndex] = useState(0);
+  /** Banners whose imageUrl failed to load (dead host / bad link) — they
+   *  render as a gradient + title card instead of a broken image. */
+  const [failedIds, setFailedIds] = useState<Record<string, true>>({});
 
   useEffect(() => {
     if (count < 2) return;
@@ -55,7 +58,18 @@ export default function PromoBanners() {
             const visibility = isCurrent
               ? 'opacity-100'
               : 'pointer-events-none opacity-0';
-            const slide = (
+            const imageFailed = !banner.imageUrl || failedIds[banner.id] === true;
+            const slide = imageFailed ? (
+              /* Image missing or refused to load — fall back to a branded
+                 gradient + title card (matches the admin preview's look),
+                 so a bad URL can never leave a broken image on the
+                 homepage. The slide stays clickable. */
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 px-6">
+                <span className="max-w-2xl text-center text-xl font-bold text-white sm:text-3xl">
+                  {banner.title}
+                </span>
+              </div>
+            ) : (
               <>
                 {/* unoptimized: admins paste arbitrary hosted image URLs, so
                     the next/image domain allowlist cannot know them */}
@@ -66,6 +80,9 @@ export default function PromoBanners() {
                   sizes="100vw"
                   unoptimized
                   priority={slideIndex === 0}
+                  onError={() =>
+                    setFailedIds((prev) => ({ ...prev, [banner.id]: true }))
+                  }
                   className="object-cover"
                 />
                 <span className="absolute bottom-3 left-3 rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium text-white backdrop-blur">
