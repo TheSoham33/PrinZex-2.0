@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import {
   COVER_COLORS as COVER_COLORS_FALLBACK,
   COVER_TEXT_COLORS as COVER_TEXT_COLORS_FALLBACK,
@@ -151,21 +150,18 @@ export default function SpecificationsStep({
   const [processing, setProcessing] = useState<'pdf' | 'office' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const customerToken = useAppSelector((state) => state.auth.accessToken);
-  const router = useRouter();
 
   const acceptFile = async (selected: File | undefined) => {
     if (!selected) return;
 
-    // Uploads are account-bound — any attach attempt bounces a guest to
-    // sign in (picker and drag-drop both funnel through here).
+    // Uploads are account-bound — a guest's attach attempt shows the
+    // validation message right here and stays on the page (picker and
+    // drag-drop both funnel through here).
     if (!customerToken) {
       const message = 'Please sign in to upload your file.';
       setLocalError(message);
       showToast(message, 'error');
       if (inputRef.current) inputRef.current.value = '';
-      router.push(
-        `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`,
-      );
       return;
     }
 
