@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPublicBanners } from '@/lib/api/admin-content';
 
@@ -10,9 +11,9 @@ const SLIDE_MS = 5000;
 /**
  * Homepage promo carousel — the banners an admin manages in
  * Admin → Content, active ones only (the public API filters), shown in the
- * admin's order. Auto-rotates every 5s; clicking a banner advances to the
- * next one, and the dots jump to a slide. Renders nothing when there are
- * no active banners (skeleton while the first fetch is in flight).
+ * admin's order. Auto-rotates every 5s, dots jump to a slide, and clicking
+ * a banner opens its Link URL (when the admin set one). Renders nothing
+ * when there are no active banners (skeleton while the first fetch runs).
  */
 export default function PromoBanners() {
   const { data, isLoading, isError } = useQuery({
@@ -90,25 +91,24 @@ export default function PromoBanners() {
                 </span>
               </>
             );
-            // The whole slide is a button: clicking a banner advances to the
-            // next one (wrapping). Admin's Link URL stays stored but clicks
-            // no longer navigate — rotation is the banner's interaction.
-            return (
-              <button
+            return banner.linkUrl ? (
+              <Link
                 key={banner.id}
-                type="button"
-                onClick={() => setIndex((active + 1) % count)}
-                className={`absolute inset-0 block cursor-pointer transition-opacity duration-500 ${visibility}`}
+                href={banner.linkUrl}
+                className={`absolute inset-0 transition-opacity duration-500 ${visibility}`}
                 aria-hidden={!isCurrent}
                 tabIndex={isCurrent ? 0 : -1}
-                aria-label={
-                  count > 1
-                    ? `Banner ${active + 1} of ${count}: ${banner.title} — activate to see the next banner`
-                    : banner.title
-                }
               >
                 {slide}
-              </button>
+              </Link>
+            ) : (
+              <div
+                key={banner.id}
+                className={`absolute inset-0 transition-opacity duration-500 ${visibility}`}
+                aria-hidden={!isCurrent}
+              >
+                {slide}
+              </div>
             );
           })}
 
