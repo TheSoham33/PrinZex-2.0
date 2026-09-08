@@ -54,6 +54,8 @@ export interface ServiceCatalogCategory {
     /** Admin kill switch — absent = active. */
     isActive?: boolean;
     maxFilesPerOrder?: number;
+    /** Admin search tags — alternate names customers search by. */
+    tags?: string[];
   }>;
 }
 

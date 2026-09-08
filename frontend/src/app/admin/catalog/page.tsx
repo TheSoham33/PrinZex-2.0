@@ -264,7 +264,15 @@ interface ServiceCategoryRow {
   id: string;
   name: string;
   description?: string;
-  services: { id: string; name: string; isActive?: boolean; maxFilesPerOrder?: number }[];
+  services: {
+    id: string;
+    name: string;
+    isActive?: boolean;
+    maxFilesPerOrder?: number;
+    /** Alternate search names ("xerox" → Printing). Matched only when no
+     *  service name matches the customer's search. */
+    tags?: string[];
+  }[];
 }
 
 const inputCls = 'input py-1.5 text-xs';
@@ -530,6 +538,88 @@ export default function AdminCatalogPage() {
 
 /* ─────────────── nested editor for service-categories ─────────────── */
 
+/**
+ * Search tags for one service: Enter / comma / blur adds, × removes,
+ * Backspace on an empty input pops the last tag. Tags are lowercased and
+ * deduped here; the backend schema enforces the caps (12 tags × 30 chars)
+ * on save. Customers hit tags only when no service NAME matches their
+ * search — "xerox" then finds the Printing service.
+ */
+function ServiceTagsInput({
+  tags,
+  serviceName,
+  onChange,
+}: {
+  tags: string[];
+  serviceName: string;
+  onChange: (tags: string[]) => void;
+}) {
+  const [draft, setDraft] = useState('');
+
+  const commit = (raw: string) => {
+    const tag = raw.trim().toLowerCase();
+    if (!tag || tags.includes(tag) || tags.length >= 12) return;
+    onChange([...tags, tag]);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span
+        className="text-[11px] font-medium text-slate-400"
+        title="Alternate search names — customers typing these find this service when no service name matches (e.g. 'xerox' → Photocopy)"
+      >
+        tags
+      </span>
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700"
+        >
+          {tag}
+          <button
+            type="button"
+            onClick={() => onChange(tags.filter((t) => t !== tag))}
+            aria-label={`Remove tag ${tag} from ${serviceName || 'this service'}`}
+            className="text-blue-400 hover:text-blue-800"
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        type="text"
+        value={draft}
+        onChange={(event) => {
+          const value = event.target.value;
+          if (value.includes(',')) {
+            value.split(',').forEach(commit);
+            setDraft('');
+          } else {
+            setDraft(value);
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            commit(draft);
+            setDraft('');
+          }
+          if (event.key === 'Backspace' && draft === '' && tags.length > 0) {
+            onChange(tags.slice(0, -1));
+          }
+        }}
+        onBlur={() => {
+          commit(draft);
+          setDraft('');
+        }}
+        placeholder={tags.length === 0 ? 'search tags — e.g. xerox, brochure' : 'add tag'}
+        aria-label={`Add a search tag for ${serviceName || 'this service'}`}
+        className="min-w-44 flex-1 rounded-lg border border-dashed border-slate-300 bg-transparent px-2 py-1 text-[11px] text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none"
+      />
+    </div>
+  );
+}
+
 function ServiceCategoriesEditor({
   rows,
   label,
@@ -552,7 +642,7 @@ function ServiceCategoriesEditor({
   const updateService = (
     catIndex: number,
     serviceIndex: number,
-    patch: Partial<{ id: string; name: string; isActive?: boolean; maxFilesPerOrder?: number }>,
+    patch: Partial<ServiceCategoryRow['services'][number]>,
   ) => {
     onChange(
       rows.map((row, i) =>
@@ -624,7 +714,8 @@ function ServiceCategoriesEditor({
 
             <div className="mt-3 space-y-2">
               {category.services.map((service, serviceIndex) => (
-                <div key={serviceIndex} className="flex items-center gap-2">
+                <div key={serviceIndex} className="space-y-1.5">
+                <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={service.id}
@@ -706,6 +797,12 @@ function ServiceCategoriesEditor({
                   >
                     <IconTrash className="h-4 w-4" />
                   </button>
+                </div>
+                <ServiceTagsInput
+                  tags={service.tags ?? []}
+                  serviceName={service.name}
+                  onChange={(tags) => updateService(catIndex, serviceIndex, { tags })}
+                />
                 </div>
               ))}
               <button
