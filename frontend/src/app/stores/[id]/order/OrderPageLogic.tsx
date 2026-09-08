@@ -129,16 +129,24 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // change writes back. Browser-side PDF/image files can't survive refresh
   // — only Office files already on the server persist, and the customer is
   // asked to re-attach the rest in step 1.
+  //
+  // NOTE the key includes the user id, and auth rehydrates ASYNC
+  // (ClientWrapper#restoreSession runs after this page mounts): the first
+  // render drafts/lookup under :guest, then the key flips to the real user
+  // id. Restore therefore runs once PER KEY (a boolean ref would latch on
+  // the guest lookup and never read the user's actual draft), and the save
+  // effect never writes to a key before that key was read — otherwise the
+  // fresh empty state would overwrite the user's real draft on entry.
   const draftKey = useMemo(
     () => orderDraftKey(store.id, draftUserId),
     [store.id, draftUserId],
   );
-  const draftRestoredRef = useRef(false);
+  const draftRestoredKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (draftRestoredRef.current) return;
-    draftRestoredRef.current = true;
+    if (draftRestoredKeyRef.current === draftKey) return;
     const draft = loadOrderDraft(draftKey, store.id);
+    draftRestoredKeyRef.current = draftKey;
     if (!draft) return;
     dispatch({ type: 'RESTORE', payload: { step: draft.step, order: draft.order } });
     setMaxReached((previous) => Math.max(previous, draft.step));
@@ -153,6 +161,10 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   }, [draftKey, store.id]);
 
   useEffect(() => {
+    // Read-before-write: only persist once the restore attempt for THIS
+    // key has run, so the initial empty state never clobbers a saved draft
+    // (the save runs with the pre-restore state in the same commit).
+    if (draftRestoredKeyRef.current !== draftKey) return;
     saveOrderDraft(draftKey, serializeDraft(state, { agreed, couponCode }));
   }, [state, agreed, couponCode, draftKey]);
 
