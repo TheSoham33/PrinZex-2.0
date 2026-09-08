@@ -23,6 +23,7 @@ import {
 } from '../seller/seller.service';
 import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
+import { refundOrderToSource } from '../payments/payments.service';
 import {
   emitAdminGlobalEvent,
   emitNewOrder,
@@ -932,44 +933,25 @@ export async function cancelOrder(
   const wasPaid = order.paymentStatus === 'paid';
   let refundNote = 'No refund needed (cash on delivery)';
 
-  await prisma.$transaction(async (tx) => {
-    await tx.order.update({
-      where: { id: order.id },
-      data: {
-        status: 'cancelled',
-        cancelReason: input.reason,
-        cancelledAt: new Date(),
-        // Money already collected always flips to 'refunded' (see branch TODO).
-        ...(wasPaid && order.paymentMethod !== 'cod' ? { paymentStatus: 'refunded' } : {}),
-      },
-    });
-
-    if (wasPaid && order.paymentMethod === 'wallet') {
-      // Wallet refund: instant, atomic, fully ledgered.
-      const wallet = await tx.wallet.findUnique({ where: { userId: customerId } });
-      if (!wallet) {
-        throw ApiError.internal('Wallet record missing for refund');
-      }
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { increment: Number(order.total) } },
-      });
-      await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          type: 'CREDIT',
-          reason: 'REFUND',
-          amount: Number(order.total),
-          description: `Refund for cancelled order ${order.id}`,
-          referenceId: order.id,
-        },
-      });
-      refundNote = `₹${Number(order.total)} credited back to your wallet`;
-    } else if (wasPaid && (order.paymentMethod === 'card' || order.paymentMethod === 'upi' || order.paymentMethod === 'razorpay')) {
-      // TODO: Razorpay refund API — create refund record, confirm via webhook.
-      refundNote = 'Refund initiated to your original payment method (5–7 business days)';
-    }
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: 'cancelled',
+      cancelReason: input.reason,
+      cancelledAt: new Date(),
+    },
   });
+
+  // Money already collected goes back to its original source (wallet
+  // balance instantly, or a real gateway refund); nothing moves for COD.
+  if (wasPaid && order.paymentMethod !== 'cod') {
+    const refund = await refundOrderToSource(order.id, `Customer cancelled order ${order.id}`);
+    refundNote = !refund.refunded
+      ? 'Refund could not be processed automatically — our team will resolve it shortly'
+      : refund.channel === 'wallet'
+        ? `₹${Number(order.total)} credited back to your wallet`
+        : 'Refund initiated to your original payment method (5–7 business days)';
+  }
 
   await runPostCommitSideEffects('order.cancelled', [
     () => appendTimelineEvent(order.id, 'cancelled', customerId, `Cancelled by customer: ${input.reason}`),
