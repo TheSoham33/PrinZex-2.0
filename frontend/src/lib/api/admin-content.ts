@@ -1,4 +1,4 @@
-import { get, post, patch, del } from './client';
+import { get, getList, post, patch, del } from './client';
 
 export interface Banner {
   id: string;
@@ -60,6 +60,12 @@ export const deleteBanner = async (id: string): Promise<void> => {
 };
 
 export const reorderBanners = async (orderedIds: string[]): Promise<void> => patch<void>('/admin/content/banners/reorder', { orderedIds });
+
+/** Public storefront banners (no auth, active only) — the homepage carousel.
+ *  `/admin/content/banners` above is the admin-auth list; this one is the
+ *  customer-facing read of the same collection. */
+export const fetchPublicBanners = (): Promise<Banner[]> =>
+  getList<Banner>('/content/banners', { isActive: 'true' });
 
 // ── FAQs ───────────────────────────────────────────────────────────────────
 
