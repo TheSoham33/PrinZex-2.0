@@ -206,9 +206,26 @@ export default function SpecificationsStep({
         });
         totalPages = pdfDoc.getPageCount();
         previewUrl = URL.createObjectURL(selected);
+        // Logged-in customers: park the PDF on the server NOW (best-effort)
+        // so the order-page draft can survive a refresh — server-backed
+        // files persist, browser blobs don't.
+        if (customerToken) {
+          try {
+            serverFileUrl = (await uploadDesign(selected)).fileUrl;
+          } catch {
+            /* keep the browser-only file — current pre-upload flow works */
+          }
+        }
       } else if (strategy === 'image') {
         totalPages = 1; // one sheet per image
         previewUrl = URL.createObjectURL(selected);
+        if (customerToken) {
+          try {
+            serverFileUrl = (await uploadDesign(selected)).fileUrl;
+          } catch {
+            /* keep the browser-only file — current pre-upload flow works */
+          }
+        }
       } else {
         // Backend converts the Office file to PDF (LibreOffice) and returns
         // its exact page count; the stored PDF URL rides along for checkout.

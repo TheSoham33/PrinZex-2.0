@@ -13,7 +13,7 @@ import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { formatCurrency, toApiDeliverySpeed } from '@/lib/utils';
+import { formatCurrency, getMediaUrl, toApiDeliverySpeed } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -145,10 +145,32 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   useEffect(() => {
     if (draftRestoredKeyRef.current === draftKey) return;
-    const draft = loadOrderDraft(draftKey, store.id);
+    let draft = loadOrderDraft(draftKey, store.id);
+    if (!draft && draftUserId) {
+      // Login-bounce adoption: details entered as a guest were saved under
+      // the :guest slot before the forced sign-in — move them into the
+      // account slot (this key flip is exactly the deferred case from the
+      // async auth rehydration, so a guest draft never strands anyone).
+      const guestKey = orderDraftKey(store.id, null);
+      draft = loadOrderDraft(guestKey, store.id);
+      if (draft) {
+        saveOrderDraft(draftKey, draft);
+        clearOrderDraft(guestKey);
+      }
+    }
     draftRestoredKeyRef.current = draftKey;
     if (!draft) return;
-    dispatch({ type: 'RESTORE', payload: { step: draft.step, order: draft.order } });
+    // Server-backed files (uploaded at attach time) preview straight from
+    // the stored URL — the revivable kind after a refresh.
+    const restoredOrder = {
+      ...draft.order,
+      files: (draft.order.files ?? []).map((file) =>
+        file.serverFileUrl
+          ? { ...file, previewUrl: getMediaUrl(file.serverFileUrl) ?? undefined }
+          : file,
+      ),
+    };
+    dispatch({ type: 'RESTORE', payload: { step: draft.step, order: restoredOrder } });
     setMaxReached((previous) => Math.max(previous, draft.step));
     setAgreed(draft.agreed);
     setCouponCode(draft.couponCode);
