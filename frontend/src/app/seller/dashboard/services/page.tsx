@@ -174,6 +174,12 @@ export default function ManageServicesPage() {
                   {category.services.map((service) => {
                     const myService = myServices.find(s => s.serviceId === service.id);
                     const isSelected = Boolean(myService?.isActive);
+                    // Platform kill switch: a service the admin deactivated
+                    // is hidden from shops that don't offer it; shops that do
+                    // keep a greyed row so they can remove it or wait for
+                    // reactivation. Their storefront stops showing it either way.
+                    const platformActive = service.isActive !== false;
+                    if (!platformActive && !myService) return null;
                     const local = localPrices[service.id] || { price: '0', unit: 'per page', minQty: '1' };
                       const isChanged = isSelected && myService && (
                         String(myService.basePrice) !== local.price || 
@@ -182,19 +188,26 @@ export default function ManageServicesPage() {
                       );
 
                     return (
-                      <div key={service.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
+                      <div key={service.id} className={`flex flex-wrap items-center gap-4 px-5 py-4 ${platformActive ? '' : 'bg-amber-50/40 opacity-70'}`}>
                         <div className="flex flex-1 items-center gap-3 min-w-[15rem]">
                           <input
                             type="checkbox"
                             id={`check-${service.id}`}
                             checked={isSelected}
-                            disabled={addMutation.isPending || deleteMutation.isPending || reactivateMutation.isPending}
+                            // Only removal is possible while the platform has
+                            // the service switched off.
+                            disabled={(!platformActive && !isSelected) || addMutation.isPending || deleteMutation.isPending || reactivateMutation.isPending}
                             onChange={() => handleToggleService(category.id, category.name, service.id, service.name)}
                             className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:cursor-wait disabled:opacity-50"
                           />
                           <label htmlFor={`check-${service.id}`} className="text-sm font-semibold text-slate-900 cursor-pointer">
                             {service.name}
                           </label>
+                          {!platformActive && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                              Deactivated by platform
+                            </span>
+                          )}
                         </div>
 
                         {isSelected && (

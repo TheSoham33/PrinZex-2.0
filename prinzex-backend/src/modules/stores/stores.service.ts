@@ -10,6 +10,8 @@ import {
   type PaginatedResponse,
 } from '../../utils/pagination';
 import type { ListStoresQuery, StoreReviewsQuery, SuggestionsQuery } from './stores.schema';
+import { getCatalogEntry } from '../catalog/catalog.service';
+import { serviceIsActive } from '../catalog/catalog.schemas';
 
 /**
  * Public store discovery. Only APPROVED sellers are ever exposed.
@@ -214,8 +216,16 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
 
   // If a search query is provided, find the best matching service for each seller
   // (searching all services, not just the top 5 included in storeListSelect).
+  // Admin kill switch: platform-deactivated services vanish from price
+  // labels, search matches and service chips on every store card.
+  const platformActive = await platformActiveFilter();
+  const visibleRows = rows.map((row) => ({
+    ...row,
+    services: row.services.filter((service: { serviceId: string }) => platformActive(service.serviceId)),
+  }));
+
   const sellerIds = rows.map((r) => r.id);
-  const searchMatches = query.q
+  const searchMatches = (query.q
     ? await prisma.sellerService.findMany({
         where: {
           sellerId: { in: sellerIds },
@@ -227,9 +237,9 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
         },
         orderBy: { basePrice: 'asc' },
       })
-    : [];
+    : []).filter((match: { serviceId: string }) => platformActive(match.serviceId));
 
-  const items: StoreListItem[] = rows.map(({ _count, ...seller }) => {
+  const items: StoreListItem[] = visibleRows.map(({ _count, ...seller }) => {
     let matchedService = null;
 
     if (query.q) {
@@ -264,6 +274,18 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   return { result, cacheHit: false };
 }
 
+/** Admin kill switch: platform-deactivated services are filtered out of
+ *  every customer-facing store surface. Fail-open when the catalogue is
+ *  unreadable — a hiccup must not empty every storefront. */
+async function platformActiveFilter(): Promise<(serviceId: string) => boolean> {
+  try {
+    const catalog = await getCatalogEntry('service-categories');
+    return (serviceId: string) => serviceIsActive(catalog.data, serviceId);
+  } catch {
+    return () => true;
+  }
+}
+
 // ── GET /api/stores/:sellerId ──────────────────────────────────────────────
 
 const storeDetailSelect = {
@@ -294,6 +316,11 @@ export async function getStore(sellerId: string): Promise<CachedResult<StoreDeta
   if (!seller || seller.status !== 'APPROVED') {
     throw ApiError.notFound('Store not found');
   }
+
+  const platformActive = await platformActiveFilter();
+  seller.services = seller.services.filter(
+    (service: { serviceId: string }) => platformActive(service.serviceId),
+  );
 
   const [reviewCount, latestRows] = await prisma.$transaction([
     prisma.review.count({ where: { entityType: 'STORE', entityId: sellerId, isFlagged: false } }),
@@ -331,8 +358,13 @@ export async function getStoreServices(sellerId: string): Promise<{ categories: 
     orderBy: [{ categoryId: 'asc' }, { basePrice: 'asc' }],
   });
 
+  const platformActive = await platformActiveFilter();
+  const visible = services.filter((service: { serviceId: string }) =>
+    platformActive(service.serviceId),
+  );
+
   const groups = new Map<string, ServiceCategory>();
-  for (const service of services) {
+  for (const service of visible) {
     const group = groups.get(service.categoryId) ?? {
       categoryId: service.categoryId,
       categoryName: service.categoryName,

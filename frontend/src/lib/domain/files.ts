@@ -48,7 +48,13 @@ export const MAX_FILES_PER_ORDER = 10;
 export interface ServiceCatalogCategory {
   id: string;
   name: string;
-  services: ReadonlyArray<{ id: string; name: string; maxFilesPerOrder?: number }>;
+  services: ReadonlyArray<{
+    id: string;
+    name: string;
+    /** Admin kill switch — absent = active. */
+    isActive?: boolean;
+    maxFilesPerOrder?: number;
+  }>;
 }
 
 /**

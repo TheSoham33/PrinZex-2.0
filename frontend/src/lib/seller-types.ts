@@ -77,7 +77,9 @@ export interface ServiceCategory {
   id: string;
   name: string;
   description: string;
-  services: { id: string; name: string }[];
+  /** `isActive` is the platform kill switch (Admin → Catalogue);
+   *  absent = active. */
+  services: { id: string; name: string; isActive?: boolean }[];
 }
 
 export const BUSINESS_TYPES: {

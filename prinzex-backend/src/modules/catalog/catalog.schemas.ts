@@ -123,6 +123,9 @@ const serviceCategories = z.array(
         z.object({
           id: keyString,
           name: labelString,
+          /** Admin kill switch: taking a service offline hides/blocks it at
+           *  every shop. Absent = active (rows predating the flag). */
+          isActive: z.boolean().optional(),
           /** Admin knob: how many documents a customer may attach to one
            *  order of this service. Absent = 1 (single-file, the original
            *  behaviour). All files share the order's specifications. */
@@ -132,6 +135,27 @@ const serviceCategories = z.array(
       .min(1, 'A category needs at least one service'),
   }),
 );
+
+/**
+ * Whether a platform service is available, read from a 'service-categories'
+ * group's data. Admin kill switch: only an explicit isActive: false
+ * deactivates — unknown services, missing rows and malformed groups FAIL
+ * OPEN so a catalogue hiccup can never take every store offline. Pure +
+ * defensive, same contract as serviceMaxFilesPerOrder.
+ */
+export function serviceIsActive(categoriesData: unknown, serviceId: string): boolean {
+  if (!Array.isArray(categoriesData)) return true;
+  for (const category of categoriesData) {
+    const services = (category as { services?: unknown } | null)?.services;
+    if (!Array.isArray(services)) continue;
+    for (const entry of services) {
+      const service = entry as { id?: unknown; isActive?: unknown } | null;
+      if (service?.id !== serviceId) continue;
+      return service.isActive !== false;
+    }
+  }
+  return true;
+}
 
 /**
  * How many files a service accepts per order, read straight from a
