@@ -12,7 +12,9 @@ import * as adminContentController from './admin-content.controller';
 
 export const bannerCreateBody = z.object({
   title: z.string().trim().min(1).max(200),
-  imageUrl: z.string().trim().min(1).max(500),
+  /** Optional — a banner without an image renders as a gradient + title
+   *  card on the storefront, so admins can ship text-only announcements. */
+  imageUrl: z.string().trim().min(1).max(500).optional(),
   linkUrl: z.string().trim().max(500).optional(),
   isActive: z.boolean().optional(),
   order: z.number().int().min(0).optional(),
