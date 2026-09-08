@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import {
   COVER_COLORS as COVER_COLORS_FALLBACK,
   COVER_TEXT_COLORS as COVER_TEXT_COLORS_FALLBACK,
@@ -150,9 +151,23 @@ export default function SpecificationsStep({
   const [processing, setProcessing] = useState<'pdf' | 'office' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const customerToken = useAppSelector((state) => state.auth.accessToken);
+  const router = useRouter();
 
   const acceptFile = async (selected: File | undefined) => {
     if (!selected) return;
+
+    // Uploads are account-bound — any attach attempt bounces a guest to
+    // sign in (picker and drag-drop both funnel through here).
+    if (!customerToken) {
+      const message = 'Please sign in to upload your file.';
+      setLocalError(message);
+      showToast(message, 'error');
+      if (inputRef.current) inputRef.current.value = '';
+      router.push(
+        `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+      );
+      return;
+    }
 
     const strategy = pageCountStrategy(selected.name);
     if (!strategy) {
@@ -182,16 +197,8 @@ export default function SpecificationsStep({
     }
 
     // Office files are uploaded and converted to print-ready PDF on the
-    // server — that needs an account (the file leaves the browser early).
-    if (strategy === 'office' && !customerToken) {
-      const message =
-        'Please sign in to upload Word/PowerPoint files — we convert them into a print-ready PDF on our secure server.';
-      setLocalError(message);
-      showToast(message, 'error');
-      if (inputRef.current) inputRef.current.value = '';
-      return;
-    }
-
+    // server; at this point the customer is always signed in (attach gate
+    // above), so the conversion upload can proceed.
     setLocalError(null);
     setProcessing(strategy === 'office' ? 'office' : 'pdf');
 
@@ -206,25 +213,21 @@ export default function SpecificationsStep({
         });
         totalPages = pdfDoc.getPageCount();
         previewUrl = URL.createObjectURL(selected);
-        // Logged-in customers: park the PDF on the server NOW (best-effort)
-        // so the order-page draft can survive a refresh — server-backed
-        // files persist, browser blobs don't.
-        if (customerToken) {
-          try {
-            serverFileUrl = (await uploadDesign(selected)).fileUrl;
-          } catch {
-            /* keep the browser-only file — current pre-upload flow works */
-          }
+        // Park the PDF on the server NOW (best-effort) so the order-page
+        // draft can survive a refresh — server-backed files persist,
+        // browser blobs don't. (Attach is sign-in gated above.)
+        try {
+          serverFileUrl = (await uploadDesign(selected)).fileUrl;
+        } catch {
+          /* keep the browser-only file — current pre-upload flow works */
         }
       } else if (strategy === 'image') {
         totalPages = 1; // one sheet per image
         previewUrl = URL.createObjectURL(selected);
-        if (customerToken) {
-          try {
-            serverFileUrl = (await uploadDesign(selected)).fileUrl;
-          } catch {
-            /* keep the browser-only file — current pre-upload flow works */
-          }
+        try {
+          serverFileUrl = (await uploadDesign(selected)).fileUrl;
+        } catch {
+          /* keep the browser-only file — current pre-upload flow works */
         }
       } else {
         // Backend converts the Office file to PDF (LibreOffice) and returns

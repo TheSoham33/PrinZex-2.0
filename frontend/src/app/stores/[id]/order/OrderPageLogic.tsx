@@ -28,8 +28,6 @@ import {
 } from '@/components/order/orderReducer';
 import {
   clearOrderDraft,
-  consumeKeepOrderDraft,
-  keepOrderDraftOnce,
   loadOrderDraft,
   orderDraftKey,
   saveOrderDraft,
@@ -141,9 +139,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // the guest lookup and never read the user's actual draft), and the save
   // effect never writes to a key before that key was read — otherwise the
   // fresh empty state would overwrite the user's real draft on entry.
-  // A live sign-OUT flips the key the other way (user → :guest): the form
-  // must reset immediately — a signed-out session never shows the previous
-  // account's attachments (ClientWrapper also wipes the saved drafts).
+  // ANY live identity flip (guest → user on sign-in, user → guest on
+  // sign-out) restarts the flow: data entered under one identity never
+  // leaks into the other (ClientWrapper also wipes all drafts at sign-out).
   const draftKey = useMemo(
     () => orderDraftKey(store.id, draftUserId),
     [store.id, draftUserId],
@@ -154,10 +152,12 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     if (draftRestoredKeyRef.current === draftKey) return;
     const previousKey = draftRestoredKeyRef.current;
     draftRestoredKeyRef.current = draftKey;
-    if (!draftUserId && previousKey) {
-      // Live sign-out: drop everything the account had on screen. A FRESH
-      // page load as a guest (previousKey === null) still falls through and
-      // restores the guest draft as usual.
+    if (previousKey !== null) {
+      // Identity flipped while this page is open — sign-IN or sign-OUT:
+      // restart the flow. Nothing entered under the previous identity is
+      // kept: a fresh sign-in discards everything typed as a guest, a
+      // sign-out drops the account's attachments. A first page load
+      // (previousKey === null) skips this and just restores below.
       const fresh = createInitialState(
         store.id,
         store.name,
@@ -168,21 +168,10 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       setMaxReached(1);
       setAgreed(false);
       setCouponCode('');
-      return;
+      if (!draftUserId) return; // signed out — clean form, nothing to load
+      clearOrderDraft(orderDraftKey(store.id, null)); // signed in — wipe the guest slot
     }
-    let draft = loadOrderDraft(draftKey, store.id);
-    if (!draft && draftUserId) {
-      // Login-bounce adoption: details entered as a guest were saved under
-      // the :guest slot before the forced sign-in — move them into the
-      // account slot (this key flip is exactly the deferred case from the
-      // async auth rehydration, so a guest draft never strands anyone).
-      const guestKey = orderDraftKey(store.id, null);
-      draft = loadOrderDraft(guestKey, store.id);
-      if (draft) {
-        saveOrderDraft(draftKey, draft);
-        clearOrderDraft(guestKey);
-      }
-    }
+    const draft = loadOrderDraft(draftKey, store.id);
     if (!draft) return;
     // Server-backed files (uploaded at attach time) preview straight from
     // the stored URL — the revivable kind after a refresh.
@@ -218,17 +207,15 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // flow) resets everything: the draft is wiped on unmount, so coming back
   // starts a clean order. A hard refresh/breakdown never runs React
   // cleanups, which is exactly why refresh keeps working. The closure must
-  // NOT depend on draftKey — the cleanup for the old key would run on every
-  // login/logout key flip and wipe the draft before adoption reads it — so
-  // the latest key is tracked in a ref instead.
+  // NOT depend on draftKey — the cleanup for the old key would also run on
+  // every login/logout key flip and wipe the draft before the restore
+  // effect reads it — so the latest key is tracked in a ref instead.
   const draftKeyLiveRef = useRef(draftKey);
   useEffect(() => {
     draftKeyLiveRef.current = draftKey;
   }, [draftKey]);
   useEffect(() => {
     return () => {
-      // The forced sign-in hop is part of checkout — keep the draft once.
-      if (consumeKeepOrderDraft(store.id)) return;
       clearOrderDraft(draftKeyLiveRef.current);
     };
   }, [store.id]);
@@ -497,21 +484,23 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     return null;
   };
 
+  // Sign-in is mandatory for every real order action — attach, Continue,
+  // Add to Cart, Place order. Data typed as a guest is discarded at
+  // sign-in by design, so bounce to /login the moment an action is tried.
+  const requireLogin = (): boolean => {
+    if (token) return true;
+    router.push(
+      `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`,
+    );
+    return false;
+  };
+
   const goNext = () => {
+    if (!requireLogin()) return;
+
     const error = validateStep(state.step);
     if (error) {
       dispatch({ type: 'SET_ERROR', payload: error });
-      return;
-    }
-
-    // Require login to proceed to Delivery (Step 2). The redirect leaves
-    // the order page, which normally resets the flow — shield the draft
-    // once so the details entered as a guest survive the login hop.
-    if (state.step === 1 && !token) {
-      keepOrderDraftOnce(store.id);
-      router.push(
-        `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`,
-      );
       return;
     }
 
@@ -609,6 +598,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   };
 
   const handleAddToCart = () => {
+    if (!requireLogin()) return;
+
     // Validate current step before allowing add to cart
     const error = validateStep(state.step);
     if (error) {

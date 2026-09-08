@@ -3,8 +3,8 @@
  * specifications, delivery address, payment choice — survives a page
  * refresh via localStorage. NAVIGATING AWAY from the order page resets it:
  * the page wipes its draft on unmount (a hard refresh/breakdown never runs
- * React cleanups, so refresh still restores). The one exception is the
- * forced login hop — shielded by the one-shot keep flag below.
+ * React cleanups, so refresh still restores). Signing IN also starts clean:
+ * anything entered as a guest is discarded — the login hop is not special.
  *
  * The one thing a refresh CANNOT keep is a browser-side file (raw PDF or
  * image picked from disk — the browser revokes it); only files that already
@@ -177,32 +177,5 @@ export function clearAllOrderDrafts(): void {
     doomed.forEach((key) => window.localStorage.removeItem(key));
   } catch {
     /* storage unavailable */
-  }
-}
-
-const KEEP_DRAFT_PREFIX = 'prinzex:keep-draft:';
-
-/** One-shot shield for the forced login hop: signing in is part of the
- *  checkout flow, so leaving the order page for /login must NOT reset the
- *  draft (sessionStorage so it also survives a hard login redirect). */
-export function keepOrderDraftOnce(storeId: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.sessionStorage.setItem(`${KEEP_DRAFT_PREFIX}${storeId}`, '1');
-  } catch {
-    /* storage unavailable */
-  }
-}
-
-/** Read-and-consume the shield: true exactly once per keepOrderDraftOnce. */
-export function consumeKeepOrderDraft(storeId: string): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    const key = `${KEEP_DRAFT_PREFIX}${storeId}`;
-    const keep = window.sessionStorage.getItem(key) === '1';
-    if (keep) window.sessionStorage.removeItem(key);
-    return keep;
-  } catch {
-    return false;
   }
 }
