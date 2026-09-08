@@ -485,18 +485,18 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   };
 
   // Sign-in is mandatory for every real order action — attach, Continue,
-  // Add to Cart, Place order. Data typed as a guest is discarded at
-  // sign-in by design, so bounce to /login the moment an action is tried.
-  const requireLogin = (): boolean => {
+  // Add to Cart, Place order. A guest attempt only SHOWS the validation
+  // (toast); the customer stays exactly where they are — no /login bounce.
+  // (A toast, not SET_ERROR: the Continue button disables itself while an
+  // error is set, which would lock the page behind the message.)
+  const requireLogin = (message: string): boolean => {
     if (token) return true;
-    router.push(
-      `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`,
-    );
+    showToast(message, 'error');
     return false;
   };
 
   const goNext = () => {
-    if (!requireLogin()) return;
+    if (!requireLogin('Please sign in to continue with your order.')) return;
 
     const error = validateStep(state.step);
     if (error) {
@@ -598,7 +598,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   };
 
   const handleAddToCart = () => {
-    if (!requireLogin()) return;
+    if (!requireLogin('Please sign in to add items to your cart.')) return;
 
     // Validate current step before allowing add to cart
     const error = validateStep(state.step);
