@@ -11,7 +11,7 @@ import {
 } from '../../utils/pagination';
 import type { ListStoresQuery, StoreReviewsQuery, SuggestionsQuery } from './stores.schema';
 import { getCatalogEntry } from '../catalog/catalog.service';
-import { serviceIsActive } from '../catalog/catalog.schemas';
+import { searchServiceIds, serviceIsActive } from '../catalog/catalog.schemas';
 
 /**
  * Public store discovery. Only APPROVED sellers are ever exposed.
@@ -134,6 +134,11 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   }
 
   // ── where clause ─────────────────────────────────────────────────────────
+  // Admin search tags: catalogue services whose tags match the query become
+  // extra service-id matches (only when no service is NAMED that — see
+  // searchServiceIds), so "xerox" surfaces stores via a Printing service
+  // tagged with it. Additive OR — it can only widen results.
+  const tagServiceIds = query.q ? await catalogSearchServiceIds(query.q) : [];
   const and: Prisma.SellerWhereInput[] = [];
   if (query.q) {
     and.push({
@@ -142,6 +147,9 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
         { description: { contains: query.q, mode: 'insensitive' } },
         { services: { some: { serviceName: { contains: query.q, mode: 'insensitive' } } } },
         { services: { some: { categoryName: { contains: query.q, mode: 'insensitive' } } } },
+        ...(tagServiceIds.length > 0
+          ? [{ services: { some: { serviceId: { in: tagServiceIds }, isActive: true } } }]
+          : []),
       ],
     });
   }
@@ -233,6 +241,8 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
           OR: [
             { serviceName: { contains: query.q, mode: 'insensitive' } },
             { categoryName: { contains: query.q, mode: 'insensitive' } },
+            // Tag-matched services surface their real name as the match chip.
+            ...(tagServiceIds.length > 0 ? [{ serviceId: { in: tagServiceIds } }] : []),
           ],
         },
         orderBy: { basePrice: 'asc' },
@@ -249,7 +259,9 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
         searchMatches.find((m) => m.sellerId === seller.id) ||
         seller.services.find(
           (s) =>
-            s.serviceName.toLowerCase().includes(q) || s.categoryName.toLowerCase().includes(q),
+            s.serviceName.toLowerCase().includes(q) ||
+            s.categoryName.toLowerCase().includes(q) ||
+            tagServiceIds.includes(s.serviceId),
         );
       if (match) {
         matchedService = {
@@ -283,6 +295,18 @@ async function platformActiveFilter(): Promise<(serviceId: string) => boolean> {
     return (serviceId: string) => serviceIsActive(catalog.data, serviceId);
   } catch {
     return () => true;
+  }
+}
+
+/** Admin search tags: map a customer's free-text query to the catalogue
+ *  services it should also match (service names win, tags only when no name
+ *  matches). Fail-open ([]) — a catalogue hiccup must never break search. */
+async function catalogSearchServiceIds(q: string): Promise<string[]> {
+  try {
+    const catalog = await getCatalogEntry('service-categories');
+    return searchServiceIds(catalog.data, q);
+  } catch {
+    return [];
   }
 }
 
@@ -435,6 +459,10 @@ export async function getSuggestions(query: SuggestionsQuery): Promise<CachedRes
     ? { city: { equals: query.city, mode: 'insensitive' as const } }
     : {};
 
+  // Admin search tags: surface services via their tagged alternate names
+  // ("xerox" suggests Printing) when no service is named that.
+  const tagServiceIds = await catalogSearchServiceIds(query.q);
+
   const [stores, serviceRows] = await prisma.$transaction([
     prisma.seller.findMany({
       where: {
@@ -449,7 +477,10 @@ export async function getSuggestions(query: SuggestionsQuery): Promise<CachedRes
     prisma.sellerService.findMany({
       where: {
         isActive: true,
-        serviceName: { contains: query.q, mode: 'insensitive' },
+        OR: [
+          { serviceName: { contains: query.q, mode: 'insensitive' } },
+          ...(tagServiceIds.length > 0 ? [{ serviceId: { in: tagServiceIds } }] : []),
+        ],
         seller: { status: 'APPROVED', ...cityFilter },
       },
       select: {

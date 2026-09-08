@@ -75,9 +75,12 @@ export async function replaceCatalogEntry(
   // The service kill switch affects every storefront: drop the Redis store
   // caches immediately instead of waiting out their TTLs.
   if (key === 'service-categories') {
+    // Kill switch + search tags ride on this group — drop store lists,
+    // store details and search suggestions so changes apply immediately.
     await Promise.all([
       invalidateCachePattern(REDIS_KEYS.STORE_LIST_PATTERN()),
       invalidateCachePattern('cache:store:*'),
+      invalidateCachePattern('cache:suggest:*'),
     ]);
   }
 

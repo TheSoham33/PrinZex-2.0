@@ -8,6 +8,7 @@
 import assert from 'node:assert/strict';
 import {
   CATALOG_GROUP_SCHEMAS,
+  searchServiceIds,
   serviceIsActive,
 } from '../src/modules/catalog/catalog.schemas';
 
@@ -59,5 +60,83 @@ assert.equal(serviceIsActive(sampleCategories, 'cards-business'), true);
 assert.equal(serviceIsActive(sampleCategories, 'no-such-service'), true, 'unknown service fails open');
 assert.equal(serviceIsActive(null, 'doc-print'), true, 'malformed group fails open');
 assert.equal(serviceIsActive([], 'doc-print'), true, 'empty group fails open');
+
+/* ── Admin search tags (service-categories) ───────────────────────────────
+ * tags are optional; repeated / empty / oversized tag lists must fail
+ * validation so a bad save never poisons search. searchServiceIds implements
+ * the customer-search contract: service NAMES first, tags only when no name
+ * matches ("xerox" finds the Printing service). */
+const taggedCategories = [
+  {
+    id: 'documents',
+    name: 'Documents',
+    services: [
+      { id: 'doc-print', name: 'Document Printing', tags: ['xerox', 'photocopy'] },
+      { id: 'spec-photo-prints', name: 'Photo Print', tags: ['photos'] },
+      { id: 'bind-tape', name: 'Tape Binding', isActive: false, tags: ['file binding'] },
+      { id: 'pack-labels', name: 'Product Labels' }, // no tags — optional
+    ],
+  },
+];
+assert.ok(categories.safeParse(taggedCategories).success, 'tagged services validate');
+assert.ok(
+  !categories.safeParse([
+    { id: 'c', name: 'C', services: [{ id: 's', name: 'S', tags: ['xerox', 'Xerox'] }] },
+  ]).success,
+  'repeated tags (any case) fail',
+);
+assert.ok(
+  !categories.safeParse([
+    { id: 'c', name: 'C', services: [{ id: 's', name: 'S', tags: [''] }] },
+  ]).success,
+  'empty tags fail',
+);
+assert.ok(
+  !categories.safeParse([
+    {
+      id: 'c',
+      name: 'C',
+      services: [{ id: 's', name: 'S', tags: Array.from({ length: 13 }, (_, i) => `tag${i}`) }],
+    },
+  ]).success,
+  'more than 12 tags fails',
+);
+assert.ok(
+  !categories.safeParse([
+    { id: 'c', name: 'C', services: [{ id: 's', name: 'S', tags: ['a'.repeat(31)] }] },
+  ]).success,
+  'tags over 30 characters fail',
+);
+
+assert.deepEqual(searchServiceIds(taggedCategories, 'xerox'), ['doc-print'], 'tag finds its service');
+assert.deepEqual(searchServiceIds(taggedCategories, 'XEROX'), ['doc-print'], 'case-insensitive');
+assert.deepEqual(
+  searchServiceIds(taggedCategories, 'cheap xerox please'),
+  ['doc-print'],
+  'query containing a 3+ character tag still matches',
+);
+assert.deepEqual(
+  searchServiceIds(taggedCategories, 'photos'),
+  ['spec-photo-prints'],
+  'exact tag match',
+);
+assert.deepEqual(
+  searchServiceIds(taggedCategories, 'photo'),
+  ['spec-photo-prints'],
+  'a NAME hit wins — tags stay silent',
+);
+assert.deepEqual(
+  searchServiceIds(taggedCategories, 'printing'),
+  ['doc-print'],
+  'name hit by name, not via tags',
+);
+assert.deepEqual(
+  searchServiceIds(taggedCategories, 'file binding'),
+  [],
+  'a deactivated service (kill switch) matches nothing',
+);
+assert.deepEqual(searchServiceIds(taggedCategories, 'zzz'), [], 'no match is empty, not everything');
+assert.deepEqual(searchServiceIds(null, 'xerox'), [], 'malformed group fails open');
+assert.deepEqual(searchServiceIds(taggedCategories, '  '), [], 'blank query matches nothing');
 
 console.log('catalog schema checks: OK');

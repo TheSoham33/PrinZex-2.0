@@ -19,8 +19,8 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
         name: 'Documents',
         description: 'Everyday printing and photocopying',
         services: [
-          { id: 'doc-print', name: 'Document Printing' },
-          { id: 'doc-xerox', name: 'Photocopy / Xerox' },
+          { id: 'doc-print', name: 'Document Printing', tags: ['printout', 'pdf print'] },
+          { id: 'doc-xerox', name: 'Photocopy / Xerox', tags: ['copy', 'duplicate'] },
         ],
       },
       {
@@ -28,16 +28,16 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
         name: 'Bulk printing',
         description: 'High-volume jobs at wholesale rates',
         services: [
-          { id: 'bulk-booklets', name: 'Booklets & Manuals' },
-          { id: 'bulk-brochures', name: 'Brouchers' },
-          { id: 'bulk-flyers', name: 'Flyers & Pamphlets' },
+          { id: 'bulk-booklets', name: 'Booklets & Manuals', tags: ['booklet', 'manual'] },
+          { id: 'bulk-brochures', name: 'Brouchers', tags: ['brochure', 'brochures'] },
+          { id: 'bulk-flyers', name: 'Flyers & Pamphlets', tags: ['leaflet', 'handbill'] },
         ],
       },
       {
         id: 'cards',
         name: 'Cards',
         description: 'Business cards and card printing',
-        services: [{ id: 'cards-business', name: 'Business Cards' }],
+        services: [{ id: 'cards-business', name: 'Business Cards', tags: ['visiting card', 'visiting cards'] }],
       },
       {
         id: 'packaging',
@@ -47,7 +47,7 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
           { id: 'pack-stickers', name: 'Custom Stickers' },
           { id: 'pack-labels', name: 'Product Labels' },
           { id: 'pack-boxes', name: 'Printed Boxes' },
-          { id: 'pack-tags', name: 'Hang Tangs' },
+          { id: 'pack-tags', name: 'Hang Tangs', tags: ['hang tag', 'hang tags'] },
         ],
       },
       {
@@ -55,11 +55,11 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
         name: 'Book binding & finishing',
         description: 'Post-print finishing services',
         services: [
-          { id: 'bind-spiral', name: 'Spiral Binding' },
-          { id: 'bind-twin-loop', name: 'Twin Loop Binding' },
-          { id: 'bind-hard', name: 'Hard Binding / Thesis Binding' },
-          { id: 'bind-perfect', name: 'Glue Binding' },
-          { id: 'bind-tape', name: 'Tape Binding' },
+          { id: 'bind-spiral', name: 'Spiral Binding', tags: ['spiral bind', 'coil binding'] },
+          { id: 'bind-twin-loop', name: 'Twin Loop Binding', tags: ['wiro binding', 'wire binding'] },
+          { id: 'bind-hard', name: 'Hard Binding / Thesis Binding', tags: ['thesis', 'hardcover'] },
+          { id: 'bind-perfect', name: 'Glue Binding', tags: ['perfect binding', 'book binding'] },
+          { id: 'bind-tape', name: 'Tape Binding', tags: ['file binding', 'record binding'] },
         ],
       },
       {
@@ -67,9 +67,9 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
         name: 'Large format printing',
         description: 'Banners, standees and signage',
         services: [
-          { id: 'lf-flex-banner', name: 'Flex Banners' },
-          { id: 'lf-vinyl', name: 'Vinyl Printing' },
-          { id: 'lf-standee', name: 'Standees & Roll-ups' },
+          { id: 'lf-flex-banner', name: 'Flex Banners', tags: ['banner', 'flex printing', 'hoarding'] },
+          { id: 'lf-vinyl', name: 'Vinyl Printing', tags: ['sunboard', 'vinyl sticker'] },
+          { id: 'lf-standee', name: 'Standees & Roll-ups', tags: ['standee', 'rollup banner'] },
         ],
       },
       {
@@ -77,10 +77,10 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
         name: 'Specialty printing',
         description: 'Premium finishes and personalised gifts',
         services: [
-          { id: 'spec-canvas', name: 'Canvas Print' },
-          { id: 'spec-mugs', name: 'Mug Print' },
-          { id: 'spec-photo-prints', name: 'Photo Print' },
-          { id: 'spec-tshirts', name: 'T shirt Print' },
+          { id: 'spec-canvas', name: 'Canvas Print', tags: ['canvas', 'photo canvas', 'wall art'] },
+          { id: 'spec-mugs', name: 'Mug Print', tags: ['mug printing', 'custom mug', 'photo mug'] },
+          { id: 'spec-photo-prints', name: 'Photo Print', tags: ['passport photo', 'photos', 'photo printing'] },
+          { id: 'spec-tshirts', name: 'T shirt Print', tags: ['tshirt', 't-shirt printing', 'custom tshirt'] },
         ],
       },
       // Appended last so upgraded databases (migration appends the same row)
@@ -89,7 +89,7 @@ export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
         id: 'lamination',
         name: 'Lamination',
         description: 'Protective film lamination for documents & certificates',
-        services: [{ id: 'lam-film', name: 'Lamination' }],
+        services: [{ id: 'lam-film', name: 'Lamination', tags: ['laminating', 'film lamination'] }],
       },
     ],
   },

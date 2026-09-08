@@ -113,6 +113,16 @@ const swatchOption = z.object({
  *  (orders.schema.ts) and the admin-catalog editor input. */
 export const MAX_FILES_PER_ORDER = 10;
 
+/** Admin search tags — short alternate names customers type for a service
+ *  ("xerox" → Printing). Consulted only when no service NAME matches the
+ *  query (see searchServiceIds). */
+const searchTags = z
+  .array(z.string().trim().min(1, 'Tags cannot be empty').max(30, 'Keep tags under 30 characters'))
+  .max(12, 'Keep at most 12 tags per service')
+  .refine((tags) => new Set(tags.map((tag) => tag.toLowerCase())).size === tags.length, {
+    message: 'Tags must not repeat',
+  });
+
 const serviceCategories = z.array(
   z.object({
     id: keyString,
@@ -130,6 +140,7 @@ const serviceCategories = z.array(
            *  order of this service. Absent = 1 (single-file, the original
            *  behaviour). All files share the order's specifications. */
           maxFilesPerOrder: z.number().int().min(1).max(MAX_FILES_PER_ORDER).optional(),
+          tags: searchTags.optional(),
         }),
       )
       .min(1, 'A category needs at least one service'),
@@ -177,6 +188,50 @@ export function serviceMaxFilesPerOrder(categoriesData: unknown, serviceId: stri
     }
   }
   return 1;
+}
+
+/**
+ * Which services a free-text customer search should also surface, read from
+ * a 'service-categories' group's data. Service NAMES always win: once any
+ * active service's name contains the query, only those ids come back and
+ * tags stay silent (a search for "photo" means Photo Print, not every
+ * service an admin tagged "photo"). Admin search TAGS are consulted only
+ * when no name matched — "xerox" then finds the Printing service. A tag
+ * matches when it contains the query, or (for tags of 3+ characters) the
+ * query contains it, catching plurals and "cheap xerox" style searches.
+ * Deactivated services (kill switch) match nothing. Pure + defensive:
+ * malformed groups yield [], and callers OR the ids into the existing name
+ * search, so this can never narrow results — an unreadable catalogue keeps
+ * search behaving exactly as before.
+ */
+export function searchServiceIds(categoriesData: unknown, query: string): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q || !Array.isArray(categoriesData)) return [];
+  const nameHits: string[] = [];
+  const tagHits: string[] = [];
+  for (const category of categoriesData) {
+    const services = (category as { services?: unknown } | null)?.services;
+    if (!Array.isArray(services)) continue;
+    for (const entry of services) {
+      const service = entry as
+        | { id?: unknown; name?: unknown; isActive?: unknown; tags?: unknown }
+        | null;
+      if (typeof service?.id !== 'string' || typeof service.name !== 'string') continue;
+      if (service.isActive === false) continue;
+      if (service.name.toLowerCase().includes(q)) {
+        nameHits.push(service.id);
+        continue;
+      }
+      const tags = Array.isArray(service.tags) ? service.tags : [];
+      const tagHit = tags.some((tag) => {
+        if (typeof tag !== 'string') return false;
+        const t = tag.trim().toLowerCase();
+        return t.length > 0 && (t.includes(q) || (t.length >= 3 && q.includes(t)));
+      });
+      if (tagHit) tagHits.push(service.id);
+    }
+  }
+  return nameHits.length > 0 ? nameHits : tagHits;
 }
 
 /** Corners-style options — may declare shapes they can't combine with. */
