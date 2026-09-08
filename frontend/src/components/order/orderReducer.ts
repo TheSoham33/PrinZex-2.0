@@ -31,7 +31,10 @@ export type OrderAction =
   | { type: 'SET_COST'; payload: { field: keyof CostBreakdown; value: number } }
   | { type: 'SET_COST_BREAKDOWN'; payload: CostBreakdown }
   | { type: 'SET_STEP'; payload: number }
-  | { type: 'SET_ERROR'; payload: string | null };
+  | { type: 'SET_ERROR'; payload: string | null }
+  /** Rehydrate a persisted draft after a page refresh (see
+   *  lib/domain/orderDraft.ts) — replaces step + order wholesale. */
+  | { type: 'RESTORE'; payload: { step: number; order: Partial<Order> } };
 
 /** Same "from qty → per-piece rate" picker as backend pricing.slabs. */
 export function pickSlabRate(
@@ -180,6 +183,9 @@ export function orderReducer(
 
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+
+    case 'RESTORE':
+      return { ...state, step: action.payload.step, error: null, order: action.payload.order };
 
     default:
       return state;
