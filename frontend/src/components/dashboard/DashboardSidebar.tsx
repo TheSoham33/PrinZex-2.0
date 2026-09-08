@@ -20,7 +20,7 @@ import {
 } from '@/components/icons';
 
 export const DASHBOARD_NAV = [
-  { href: '/dashboard', label: 'Overview', icon: IconLayoutDashboard, exact: true },
+  { href: '/dashboard', label: 'Dashboard', icon: IconLayoutDashboard, exact: true },
   { href: '/dashboard/orders', label: 'Orders', icon: IconPackage },
   { href: 'cart', label: 'Cart', icon: IconShoppingCart, isCart: true },
   { href: '/dashboard/tracking', label: 'Tracking', icon: IconTruck },
