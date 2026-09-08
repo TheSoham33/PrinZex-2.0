@@ -137,6 +137,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // the guest lookup and never read the user's actual draft), and the save
   // effect never writes to a key before that key was read — otherwise the
   // fresh empty state would overwrite the user's real draft on entry.
+  // A live sign-OUT flips the key the other way (user → :guest): the form
+  // must reset immediately — a signed-out session never shows the previous
+  // account's attachments (ClientWrapper also wipes the saved drafts).
   const draftKey = useMemo(
     () => orderDraftKey(store.id, draftUserId),
     [store.id, draftUserId],
@@ -145,6 +148,24 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   useEffect(() => {
     if (draftRestoredKeyRef.current === draftKey) return;
+    const previousKey = draftRestoredKeyRef.current;
+    draftRestoredKeyRef.current = draftKey;
+    if (!draftUserId && previousKey) {
+      // Live sign-out: drop everything the account had on screen. A FRESH
+      // page load as a guest (previousKey === null) still falls through and
+      // restores the guest draft as usual.
+      const fresh = createInitialState(
+        store.id,
+        store.name,
+        serviceParam,
+        store.services.find((entry) => entry.id === serviceParam)?.minQuantity ?? 1,
+      );
+      dispatch({ type: 'RESTORE', payload: { step: fresh.step, order: fresh.order } });
+      setMaxReached(1);
+      setAgreed(false);
+      setCouponCode('');
+      return;
+    }
     let draft = loadOrderDraft(draftKey, store.id);
     if (!draft && draftUserId) {
       // Login-bounce adoption: details entered as a guest were saved under
@@ -158,7 +179,6 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         clearOrderDraft(guestKey);
       }
     }
-    draftRestoredKeyRef.current = draftKey;
     if (!draft) return;
     // Server-backed files (uploaded at attach time) preview straight from
     // the stored URL — the revivable kind after a refresh.

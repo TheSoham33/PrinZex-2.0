@@ -8,8 +8,11 @@ import assert from 'node:assert/strict';
 import {
   ORDER_DRAFT_TTL_MS,
   ORDER_DRAFT_VERSION,
+  clearAllOrderDrafts,
+  loadOrderDraft,
   orderDraftKey,
   parseOrderDraft,
+  saveOrderDraft,
   serializeDraft,
 } from '../src/lib/domain/orderDraft';
 import { createInitialState } from '../src/components/order/orderReducer';
@@ -91,5 +94,29 @@ assert.equal(
   'non-boolean agreed defaults false',
 );
 assert.equal(ORDER_DRAFT_VERSION, 1, 'bump the version when the shape changes');
+
+/* ── Sign-out wipe: every draft key goes, unrelated keys survive ─────── */
+const storage = new Map<string, string>();
+(globalThis as Record<string, unknown>).window = {
+  localStorage: {
+    get length() {
+      return storage.size;
+    },
+    key: (index: number) => [...storage.keys()][index] ?? null,
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => void storage.set(key, value),
+    removeItem: (key: string) => void storage.delete(key),
+  },
+};
+saveOrderDraft(orderDraftKey('store-1', 'user-9'), draft);
+saveOrderDraft(orderDraftKey('store-1', null), draft);
+saveOrderDraft(orderDraftKey('store-2', 'user-9'), { ...draft, storeId: 'store-2' });
+storage.set('prinzex_auth_state', '{}');
+assert.ok(loadOrderDraft(orderDraftKey('store-1', 'user-9'), 'store-1'), 'save/load roundtrip works');
+clearAllOrderDrafts();
+assert.equal(loadOrderDraft(orderDraftKey('store-1', 'user-9'), 'store-1'), null, 'user draft wiped');
+assert.equal(loadOrderDraft(orderDraftKey('store-1', null), 'store-1'), null, 'guest draft wiped');
+assert.equal(loadOrderDraft(orderDraftKey('store-2', 'user-9'), 'store-2'), null, 'other store wiped too');
+assert.ok(storage.has('prinzex_auth_state'), 'unrelated localStorage keys untouched');
 
 console.log('order draft checks: OK');

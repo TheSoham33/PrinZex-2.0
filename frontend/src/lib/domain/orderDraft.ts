@@ -17,6 +17,8 @@ export const ORDER_DRAFT_VERSION = 1;
  *  resurrect days later. */
 export const ORDER_DRAFT_TTL_MS = 48 * 60 * 60 * 1000;
 
+const ORDER_DRAFT_PREFIX = 'prinzex:order-draft:';
+
 export interface OrderDraft {
   version: number;
   storeId: string;
@@ -32,7 +34,7 @@ export interface OrderDraft {
 /** Per-store AND per-user: a shared PC must never hand one account's
  *  delivery address/payment choice to the next login. */
 export function orderDraftKey(storeId: string, userId: string | null | undefined): string {
-  return `prinzex:order-draft:${storeId}:${userId ?? 'guest'}`;
+  return `${ORDER_DRAFT_PREFIX}${storeId}:${userId ?? 'guest'}`;
 }
 
 interface DraftFile {
@@ -155,5 +157,22 @@ export function clearOrderDraft(key: string): void {
     window.localStorage.removeItem(key);
   } catch {
     /* noop */
+  }
+}
+
+/** Remove EVERY saved order draft (all stores, all users). Runs on sign-out:
+ *  drafts hold private uploaded files and delivery addresses that must not
+ *  outlive the session on a shared browser. Unrelated keys are untouched. */
+export function clearAllOrderDrafts(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const doomed: string[] = [];
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (key && key.startsWith(ORDER_DRAFT_PREFIX)) doomed.push(key);
+    }
+    doomed.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    /* storage unavailable */
   }
 }

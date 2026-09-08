@@ -9,6 +9,7 @@ import { restoreSession, type AuthState } from '@/store/slices/authSlice';
 import { restoreSellerSession, type SellerAuthState } from '@/store/slices/sellerAuthSlice';
 import { restoreAdminSession, type AdminAuthState } from '@/store/slices/adminAuthSlice';
 import { clearCart, addToCart } from '@/store/slices/cartSlice';
+import { clearAllOrderDrafts } from '@/lib/domain/orderDraft';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { ToastProvider } from '@/components/seller-dashboard/Toast';
 
@@ -65,9 +66,17 @@ function SessionBridge({ children }: { children: React.ReactNode }) {
       window.localStorage.removeItem(CART_STORAGE_KEY);
     }
 
+    // Sign-out wipes every saved order draft: they hold private uploaded
+    // files + delivery addresses that must not outlive the session on a
+    // shared browser ("if signout no attach").
+    let hadCustomer = !!(store.getState() as RootState).auth.user;
+
     return store.subscribe(() => {
       const state = store.getState() as RootState;
       const { auth, sellerAuth, adminAuth, cart } = state;
+      const hasCustomer = !!auth.user;
+      if (hadCustomer && !hasCustomer) clearAllOrderDrafts();
+      hadCustomer = hasCustomer;
       try {
         if (auth.user) {
           window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
