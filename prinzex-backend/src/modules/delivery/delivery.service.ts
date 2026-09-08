@@ -575,7 +575,14 @@ export async function confirmDelivery(
 
   const order = await prisma.order.findUniqueOrThrow({
     where: { id: delivery.orderId },
-    select: { status: true, sellerId: true, customerId: true, items: { select: { serviceName: true } } },
+    select: {
+      status: true,
+      sellerId: true,
+      customerId: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      items: { select: { serviceName: true } },
+    },
   });
 
   // Earnings credit + delivery completion + order completion — one transaction.
@@ -593,6 +600,13 @@ export async function confirmDelivery(
 
     if (isValidTransition(order.status, 'delivered')) {
       await tx.order.update({ where: { id: delivery.orderId }, data: { status: 'delivered' } });
+    }
+
+    // Cash-on-delivery settles at the door: the rider hands over the order
+    // with the cash collected, so the order is paid from this point (and
+    // starts counting toward the seller's payout balance).
+    if (order.paymentMethod === 'cod' && order.paymentStatus === 'pending') {
+      await tx.order.update({ where: { id: delivery.orderId }, data: { paymentStatus: 'paid' } });
     }
 
     await tx.deliveryBoy.update({

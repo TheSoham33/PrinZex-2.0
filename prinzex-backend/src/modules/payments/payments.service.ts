@@ -312,6 +312,74 @@ export async function processAdminRefund(
   return { orderId: order.id, refunded: amount, channel, newPaymentStatus, ...(razorpayRefundId ? { razorpayRefundId } : {}) };
 }
 
+/**
+ * Automatic money-back when an order is cancelled or seller-rejected AFTER
+ * being paid — the caller owns the status change, this owns the money:
+ *  - wallet orders are credited instantly (ledgered Transaction row);
+ *  - card/upi/razorpay orders go back through the gateway on the stored
+ *    payment id (real Razorpay refund, webhook confirms async);
+ *  - pending/COD orders are a no-op.
+ * Gateway failures never throw: they mark the order 'refund_failed' and
+ * log, so the cancellation itself can complete and ops can retry from
+ * Admin → Refund (processAdminRefund above).
+ */
+export async function refundOrderToSource(
+  orderId: string,
+  reasonLabel: string,
+): Promise<{ refunded: boolean; channel: 'wallet' | 'gateway' | 'none' }> {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order || order.paymentStatus !== 'paid') return { refunded: false, channel: 'none' };
+
+  if (order.paymentMethod === 'wallet') {
+    const amount = Number(order.total);
+    await prisma.$transaction(async (tx) => {
+      const wallet =
+        (await tx.wallet.findUnique({ where: { userId: order.customerId } })) ??
+        (await tx.wallet.create({ data: { userId: order.customerId } }));
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { increment: amount } },
+      });
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'CREDIT',
+          reason: 'REFUND',
+          amount,
+          description: `${reasonLabel} — refund for order ${order.id}`,
+          referenceId: order.id,
+        },
+      });
+      await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'refunded' } });
+    });
+    return { refunded: true, channel: 'wallet' };
+  }
+
+  if (!order.paymentId) {
+    logger.error('order_refund_failed', { orderId: order.id, reason: 'missing gateway paymentId' });
+    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'refund_failed' } });
+    return { refunded: false, channel: 'gateway' };
+  }
+
+  try {
+    assertGatewayConfigured();
+    await razorpayClient().payments.refund(order.paymentId, {
+      amount: rupeesToPaise(Number(order.total)),
+      notes: { reason: reasonLabel },
+      speed: 'normal',
+    });
+    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'refunded' } });
+    return { refunded: true, channel: 'gateway' };
+  } catch (error) {
+    logger.error('order_refund_failed', {
+      orderId: order.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'refund_failed' } });
+    return { refunded: false, channel: 'gateway' };
+  }
+}
+
 // ── GET /api/payments/history (customer) ───────────────────────────────────
 
 export async function getPaymentHistory(

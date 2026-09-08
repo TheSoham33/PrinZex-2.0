@@ -11,6 +11,7 @@ import { emitNotificationNew, emitOrderStatusChanged } from '../../realtime/real
 import { getCache, setCache, invalidateCache, invalidateCachePattern } from '../../utils/cache';
 import { sendTeamInviteEmail } from '../../utils/email';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
+import { refundOrderToSource } from '../payments/payments.service';
 import {
   buildPaginatedResponse,
   toSkipTake,
@@ -1335,15 +1336,27 @@ export async function rejectOrder(
     data: { status: 'cancelled', cancelReason: input.reason, cancelledAt: new Date() },
   });
 
-  // TODO(payments step): if order.paymentStatus === 'paid', trigger a
-  // Razorpay refund for order.paymentId and mark paymentStatus 'refunded'.
+  // A paid order rejected by the store refunds automatically, back to the
+  // original source (wallet balance instantly, or a real gateway refund).
+  let refundLine = '';
+  if (order.paymentStatus === 'paid' && order.paymentMethod !== 'cod') {
+    const refund = await refundOrderToSource(
+      order.id,
+      `Store rejected order ${order.id}: ${input.reason}`,
+    );
+    refundLine = !refund.refunded
+      ? ' Refund processing hit an issue — our team will resolve it shortly.'
+      : refund.channel === 'wallet'
+        ? ' The amount is already back in your PrinZex Wallet.'
+        : ' Your refund is on its way to the original payment method.';
+  }
 
   await appendTimelineEvent(order.id, 'cancelled', sellerId, `Rejected by store: ${input.reason}`);
   await notifyCustomerOrderUpdate(
     order.customerId,
     order.id,
     'cancelled',
-    `Your order was rejected by the store: ${input.reason}`,
+    `Your order was rejected by the store: ${input.reason}.${refundLine}`,
   );
   await invalidateSellerAnalytics(sellerId);
 
