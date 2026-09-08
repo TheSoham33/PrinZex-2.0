@@ -13,7 +13,7 @@ import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { formatCurrency, toApiDeliverySpeed } from '@/lib/utils';
+import { formatCurrency, getMediaUrl, toApiDeliverySpeed } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -28,6 +28,8 @@ import {
 } from '@/components/order/orderReducer';
 import {
   clearOrderDraft,
+  consumeKeepOrderDraft,
+  keepOrderDraftOnce,
   loadOrderDraft,
   orderDraftKey,
   saveOrderDraft,
@@ -128,7 +130,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // Restore runs AFTER hydration (localStorage is client-only), then every
   // change writes back. Browser-side PDF/image files can't survive refresh
   // — only Office files already on the server persist, and the customer is
-  // asked to re-attach the rest in step 1.
+  // asked to re-attach the rest in step 1. NAVIGATING AWAY from the page
+  // resets the flow (unmount cleanup below) — the draft exists only to
+  // survive a refresh of THIS page.
   //
   // NOTE the key includes the user id, and auth rehydrates ASYNC
   // (ClientWrapper#restoreSession runs after this page mounts): the first
@@ -137,6 +141,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // the guest lookup and never read the user's actual draft), and the save
   // effect never writes to a key before that key was read — otherwise the
   // fresh empty state would overwrite the user's real draft on entry.
+  // A live sign-OUT flips the key the other way (user → :guest): the form
+  // must reset immediately — a signed-out session never shows the previous
+  // account's attachments (ClientWrapper also wipes the saved drafts).
   const draftKey = useMemo(
     () => orderDraftKey(store.id, draftUserId),
     [store.id, draftUserId],
@@ -145,10 +152,49 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   useEffect(() => {
     if (draftRestoredKeyRef.current === draftKey) return;
-    const draft = loadOrderDraft(draftKey, store.id);
+    const previousKey = draftRestoredKeyRef.current;
     draftRestoredKeyRef.current = draftKey;
+    if (!draftUserId && previousKey) {
+      // Live sign-out: drop everything the account had on screen. A FRESH
+      // page load as a guest (previousKey === null) still falls through and
+      // restores the guest draft as usual.
+      const fresh = createInitialState(
+        store.id,
+        store.name,
+        serviceParam,
+        store.services.find((entry) => entry.id === serviceParam)?.minQuantity ?? 1,
+      );
+      dispatch({ type: 'RESTORE', payload: { step: fresh.step, order: fresh.order } });
+      setMaxReached(1);
+      setAgreed(false);
+      setCouponCode('');
+      return;
+    }
+    let draft = loadOrderDraft(draftKey, store.id);
+    if (!draft && draftUserId) {
+      // Login-bounce adoption: details entered as a guest were saved under
+      // the :guest slot before the forced sign-in — move them into the
+      // account slot (this key flip is exactly the deferred case from the
+      // async auth rehydration, so a guest draft never strands anyone).
+      const guestKey = orderDraftKey(store.id, null);
+      draft = loadOrderDraft(guestKey, store.id);
+      if (draft) {
+        saveOrderDraft(draftKey, draft);
+        clearOrderDraft(guestKey);
+      }
+    }
     if (!draft) return;
-    dispatch({ type: 'RESTORE', payload: { step: draft.step, order: draft.order } });
+    // Server-backed files (uploaded at attach time) preview straight from
+    // the stored URL — the revivable kind after a refresh.
+    const restoredOrder = {
+      ...draft.order,
+      files: (draft.order.files ?? []).map((file) =>
+        file.serverFileUrl
+          ? { ...file, previewUrl: getMediaUrl(file.serverFileUrl) ?? undefined }
+          : file,
+      ),
+    };
+    dispatch({ type: 'RESTORE', payload: { step: draft.step, order: restoredOrder } });
     setMaxReached((previous) => Math.max(previous, draft.step));
     setAgreed(draft.agreed);
     setCouponCode(draft.couponCode);
@@ -167,6 +213,25 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     if (draftRestoredKeyRef.current !== draftKey) return;
     saveOrderDraft(draftKey, serializeDraft(state, { agreed, couponCode }));
   }, [state, agreed, couponCode, draftKey]);
+
+  // Leaving the order page (in-app navigation, store switch, closing the
+  // flow) resets everything: the draft is wiped on unmount, so coming back
+  // starts a clean order. A hard refresh/breakdown never runs React
+  // cleanups, which is exactly why refresh keeps working. The closure must
+  // NOT depend on draftKey — the cleanup for the old key would run on every
+  // login/logout key flip and wipe the draft before adoption reads it — so
+  // the latest key is tracked in a ref instead.
+  const draftKeyLiveRef = useRef(draftKey);
+  useEffect(() => {
+    draftKeyLiveRef.current = draftKey;
+  }, [draftKey]);
+  useEffect(() => {
+    return () => {
+      // The forced sign-in hop is part of checkout — keep the draft once.
+      if (consumeKeepOrderDraft(store.id)) return;
+      clearOrderDraft(draftKeyLiveRef.current);
+    };
+  }, [store.id]);
 
   const specs = state.order.specifications as any;
   const service = store.services.find((entry) => entry.id === specs.serviceId);
@@ -439,8 +504,11 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       return;
     }
 
-    // Require login to proceed to Delivery (Step 2)
+    // Require login to proceed to Delivery (Step 2). The redirect leaves
+    // the order page, which normally resets the flow — shield the draft
+    // once so the details entered as a guest survive the login hop.
     if (state.step === 1 && !token) {
+      keepOrderDraftOnce(store.id);
       router.push(
         `/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`,
       );
