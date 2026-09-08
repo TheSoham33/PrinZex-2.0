@@ -30,26 +30,31 @@ export default function Hero() {
         aria-hidden
       />
 
-      <div className="container-page relative py-16 sm:py-24 lg:py-28">
-        <div className="mx-auto max-w-3xl text-center">
+      {/* Viewport-fit hero: exactly one screen tall under the sticky h-16
+          header (100vh − 4rem) with content vertically centered. On short
+          screens the tightened padding/margins keep everything above the
+          fold; if content still wins, the section just grows (min-h, never
+          clipped). */}
+      <div className="container-page relative flex min-h-[calc(100vh-4rem)] items-center py-8 sm:py-12">
+        <div className="mx-auto w-full max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-blue-50 ring-1 ring-inset ring-white/25">
             <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
             Now live across Kolkata
           </span>
 
-          <h1 className="mt-5 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+          <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">
             Your neighbourhood print shop,
             <span className="block text-blue-200">now online</span>
           </h1>
 
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-blue-100 sm:text-lg">
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-blue-100 sm:text-lg">
             Upload your files, compare nearby shops on price and rating, and get your prints
             delivered — or pick them up in as little as two hours.
           </p>
 
           <form
             onSubmit={handleSubmit}
-            className="mx-auto mt-8 flex w-full max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl sm:flex-row"
+            className="mx-auto mt-6 flex w-full max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl sm:flex-row"
           >
             <div className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2.5 sm:border-r sm:border-slate-200">
               <IconMapPin className="h-5 w-5 shrink-0 text-slate-400" />
@@ -80,11 +85,11 @@ export default function Hero() {
             </button>
           </form>
 
-          <p className="mt-4 text-sm text-blue-200">
+          <p className="mt-3 text-sm text-blue-200">
             Popular: Thesis binding · Visiting cards · Flex banners · Colour xerox
           </p>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
               href="/services"
               className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold text-white ring-1 ring-inset ring-white/20 transition-colors hover:bg-white/20"
