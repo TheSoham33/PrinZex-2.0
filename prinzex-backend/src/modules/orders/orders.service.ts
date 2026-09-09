@@ -24,6 +24,7 @@ import {
 import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import { refundOrderToSource } from '../payments/payments.service';
+import { roundMoney, splitWalletGateway } from '../../utils/financial';
 import {
   emitAdminGlobalEvent,
   emitNewOrder,
@@ -655,7 +656,17 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
   });
 
   const paysByWallet = input.paymentMethod === 'wallet';
-  const paymentStatus = paysByWallet ? 'paid' : 'pending';
+  // Partial wallet: with useWallet=true on an online method (card/upi) the
+  // wallet settles as much of the total as its balance covers; the gateway
+  // collects the remainder. If the wallet covers everything the gateway is
+  // skipped entirely — the order behaves like a 'wallet' payment. COD keeps
+  // its money-flow unchanged (cash on delivery can't mix wallet credit).
+  const useWalletPart =
+    input.useWallet === true && !paysByWallet && input.paymentMethod !== 'cod';
+  // Final values depend on the live wallet balance, so they're decided inside
+  // the transaction below (effectivePaymentMethod / effectivePaymentStatus /
+  // walletContribution). These defaults cover the non-wallet paths.
+  let paymentStatus = paysByWallet ? 'paid' : 'pending';
   // TODO(payments step): for card/upi create a Razorpay order here and flip
   // paymentStatus to 'paid' from the webhook after signature verification.
 
@@ -677,18 +688,30 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
   // 5. One atomic transaction: order + item + coupon usage + wallet debit.
   const order = await prisma.$transaction(async (tx) => {
     let walletId: string | null = null;
-    if (paysByWallet) {
+    let walletContribution = 0;
+    if (paysByWallet || useWalletPart) {
       const wallet = await tx.wallet.findUnique({ where: { userId: customerId } });
-      if (!wallet) {
-        throw ApiError.badRequest('Wallet not found — top up first');
+      const balance = wallet ? Number(wallet.balance) : 0;
+      if (paysByWallet) {
+        if (!wallet) {
+          throw ApiError.badRequest('Wallet not found — top up first');
+        }
+        if (balance < quote.total) {
+          throw ApiError.badRequest(
+            `Insufficient wallet balance — need ₹${quote.total}, have ₹${Number(wallet.balance)}`,
+          );
+        }
+        walletContribution = quote.total;
+      } else if (balance > 0) {
+        // Partial: take whatever the balance covers, up to the full total.
+        walletContribution = Math.min(balance, quote.total);
       }
-      if (Number(wallet.balance) < quote.total) {
-        throw ApiError.badRequest(
-          `Insufficient wallet balance — need ₹${quote.total}, have ₹${Number(wallet.balance)}`,
-        );
-      }
-      walletId = wallet.id;
+      if (walletContribution > 0) walletId = wallet!.id;
     }
+    // What still has to come from the bank/gateway after the wallet's share.
+    const gatewayDue = roundMoney(quote.total - walletContribution);
+    const settledByWallet = gatewayDue <= 0 && (paysByWallet || useWalletPart);
+    paymentStatus = settledByWallet ? 'paid' : paymentStatus;
 
     const created = await tx.order.create({
       data: {
@@ -707,8 +730,11 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
         estimatedDelivery,
         specialInstructions: input.specialInstructions ?? null,
         couponCode: appliedCoupon,
-        paymentMethod: input.paymentMethod,
+        // Settled entirely from the wallet → record as a wallet payment, even
+        // when the customer picked card/upi but the balance covered it all.
+        paymentMethod: settledByWallet ? 'wallet' : input.paymentMethod,
         paymentStatus,
+        walletAmount: walletContribution,
         // Rush-eligible speeds flag the order for the seller queue.
         isRush: input.deliverySpeed === 'EXPRESS' || input.deliverySpeed === 'SAME_DAY',
         items: {
@@ -741,19 +767,23 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
       });
     }
 
-    // 5d. Wallet payment: debit + ledger entry, atomically with the order.
-    if (paysByWallet && walletId) {
+    // 5d. Wallet debit + ledger entry, atomically with the order — full
+    //     wallet orders take the whole total, partial ones just their share.
+    if (walletId && walletContribution > 0) {
       await tx.wallet.update({
         where: { id: walletId },
-        data: { balance: { decrement: quote.total } },
+        data: { balance: { decrement: walletContribution } },
       });
       await tx.transaction.create({
         data: {
           walletId,
           type: 'DEBIT',
           reason: 'ORDER_PAYMENT',
-          amount: quote.total,
-          description: `Payment for order ${created.id}`,
+          amount: walletContribution,
+          description:
+            walletContribution < quote.total
+              ? `Wallet part-payment for order ${created.id}`
+              : `Payment for order ${created.id}`,
           referenceId: created.id,
         },
       });
@@ -950,7 +980,9 @@ export async function cancelOrder(
       ? 'Refund could not be processed automatically — our team will resolve it shortly'
       : refund.channel === 'wallet'
         ? `₹${Number(order.total)} credited back to your wallet`
-        : 'Refund initiated to your original payment method (5–7 business days)';
+        : refund.channel === 'split'
+          ? `₹${Number(order.walletAmount)} credited back to your wallet; the rest returns to your bank (5–7 business days)`
+          : 'Refund initiated to your original payment method (5–7 business days)';
   }
 
   await runPostCommitSideEffects('order.cancelled', [
@@ -1214,35 +1246,47 @@ export async function adminRefundOrder(
     throw ApiError.conflict('This order has already been refunded');
   }
 
+  // Split on walletAmount: the part that came from the wallet returns to the
+  // wallet instantly; the remainder's channel mirrors the payment method.
+  const { walletPart, gatewayPart } = splitWalletGateway(
+    input.amount,
+    Number(order.walletAmount ?? 0),
+  );
+
   let channel = 'none';
   await prisma.$transaction(async (tx) => {
-    if (order.paymentMethod === 'wallet') {
+    if (walletPart > 0) {
       // Wallet: credit the customer immediately (create the wallet if odd legacy data).
       const wallet =
         (await tx.wallet.findUnique({ where: { userId: order.customerId } })) ??
         (await tx.wallet.create({ data: { userId: order.customerId } }));
       await tx.wallet.update({
         where: { id: wallet.id },
-        data: { balance: { increment: input.amount } },
+        data: { balance: { increment: walletPart } },
       });
       await tx.transaction.create({
         data: {
           walletId: wallet.id,
           type: 'CREDIT',
           reason: 'REFUND',
-          amount: input.amount,
+          amount: walletPart,
           description: `Admin refund for order ${order.id}: ${input.reason}`,
           referenceId: order.id,
         },
       });
       channel = 'wallet';
-    } else if (order.paymentMethod === 'cod') {
-      // COD was never collected electronically — nothing to send back.
-      channel = 'none';
-    } else {
-      // card / upi / razorpay — stubbed until the gateway integration lands.
-      // TODO: Razorpay refund API (payments/refund), confirm via webhook.
-      channel = 'gateway';
+    }
+
+    if (gatewayPart > 0) {
+      if (order.paymentMethod === 'cod') {
+        // COD was never collected electronically — nothing to send back.
+        channel = walletPart > 0 ? 'split' : 'none';
+      } else {
+        // card / upi / razorpay — the REAL gateway refund lives in
+        // payments.service.processAdminRefund (POST /api/payments/refund);
+        // this endpoint only records the intention.
+        channel = walletPart > 0 ? 'split' : 'gateway';
+      }
     }
 
     await tx.order.update({

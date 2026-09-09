@@ -127,6 +127,10 @@ export const createOrderBody = z.object({
   deliveryAddressId: z.string(),
   deliverySpeed: z.enum(DELIVERY_SPEEDS),
   paymentMethod: z.enum(['card', 'upi', 'wallet', 'cod']),
+  // Partial wallet: when true, the customer's wallet settles as much of the
+  // total as its balance covers; the remainder (if any) goes through the
+  // selected gateway method. Ignored for 'wallet' (full wallet) and 'cod'.
+  useWallet: z.boolean().optional(),
   couponCode: z.string().optional(),
 });
 

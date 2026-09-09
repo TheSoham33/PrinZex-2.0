@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchPlatformUsers, suspendUser, unsuspendUser, creditUserWallet } from '@/lib/api/admin-users';
+import { fetchPlatformUsers, suspendUser, unsuspendUser, creditUserWallet, bulkCreditWallets } from '@/lib/api/admin-users';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import UserDetailDrawer from '@/components/admin/UserDetailDrawer';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import { IconBan, IconCheckCircle, IconPlus, IconRefreshCw } from '@/components/icons';
+import { FieldError } from '@/components/ui';
+import { formatCurrency, formatDate, formatDateTime, scrollToField } from '@/lib/utils';
+import { IconBan, IconCheckCircle, IconPlus, IconRefreshCw, IconWallet } from '@/components/icons';
 
 export default function AdminUsersPage() {
   const { showToast } = useToast();
@@ -22,6 +23,12 @@ export default function AdminUsersPage() {
   const [suspendReason, setSuspendReason] = useState('');
   const [creditFor, setCreditFor] = useState<string | null>(null);
   const [creditAmount, setCreditAmount] = useState('');
+  // Bulk wallet credit: row selection + one modal serving "selected" / "all customers".
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkScope, setBulkScope] = useState<'selected' | 'all' | null>(null);
+  const [bulkAmount, setBulkAmount] = useState('');
+  const [bulkReason, setBulkReason] = useState('');
+  const [bulkErrors, setBulkErrors] = useState<{ amount?: string; reason?: string }>({});
 
   const { data: users = [], isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['admin-users', statusFilter],
@@ -72,6 +79,61 @@ export default function AdminUsersPage() {
     creditMutation.mutate({ id: userId, amount, reason: 'Admin adjustment' });
   };
 
+  const bulkCreditMutation = useMutation({
+    mutationFn: bulkCreditWallets,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      showToast(`₹${result?.amount} credited to ${result?.credited} wallet(s) — total ₹${result?.totalCredited}`);
+      setBulkScope(null);
+      setBulkAmount('');
+      setBulkReason('');
+      setBulkErrors({});
+      setSelected(new Set());
+    },
+    onError: (err: Error) => showToast(err.message, 'error'),
+  });
+
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  // Only ids visible in the loaded customer list count — the table is the
+  // source of truth for who a checkbox belongs to.
+  const selectedIds = users.filter((u) => selected.has(u.id)).map((u) => u.id);
+
+  const openBulk = (scope: 'selected' | 'all') => {
+    if (scope === 'selected' && selectedIds.length === 0) {
+      showToast('Select at least one customer first', 'error');
+      return;
+    }
+    setBulkScope(scope);
+    setBulkAmount('');
+    setBulkReason('');
+    setBulkErrors({});
+  };
+
+  const handleBulkConfirm = () => {
+    const amount = Number(bulkAmount);
+    const errors: { amount?: string; reason?: string } = {};
+    if (!Number.isFinite(amount) || amount <= 0) errors.amount = 'Enter an amount greater than 0';
+    else if (amount > 100000) errors.amount = 'Single credit is capped at ₹1,00,000';
+    if (bulkReason.trim().length < 3) errors.reason = 'Give a short reason (min 3 characters)';
+    setBulkErrors(errors);
+    const firstInvalid = errors.amount ? 'bulk-amount' : errors.reason ? 'bulk-reason' : null;
+    if (firstInvalid) {
+      scrollToField(firstInvalid);
+      return;
+    }
+    bulkCreditMutation.mutate({
+      ...(bulkScope === 'all' ? { allCustomers: true } : { userIds: selectedIds }),
+      amount,
+      reason: bulkReason.trim(),
+    });
+  };
+
   const handleCloseSuspendModal = useCallback(() => {
     setBlockTarget(null);
     setSuspendReason('');
@@ -86,6 +148,15 @@ export default function AdminUsersPage() {
   const handleCloseDrawer = useCallback(() => setDrawerUser(null), []);
 
   const columns: DataTableColumn<any>[] = [
+    { key: 'select', label: '', render: (r) => (
+      <input
+        type="checkbox"
+        checked={selected.has(r.id)}
+        onChange={() => toggleSelected(r.id)}
+        aria-label={`Select ${r.name} for bulk wallet credit`}
+        className="h-4 w-4 accent-indigo-600"
+      />
+    ) },
     { key: 'name', label: 'Name', sortable: true, render: (r) => (
       <div className="min-w-0">
         <p className="font-medium text-slate-900">{r.name}</p>
@@ -157,16 +228,24 @@ export default function AdminUsersPage() {
       <header className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Users</h1>
-          <p className="mt-1 text-sm text-slate-600">{users.length} registered customers.</p>
+          <p className="mt-1 text-sm text-slate-600">{users.length} registered customers{selectedIds.length > 0 ? ` — ${selectedIds.length} selected` : ''}.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="btn-secondary text-sm"
-        >
-          <IconRefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => openBulk('selected')} className="btn-secondary text-sm">
+            <IconWallet className="h-4 w-4" /> Credit selected{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+          </button>
+          <button type="button" onClick={() => openBulk('all')} className="btn-secondary text-sm">
+            <IconWallet className="h-4 w-4" /> Credit all customers
+          </button>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="btn-secondary text-sm"
+          >
+            <IconRefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+        </div>
       </header>
 
       <DataTable
@@ -222,6 +301,58 @@ export default function AdminUsersPage() {
             placeholder="Why is this account being suspended?"
             className="input resize-none"
           />
+        </div>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={bulkScope !== null}
+        title={bulkScope === 'all' ? 'Credit every customer?' : `Credit ${selectedIds.length} selected customer(s)?`}
+        message="The amount is added to each wallet immediately and logged per user. This cannot be undone."
+        confirmLabel="Credit wallets"
+        onCancel={() => setBulkScope(null)}
+        onConfirm={handleBulkConfirm}
+        loading={bulkCreditMutation.isPending}
+      >
+        <div className="mt-4 space-y-4">
+          <div>
+            <label htmlFor="bulk-amount" className="label">
+              Amount per user (₹) <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="bulk-amount"
+              type="number"
+              min={1}
+              value={bulkAmount}
+              onChange={(e) => setBulkAmount(e.target.value)}
+              placeholder="e.g. 100"
+              className={`input ${bulkErrors.amount ? 'input-error' : ''}`}
+            />
+            <FieldError message={bulkErrors.amount} />
+          </div>
+          <div>
+            <label htmlFor="bulk-reason" className="label">
+              Reason <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              id="bulk-reason"
+              rows={2}
+              value={bulkReason}
+              onChange={(e) => setBulkReason(e.target.value)}
+              placeholder="Why is this credit being issued?"
+              className={`input resize-none ${bulkErrors.reason ? 'input-error' : ''}`}
+            />
+            <FieldError message={bulkErrors.reason} />
+          </div>
+          {Number(bulkAmount) > 0 && (
+            <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+              Total outflow:{' '}
+              <strong className="text-slate-900">
+                {bulkScope === 'all'
+                  ? `${formatCurrency(Number(bulkAmount))} × every active customer`
+                  : `${formatCurrency(Number(bulkAmount) * selectedIds.length)} (${selectedIds.length} × ${formatCurrency(Number(bulkAmount))})`}
+              </strong>
+            </p>
+          )}
         </div>
       </ConfirmModal>
 

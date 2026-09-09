@@ -36,9 +36,20 @@ export const walletCreditBody = z.object({
   reason: z.string().trim().min(3).max(500),
 });
 
+/** Bulk wallet credit: specific users, or every customer at once. */
+export const walletCreditBulkBody = walletCreditBody
+  .extend({
+    userIds: z.array(z.string().min(1)).min(1).max(500).optional(),
+    allCustomers: z.boolean().optional(),
+  })
+  .refine((value) => (value.userIds?.length ? true : value.allCustomers === true), {
+    message: 'Pick specific users or choose all customers',
+  });
+
 export type UsersQuery = z.infer<typeof usersQuery>;
 export type SuspendBody = z.infer<typeof suspendBody>;
 export type WalletCreditBody = z.infer<typeof walletCreditBody>;
+export type WalletCreditBulkBody = z.infer<typeof walletCreditBulkBody>;
 
 export const adminUsersRouter = Router();
 
@@ -55,6 +66,12 @@ adminUsersRouter.patch(
   requirePermission('users.manage'),
   validate({ params: userParams }),
   adminUsersController.unsuspendUser,
+);
+adminUsersRouter.post(
+  '/wallet-credit-bulk',
+  requirePermission('users.manage'),
+  validate({ body: walletCreditBulkBody }),
+  adminUsersController.walletCreditBulk,
 );
 adminUsersRouter.post(
   '/:userId/wallet-credit',
