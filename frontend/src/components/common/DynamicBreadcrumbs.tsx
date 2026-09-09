@@ -29,9 +29,11 @@ const LABEL_MAP: Record<string, string> = {
 
 interface DynamicBreadcrumbsProps {
   sellerDashboard?: boolean;
+  /** Admin area starts the trail at "Admin" itself, not at the storefront Home. */
+  showHome?: boolean;
 }
 
-export default function DynamicBreadcrumbs({ sellerDashboard = false }: DynamicBreadcrumbsProps) {
+export default function DynamicBreadcrumbs({ sellerDashboard = false, showHome = true }: DynamicBreadcrumbsProps) {
   const pathname = usePathname();
   
   // Don't show breadcrumbs on the homepage
@@ -65,7 +67,7 @@ export default function DynamicBreadcrumbs({ sellerDashboard = false }: DynamicB
   });
 
   if (!sellerDashboard) {
-    return <Breadcrumbs items={generatedItems} />;
+    return <Breadcrumbs items={generatedItems} showHome={showHome} />;
   }
 
   const isOrdersPage = segments.length === 1 && segments[0] === 'orders';

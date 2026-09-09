@@ -78,7 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <AdminSidebar />
           <div className={`pt-16 transition-[padding] ${collapsed ? 'lg:pl-16' : 'lg:pl-60'}`}>
             <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-12">
-              <DynamicBreadcrumbs />
+              <DynamicBreadcrumbs showHome={false} />
               {children}
             </main>
           </div>
