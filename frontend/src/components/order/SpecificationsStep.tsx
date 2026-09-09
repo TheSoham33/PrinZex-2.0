@@ -750,9 +750,9 @@ export default function SpecificationsStep({
         <FieldError message={fieldErrorOf('order-files')} />
 
         {processing ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 py-12 text-center">
+          <div className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 py-6 text-center">
             <span className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-            <p className="mt-4 font-semibold text-slate-900">
+            <p className="mt-3 font-semibold text-slate-900">
               {processing === 'office' ? 'Converting to PDF…' : 'Analyzing document…'}
             </p>
             <p className="mt-1 text-xs text-slate-500">
@@ -868,16 +868,16 @@ export default function SpecificationsStep({
               if (event.key === 'Enter' || event.key === ' ')
                 inputRef.current?.click();
             }}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-5 text-center transition-colors ${
               dragging
                 ? 'border-blue-500 bg-blue-50'
                 : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50/50'
             }`}
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm">
-              <IconUpload className="h-6 w-6" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-blue-600 shadow-sm">
+              <IconUpload className="h-4 w-4" />
             </span>
-            <p className="mt-4 text-sm font-semibold text-slate-900">
+            <p className="mt-2 text-sm font-semibold text-slate-900">
               Drop your file here, or <span className="text-blue-600">browse</span>
             </p>
             <p className="mt-1 text-xs text-slate-500">
