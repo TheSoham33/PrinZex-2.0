@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import type { SellerReview } from '@/lib/domain/seller-inventory';
-import { formatDate } from '@/lib/utils';
+import { formatDate, scrollToField } from '@/lib/utils';
+import { FieldError } from '@/components/ui';
 import { IconMessageSquare, IconSend, IconStar } from '@/components/icons';
 
 interface ReviewResponseCardProps {
@@ -13,10 +14,18 @@ interface ReviewResponseCardProps {
 export default function ReviewResponseCard({ review, onReply }: ReviewResponseCardProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
     const text = draft.trim();
-    if (!text) return;
+    // Button stays enabled — an empty reply is blocked with an under-field
+    // message + scroll (site-wide validation rule).
+    if (!text) {
+      setError('Write a reply before posting.');
+      scrollToField(`reply-${review.id}`);
+      return;
+    }
+    setError(null);
     onReply(review.id, text);
     setDraft('');
     setOpen(false);
@@ -71,15 +80,18 @@ export default function ReviewResponseCard({ review, onReply }: ReviewResponseCa
               id={`reply-${review.id}`}
               rows={3}
               value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                if (error) setError(null);
+              }}
               placeholder="Thanks for the feedback…"
-              className="input resize-none"
+              className={`input resize-none ${error ? 'input-error' : ''}`}
             />
+            <FieldError message={error} />
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
                 onClick={submit}
-                disabled={!draft.trim()}
                 className="btn-primary text-sm"
               >
                 <IconSend className="h-3.5 w-3.5" /> Post reply

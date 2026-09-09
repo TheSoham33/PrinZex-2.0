@@ -11,8 +11,9 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
-import { formatCurrency, toApiDeliverySpeed } from '@/lib/utils';
+import { formatCurrency, scrollToField, toApiDeliverySpeed } from '@/lib/utils';
 import { IconCreditCard, IconAlertCircle } from '@/components/icons';
+import { FieldError } from '@/components/ui';
 import { DELIVERY_SPEEDS } from '@/lib/domain/stores';
 
 export default function CheckoutPage() {
@@ -31,6 +32,8 @@ export default function CheckoutPage() {
   const [deliverySpeed, setDeliverySpeed] = useState('STANDARD');
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [placing, setPlacing] = useState(false);
+  /** Id of the section the error belongs to — renders under it + scrolls there. */
+  const [errorField, setErrorField] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Redirect when the cart is empty. Done in an effect — calling router.replace
@@ -52,12 +55,16 @@ export default function CheckoutPage() {
 
   const handleCheckout = async () => {
     if (!selectedAddressId && deliverySpeed !== 'PICKUP') {
+      // Under-field message + scroll to the offending section (site-wide rule).
       setError('Please select a delivery address');
+      setErrorField('checkout-address');
+      scrollToField('checkout-address');
       return;
     }
 
     setPlacing(true);
     setError(null);
+    setErrorField(null);
 
     try {
       // Since the backend currently only supports single-service orders,
@@ -82,6 +89,7 @@ export default function CheckoutPage() {
       router.push('/dashboard/orders?checkout=success');
     } catch (err: any) {
       setError(err.message || 'Checkout failed. Please try again.');
+      setErrorField(null); // API failures stay form-level
       setPlacing(false);
     }
   };
@@ -150,8 +158,9 @@ export default function CheckoutPage() {
                 </div>
 
                 {deliverySpeed !== 'PICKUP' && (
-                  <div>
+                  <div id="checkout-address">
                     <label className="label">Select Address</label>
+                    <FieldError message={errorField === 'checkout-address' ? error : null} />
                     <div className="grid gap-3 sm:grid-cols-2">
                       {addresses.map((addr) => (
                         <button
@@ -229,7 +238,8 @@ export default function CheckoutPage() {
                   <span>{formatCurrency(total)}</span>
                 </div>
 
-                {error && (
+                {/* Form-level errors only — field-scoped ones render under their section */}
+                {error && !errorField && (
                   <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 flex items-center gap-2">
                     <IconAlertCircle className="h-4 w-4 shrink-0" />
                     {error}

@@ -10,6 +10,7 @@ import { IconAlertCircle, IconStore } from '@/components/icons';
 import { EMAIL_REGEX } from '@/lib/seller-types';
 import { sellerLogin } from '@/lib/api/auth';
 import { ErrorNote } from '@/components/ui';
+import { scrollToField } from '@/lib/utils';
 
 /** Seller-side login. No social sign-in by design. */
 export default function SellerLoginForm() {
@@ -34,6 +35,9 @@ export default function SellerLoginForm() {
     else if (password.length < 6) next.password = 'Password must be at least 6 characters';
 
     setErrors(next);
+    // Scroll to the first invalid field (site-wide validation rule).
+    const firstInvalid = next.email ? 'seller-email' : next.password ? 'seller-password' : null;
+    if (firstInvalid) scrollToField(firstInvalid);
     if (Object.keys(next).length > 0) return;
 
     dispatch(sellerLoginStart());

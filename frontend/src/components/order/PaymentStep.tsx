@@ -12,7 +12,7 @@ import {
   IconTruck,
   IconWallet,
 } from '@/components/icons';
-import { ErrorNote } from '@/components/ui';
+import { ErrorNote, FieldError } from '@/components/ui';
 
 const METHODS: { value: PaymentMethod; label: string; hint: string; icon: typeof IconWallet }[] = [
   { value: 'upi', label: 'UPI', hint: 'GPay, PhonePe, Paytm', icon: IconWallet },
@@ -28,6 +28,8 @@ interface PaymentStepProps {
   agreed: boolean;
   onAgreedChange: (value: boolean) => void;
   error: string | null;
+  /** Id of the input the error belongs to (site-wide rule: show under the field). */
+  errorField?: string | null;
   /** Coupon code validated server-side against the Coupon table. */
   couponCode: string;
   onCouponCodeChange: (code: string) => void;
@@ -42,6 +44,7 @@ export default function PaymentStep({
   agreed,
   onAgreedChange,
   error,
+  errorField,
   couponCode,
   onCouponCodeChange,
   couponError,
@@ -68,7 +71,8 @@ export default function PaymentStep({
         </p>
       </header>
 
-      <ErrorNote message={error} />
+      {/* Form-level errors only — field-scoped ones render under their input */}
+      <ErrorNote message={errorField ? null : error} />
 
       <section>
         <p className="label">Payment method</p>
@@ -175,18 +179,21 @@ export default function PaymentStep({
         </dl>
       </section>
 
-      <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-600">
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(event) => onAgreedChange(event.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
-        />
-        <span>
-          I agree to PrinZex&apos;s <span className="font-medium text-blue-600">Terms of Service</span> and
-          confirm that the uploaded file is print-ready.
-        </span>
-      </label>
+      <div id="order-terms">
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(event) => onAgreedChange(event.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
+          />
+          <span>
+            I agree to PrinZex&apos;s <span className="font-medium text-blue-600">Terms of Service</span> and
+            confirm that the uploaded file is print-ready.
+          </span>
+        </label>
+        <FieldError message={errorField === 'order-terms' ? error : null} />
+      </div>
     </div>
   );
 }

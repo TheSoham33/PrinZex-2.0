@@ -25,6 +25,22 @@ export function ErrorNote({ message }: { message?: string | null }) {
 }
 
 /**
+ * Per-field validation message — sits directly UNDER the invalid control.
+ * Convention: every validated control carries a stable `id`; the form puts
+ * a <FieldError> under it, marks the input with `input-error`, and calls
+ * scrollToField(firstInvalidId) on a failed submit. Renders nothing when
+ * empty so call sites stay one line.
+ */
+export function FieldError({ message }: { message?: string | null }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="field-error">
+      <IconAlertCircle className="h-3.5 w-3.5 shrink-0" /> {message}
+    </p>
+  );
+}
+
+/**
  * Full-width state card (empty lists, load failures). Two tones: 'empty'
  * (slate icon bubble) and 'error' (red bubble, page-level h1 title).
  * `action` keeps its own layout classes (e.g. `btn-primary mt-6`).

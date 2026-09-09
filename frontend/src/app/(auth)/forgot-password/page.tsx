@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { IconArrowLeft, IconCheckCircle, IconPrinter } from '@/components/icons';
 import PasswordInput from '@/components/auth/PasswordInput';
 import { forgotPassword, resetPassword } from '@/lib/api/auth';
-import { ErrorNote } from '@/components/ui';
+import { ErrorNote, FieldError } from '@/components/ui';
+import { scrollToField } from '@/lib/utils';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -14,21 +15,32 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  /** Id of the input the error belongs to — renders under it + scrolls there. */
+  const [errorField, setErrorField] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'resetting' | 'success'>('idle');
+
+  /** Block with the message UNDER the invalid field and scroll it into view. */
+  const blockField = (field: string, message: string) => {
+    setError(message);
+    setErrorField(field);
+    scrollToField(field);
+  };
 
   const handleSendOtp = async (event: FormEvent) => {
     event.preventDefault();
     if (!identifier.trim()) {
-      setError('Email or phone is required');
+      blockField('identifier', 'Email or phone is required');
       return;
     }
     setError(null);
+    setErrorField(null);
     setStatus('sending');
     try {
       await forgotPassword(identifier.trim());
       setStatus('sent');
     } catch (err: any) {
       setError(err.message || 'Failed to send reset code');
+      setErrorField(null); // API failures stay form-level
       setStatus('idle');
     }
   };
@@ -36,14 +48,15 @@ export default function ForgotPasswordPage() {
   const handleResetPassword = async (event: FormEvent) => {
     event.preventDefault();
     if (!otp.trim()) {
-      setError('OTP is required');
+      blockField('otp', 'OTP is required');
       return;
     }
     if (!newPassword) {
-      setError('New password is required');
+      blockField('newPassword', 'New password is required');
       return;
     }
     setError(null);
+    setErrorField(null);
     setStatus('resetting');
     try {
       await resetPassword({
@@ -54,6 +67,7 @@ export default function ForgotPasswordPage() {
       setStatus('success');
     } catch (err: any) {
       setError(err.message || 'Failed to reset password');
+      setErrorField(null); // API failures stay form-level
       setStatus('sent');
     }
   };
@@ -87,7 +101,8 @@ export default function ForgotPasswordPage() {
         </p>
 
         <form onSubmit={handleResetPassword} noValidate className="mt-8 space-y-5">
-          <ErrorNote message={error} />
+          {/* Form-level only — field-scoped messages render under their input */}
+          <ErrorNote message={errorField ? null : error} />
 
           <div>
             <label htmlFor="otp" className="label">
@@ -100,8 +115,9 @@ export default function ForgotPasswordPage() {
               onChange={(event) => setOtp(event.target.value)}
               placeholder="000000"
               maxLength={6}
-              className="input"
+              className={`input ${errorField === 'otp' ? 'input-error' : ''}`}
             />
+            <FieldError message={errorField === 'otp' ? error : null} />
           </div>
 
           <div>
@@ -112,7 +128,9 @@ export default function ForgotPasswordPage() {
               id="newPassword"
               value={newPassword}
               onChange={setNewPassword}
+              hasError={errorField === 'newPassword'}
             />
+            <FieldError message={errorField === 'newPassword' ? error : null} />
           </div>
 
           <button type="submit" disabled={status === 'resetting'} className="btn-primary w-full">
@@ -150,7 +168,8 @@ export default function ForgotPasswordPage() {
       </p>
 
       <form onSubmit={handleSendOtp} noValidate className="mt-8 space-y-5">
-        <ErrorNote message={error} />
+        {/* Form-level only — field-scoped messages render under their input */}
+          <ErrorNote message={errorField ? null : error} />
 
         <div>
           <label htmlFor="identifier" className="label">
@@ -162,8 +181,9 @@ export default function ForgotPasswordPage() {
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
             placeholder="you@example.com or 9830012345"
-            className="input"
+            className={`input ${errorField === 'identifier' ? 'input-error' : ''}`}
           />
+          <FieldError message={errorField === 'identifier' ? error : null} />
         </div>
 
         <button type="submit" disabled={status === 'sending'} className="btn-primary w-full">
