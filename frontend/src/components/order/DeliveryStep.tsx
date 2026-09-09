@@ -6,10 +6,10 @@ import {
   type DeliveryAddress,
   type DeliverySpeed,
 } from '@/lib/domain/stores';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, scrollToField } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconMapPin, IconPlus, IconStore, IconTruck, IconX } from '@/components/icons';
-import { ErrorNote } from '@/components/ui';
+import { ErrorNote, FieldError } from '@/components/ui';
 
 export interface NewAddressInput {
   label: string;
@@ -28,6 +28,8 @@ interface DeliveryStepProps {
   /** Persist the address; resolves true on success so the modal closes. */
   onAddAddress: (address: NewAddressInput) => Promise<boolean>;
   error: string | null;
+  /** Id of the input the error belongs to (site-wide rule: show under the field). */
+  errorField?: string | null;
 }
 
 export default function DeliveryStep({
@@ -37,6 +39,7 @@ export default function DeliveryStep({
   dispatch,
   onAddAddress,
   error,
+  errorField,
 }: DeliveryStepProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -49,6 +52,8 @@ export default function DeliveryStep({
     pincode: '' 
   });
   const [formError, setFormError] = useState<string | null>(null);
+  // Per-field modal validation — each message renders under its input.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     document.body.style.overflow = modalOpen ? 'hidden' : '';
@@ -57,18 +62,26 @@ export default function DeliveryStep({
     };
   }, [modalOpen]);
 
+  const ADDRESS_FIELD_ORDER = ['addr-label', 'addr-full', 'addr-phone', 'addr-city', 'addr-state', 'addr-pincode'];
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!form.label.trim() || !form.fullAddress.trim() || !form.phone.trim() || !form.pincode.trim() || !form.city.trim() || !form.state.trim()) {
-      setFormError('All fields are required');
-      return;
-    }
-    if (form.fullAddress.trim().length < 5) {
-      setFormError('Full address must be at least 5 characters');
-      return;
-    }
-    if (!/^(\+91\s?)?[6-9]\d{9}$/.test(form.phone.replace(/\s/g, ''))) {
-      setFormError('Enter a valid 10-digit Indian mobile number');
+    const next: Record<string, string> = {};
+    if (!form.label.trim()) next['addr-label'] = 'Label is required';
+    if (!form.fullAddress.trim()) next['addr-full'] = 'Full address is required';
+    else if (form.fullAddress.trim().length < 5)
+      next['addr-full'] = 'Full address must be at least 5 characters';
+    if (!form.phone.trim()) next['addr-phone'] = 'Phone number is required';
+    else if (!/^(\+91\s?)?[6-9]\d{9}$/.test(form.phone.replace(/\s/g, '')))
+      next['addr-phone'] = 'Enter a valid 10-digit Indian mobile number';
+    if (!form.city.trim()) next['addr-city'] = 'City is required';
+    if (!form.state.trim()) next['addr-state'] = 'State is required';
+    if (!form.pincode.trim()) next['addr-pincode'] = 'Pincode is required';
+    setFieldErrors(next);
+    // Scroll to the first invalid field (site-wide validation rule).
+    const firstInvalid = ADDRESS_FIELD_ORDER.find((id) => next[id]);
+    if (firstInvalid) {
+      scrollToField(firstInvalid);
       return;
     }
 
@@ -116,9 +129,10 @@ export default function DeliveryStep({
         </p>
       </header>
 
-      <ErrorNote message={error} />
+      {/* Form-level errors only — field-scoped ones render under their input */}
+      <ErrorNote message={errorField ? null : error} />
 
-      <section>
+      <section id="order-address">
         <div className="mb-3 flex items-center justify-between">
           <p className="label mb-0">
             Delivery address {!isPickup && <span className="text-red-500">*</span>}
@@ -131,6 +145,7 @@ export default function DeliveryStep({
             <IconPlus className="h-4 w-4" /> Add new
           </button>
         </div>
+        <FieldError message={errorField === 'order-address' ? error : null} />
 
         {isPickup ? (
           <div className="flex items-start gap-3 rounded-xl border border-purple-200 bg-purple-50 p-4">
@@ -257,8 +272,9 @@ export default function DeliveryStep({
                   value={form.label}
                   onChange={(event) => setForm({ ...form, label: event.target.value })}
                   placeholder="Home, Office, Hostel…"
-                  className="input"
+                  className={`input ${fieldErrors['addr-label'] ? 'input-error' : ''}`}
                 />
+                <FieldError message={fieldErrors['addr-label']} />
               </div>
 
               <div>
@@ -271,8 +287,9 @@ export default function DeliveryStep({
                   value={form.fullAddress}
                   onChange={(event) => setForm({ ...form, fullAddress: event.target.value })}
                   placeholder="Flat, building, street, area"
-                  className="input resize-none"
+                  className={`input resize-none ${fieldErrors['addr-full'] ? 'input-error' : ''}`}
                 />
+                <FieldError message={fieldErrors['addr-full']} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -283,8 +300,9 @@ export default function DeliveryStep({
                     type="text"
                     value={form.city}
                     onChange={(event) => setForm({ ...form, city: event.target.value })}
-                    className="input"
+                    className={`input ${fieldErrors['addr-city'] ? 'input-error' : ''}`}
                   />
+                  <FieldError message={fieldErrors['addr-city']} />
                 </div>
                 <div>
                   <label htmlFor="addr-state" className="label">State</label>
@@ -293,8 +311,9 @@ export default function DeliveryStep({
                     type="text"
                     value={form.state}
                     onChange={(event) => setForm({ ...form, state: event.target.value })}
-                    className="input"
+                    className={`input ${fieldErrors['addr-state'] ? 'input-error' : ''}`}
                   />
+                  <FieldError message={fieldErrors['addr-state']} />
                 </div>
               </div>
 
@@ -308,8 +327,9 @@ export default function DeliveryStep({
                     onChange={(event) => setForm({ ...form, pincode: event.target.value })}
                     placeholder="700001"
                     maxLength={6}
-                    className="input"
+                    className={`input ${fieldErrors['addr-pincode'] ? 'input-error' : ''}`}
                   />
+                  <FieldError message={fieldErrors['addr-pincode']} />
                 </div>
                 <div>
                   <label htmlFor="addr-phone" className="label">
@@ -321,8 +341,9 @@ export default function DeliveryStep({
                     value={form.phone}
                     onChange={(event) => setForm({ ...form, phone: event.target.value })}
                     placeholder="9830012345"
-                    className="input"
+                    className={`input ${fieldErrors['addr-phone'] ? 'input-error' : ''}`}
                   />
+                  <FieldError message={fieldErrors['addr-phone']} />
                 </div>
               </div>
 

@@ -11,6 +11,7 @@ import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
 import { customerRegister } from '@/lib/api/auth';
 import { apiRequest } from '@/lib/api/client';
 import { ErrorNote } from '@/components/ui';
+import { scrollToField } from '@/lib/utils';
 
 interface FormState {
   fullName: string;
@@ -74,6 +75,11 @@ function SignupContent() {
     if (!form.agreed) next.agreed = 'Please accept the terms to continue';
 
     setErrors(next);
+    // Scroll to the first invalid field (site-wide validation rule).
+    const firstInvalid = ['fullName', 'email', 'phone', 'otp', 'password'].find(
+      (id) => next[id as keyof typeof next],
+    );
+    if (firstInvalid) scrollToField(firstInvalid);
     return Object.keys(next).length === 0;
   };
 

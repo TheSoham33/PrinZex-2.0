@@ -11,6 +11,7 @@ import { EMAIL_REGEX, PHONE_REGEX } from '@/lib/seller-types';
 import { customerLogin } from '@/lib/api/auth';
 import { apiRequest } from '@/lib/api/client';
 import { ErrorNote } from '@/components/ui';
+import { scrollToField } from '@/lib/utils';
 
 export default function CustomerLoginForm() {
   const router = useRouter();
@@ -72,6 +73,11 @@ export default function CustomerLoginForm() {
     }
 
     setErrors(next);
+    // Scroll to the first invalid field (site-wide validation rule).
+    const firstInvalid = ['identifier', 'password', 'otp'].find(
+      (id) => next[id as keyof typeof next],
+    );
+    if (firstInvalid) scrollToField(firstInvalid);
     return Object.keys(next).length === 0;
   };
 

@@ -13,7 +13,7 @@ import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { formatCurrency, getMediaUrl, toApiDeliverySpeed } from '@/lib/utils';
+import { formatCurrency, getMediaUrl, scrollToField, toApiDeliverySpeed } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -344,60 +344,62 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     setMaxReached((previous) => Math.max(previous, state.step));
   }, [state.step]);
 
-  const validateStep = (step: number): string | null => {
+  // First failure wins: { field } is the id of the owning input — the
+  // message renders UNDER that field and the page scrolls to it.
+  const validateStep = (step: number): { field: string; message: string } | null => {
     if (step === 1) {
-      if (!specs.serviceId) return 'Please choose a service';
-      if (!specs.paperType) return 'Please choose a paper type';
-      if (!specs.size) return 'Please choose a size';
+      if (!specs.serviceId) return { field: 'service', message: 'Please choose a service' };
+      if (!specs.paperType) return { field: 'order-paper-type', message: 'Please choose a paper type' };
+      if (!specs.size) return { field: 'order-paper-size', message: 'Please choose a size' };
       if (!specs.quantity || specs.quantity < 1)
-        return 'Quantity must be at least 1';
+        return { field: 'quantity', message: 'Quantity must be at least 1' };
       if (specs.quantity < (service?.minQuantity ?? 1))
-        return `Minimum order quantity for this service is ${service?.minQuantity}`;
+        return { field: 'quantity', message: `Minimum order quantity for this service is ${service?.minQuantity}` };
       if (service?.minPages && (specs.totalPages ?? 0) < service.minPages)
-        return `Minimum page count should be ${service.minPages} for ${service.name}`;
+        return { field: 'order-files', message: `Minimum page count should be ${service.minPages} for ${service.name}` };
       if (specs.serviceId === 'spec-photo-prints') {
         const configuredTypes = photoTypesCatalog.filter(
           (option) => option.value in (service?.photoTypeOptions ?? {}),
         );
         if (configuredTypes.length === 0)
-          return 'This store has not set up Photo Print yet — try another store';
-        if (!specs.photoType) return 'Choose a photo type';
+          return { field: 'photo-type', message: 'This store has not set up Photo Print yet — try another store' };
+        if (!specs.photoType) return { field: 'photo-type', message: 'Choose a photo type' };
       }
       if ((state.order.files?.length ?? 0) === 0 && specs.serviceId !== 'cards-business')
-        return 'Please upload the file you want printed';
+        return { field: 'order-files', message: 'Please upload the file you want printed' };
       if (specs.serviceId === 'bind-hard') {
         if (!specs.coverColor)
-          return 'Please choose a hard cover fabric colour';
-        if (!specs.coverTextColor) return 'Please choose a foil font colour';
+          return { field: 'order-cover-panel', message: 'Please choose a hard cover fabric colour' };
+        if (!specs.coverTextColor) return { field: 'order-cover-panel', message: 'Please choose a foil font colour' };
         if (!specs.hardCoverFrontSource)
-          return 'Please choose the front cover source';
+          return { field: 'order-cover-panel', message: 'Please choose the front cover source' };
         if (
           specs.hardCoverFrontSource === 'upload' &&
           !specs.frontCoverFileUrl
         ) {
-          return 'Please upload the single-page portrait front cover PDF';
+          return { field: 'order-cover-panel', message: 'Please upload the single-page portrait front cover PDF' };
         }
         if (specs.printSpineText && !specs.spineText?.trim()) {
-          return 'Please enter the spine text';
+          return { field: 'spine-text', message: 'Please enter the spine text' };
         }
         if (!specs.hardBindingProofApproved) {
-          return 'Please approve the hard binding cover proof';
+          return { field: 'order-cover-panel', message: 'Please approve the hard binding cover proof' };
         }
       }
       if (specs.serviceId === 'lam-film' && !specs.filmThickness) {
-        return 'Please choose a film thickness';
+        return { field: 'order-film-thickness', message: 'Please choose a film thickness' };
       }
       if (specs.serviceId === 'bind-tape') {
-        if (!specs.tapeColor) return 'Please choose a tape colour';
-        if (!specs.tapeCoverSource) return 'Please choose the front cover source';
+        if (!specs.tapeColor) return { field: 'order-tape-panel', message: 'Please choose a tape colour' };
+        if (!specs.tapeCoverSource) return { field: 'order-tape-panel', message: 'Please choose the front cover source' };
         if (specs.tapeCoverSource === 'upload' && !specs.tapeFrontCoverFileUrl) {
-          return 'Please upload the single-page front cover design (PDF/PNG/JPG)';
+          return { field: 'order-tape-panel', message: 'Please upload the single-page front cover design (PDF/PNG/JPG)' };
         }
       }
       if (specs.serviceId === 'bind-perfect') {
-        if (!specs.glueCoverSource) return 'Please choose the front cover source';
+        if (!specs.glueCoverSource) return { field: 'order-glue-panel', message: 'Please choose the front cover source' };
         if (specs.glueCoverSource === 'upload' && !specs.glueFrontCoverFileUrl) {
-          return 'Please upload the single-page front cover design (PDF/PNG/JPG)';
+          return { field: 'order-glue-panel', message: 'Please upload the single-page front cover design (PDF/PNG/JPG)' };
         }
       }
       if (specs.serviceId === 'bind-twin-loop') {
@@ -406,89 +408,98 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
           !specs.twinLoopFrontCover ||
           !specs.twinLoopBackCover
         ) {
-          return 'Please choose the Twin Loop wire and cover options';
+          return { field: 'order-twinloop-panel', message: 'Please choose the Twin Loop wire and cover options' };
         }
         if (!specs.twinLoopBindingEdge || !specs.twinLoopPrintSides) {
-          return 'Please choose the binding edge and inner-page print style';
+          return { field: 'order-twinloop-panel', message: 'Please choose the binding edge and inner-page print style' };
         }
         if (!specs.twinLoopSafeZoneAcknowledged) {
-          return 'Please confirm the 10 mm Twin Loop punch-margin safe zone';
+          return { field: 'order-twinloop-panel', message: 'Please confirm the 10 mm Twin Loop punch-margin safe zone' };
         }
         if (!specs.twinLoopCoverSubmission) {
-          return 'Please choose how you will submit the Twin Loop cover designs';
+          return { field: 'order-twinloop-panel', message: 'Please choose how you will submit the Twin Loop cover designs' };
         }
         if (
           specs.twinLoopCoverSubmission === 'embedded' &&
           (specs.totalPages ?? 0) < 3
         ) {
-          return 'The embedded master PDF must include front cover, inner pages, and back cover';
+          return { field: 'order-files', message: 'The embedded master PDF must include front cover, inner pages, and back cover' };
         }
         if (
           specs.twinLoopCoverSubmission === 'split' &&
           (!specs.twinLoopFrontFileUrl || !specs.twinLoopBackFileUrl)
         ) {
-          return 'Please upload the separate front and back cover artwork';
+          return { field: 'order-twinloop-panel', message: 'Please upload the separate front and back cover artwork' };
         }
         if (!specs.twinLoopCoverMaterial) {
-          return 'Please choose a printable Twin Loop cover material';
+          return { field: 'order-twinloop-panel', message: 'Please choose a printable Twin Loop cover material' };
         }
         if (!specs.twinLoopBleedAcknowledged) {
-          return 'Please confirm the 3 mm cover bleed requirement';
+          return { field: 'order-twinloop-panel', message: 'Please confirm the 3 mm cover bleed requirement' };
         }
         if (!specs.twinLoopFlipAcknowledged) {
-          return 'Please confirm the back-cover 360-degree flip orientation';
+          return { field: 'order-twinloop-panel', message: 'Please confirm the back-cover 360-degree flip orientation' };
         }
       }
       if (specs.serviceId === 'cards-business') {
-        if (!specs.cardShape) return 'Please choose the card shape';
-        if (!specs.cardPaper) return 'Please choose the card paper / texture';
-        if (!specs.cardSize) return 'Please choose the card size';
-        if (!specs.cardCorners) return 'Please choose the corners';
+        if (!specs.cardShape) return { field: 'order-card-panel', message: 'Please choose the card shape' };
+        if (!specs.cardPaper) return { field: 'order-card-panel', message: 'Please choose the card paper / texture' };
+        if (!specs.cardSize) return { field: 'order-card-panel', message: 'Please choose the card size' };
+        if (!specs.cardCorners) return { field: 'order-card-panel', message: 'Please choose the corners' };
         if (!specs.cardPrintSides) {
-          return 'Please choose single or double-sided printing';
+          return { field: 'order-card-panel', message: 'Please choose single or double-sided printing' };
         }
         if (specs.cardDesignSource === 'template' && !specs.cardTemplate) {
-          return 'Please pick a ready template';
+          return { field: 'order-card-panel', message: 'Please pick a ready template' };
         }
         if (specs.cardDesignSource === 'upload') {
           if (!specs.cardFrontFileUrl) {
-            return 'Please upload your front card design';
+            return { field: 'order-card-panel', message: 'Please upload your front card design' };
           }
           if (
             specs.cardPrintSides === 'double' &&
             !specs.cardBackSameAsFront &&
             !specs.cardBackFileUrl
           ) {
-            return 'Please upload your back design, switch to single-sided, or choose back same as front';
+            return { field: 'order-card-panel', message: 'Please upload your back design, switch to single-sided, or choose back same as front' };
           }
         }
         if (!specs.cardDesignSource) {
-          return 'Please choose a design source';
+          return { field: 'order-card-panel', message: 'Please choose a design source' };
         }
         if (!specs.cardProofApproved) {
-          return 'Please approve the Business Card proof';
+          return { field: 'order-card-panel', message: 'Please approve the Business Card proof' };
         }
       }
       return null;
     }
     if (step === 2) {
       if (state.order.deliverySpeed !== 'pickup' && !state.order.address) {
-        return 'Please select a delivery address';
+        return { field: 'order-address', message: 'Please select a delivery address' };
       }
       return null;
     }
     if (step === 3) {
-      if (!agreed) return 'Please accept the terms to place your order';
+      if (!agreed) return { field: 'order-terms', message: 'Please accept the terms to place your order' };
       return null;
     }
     return null;
   };
 
+  /** Block with the message UNDER the invalid field and scroll it into view. */
+  const blockWithFieldError = (failure: { field: string; message: string }) => {
+    dispatch({
+      type: 'SET_ERROR',
+      payload: { error: failure.message, field: failure.field },
+    });
+    scrollToField(failure.field);
+  };
+
   // Sign-in is mandatory for every real order action — attach, Continue,
   // Add to Cart, Place order. A guest attempt only SHOWS the validation
   // (toast); the customer stays exactly where they are — no /login bounce.
-  // (A toast, not SET_ERROR: the Continue button disables itself while an
-  // error is set, which would lock the page behind the message.)
+  // (A toast, not SET_ERROR: the sign-in nudge has no owning input field,
+  // and a toast vanishes on its own once the customer signs in.)
   const requireLogin = (message: string): boolean => {
     if (token) return true;
     showToast(message, 'error');
@@ -498,9 +509,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const goNext = () => {
     if (!requireLogin('Please sign in to continue with your order.')) return;
 
-    const error = validateStep(state.step);
-    if (error) {
-      dispatch({ type: 'SET_ERROR', payload: error });
+    const failure = validateStep(state.step);
+    if (failure) {
+      blockWithFieldError(failure);
       return;
     }
 
@@ -574,7 +585,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               } catch (err: any) {
                 dispatch({
                   type: 'SET_ERROR',
-                  payload: `Payment verification failed: ${err.message}`,
+                  payload: { error: `Payment verification failed: ${err.message}` },
                 });
                 setPlacing(false);
               }
@@ -592,7 +603,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
       clearOrderDraft(draftKey);
       router.push(`/orders/confirmation/${orderId}`);
     } catch (err: any) {
-      dispatch({ type: 'SET_ERROR', payload: err.message });
+      dispatch({ type: 'SET_ERROR', payload: { error: err.message } });
       setPlacing(false);
     }
   };
@@ -601,16 +612,16 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     if (!requireLogin('Please sign in to add items to your cart.')) return;
 
     // Validate current step before allowing add to cart
-    const error = validateStep(state.step);
-    if (error) {
-      dispatch({ type: 'SET_ERROR', payload: error });
+    const failure = validateStep(state.step);
+    if (failure) {
+      blockWithFieldError(failure);
       return;
     }
 
     if ((state.order.files?.length ?? 0) === 0) {
-      dispatch({
-        type: 'SET_ERROR',
-        payload: 'Please upload a file before adding to cart',
+      blockWithFieldError({
+        field: 'order-files',
+        message: 'Please upload a file before adding to cart',
       });
       return;
     }
@@ -663,6 +674,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               instructions={state.order.specialInstructions ?? ''}
               dispatch={dispatch}
               error={state.error}
+              errorField={state.errorField}
               availableCoverTypes={store.availableCoverTypes}
               availableCoilTypes={store.availableCoilTypes}
               availableCoverColors={store.availableCoverColors}
@@ -679,6 +691,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               dispatch={dispatch}
               onAddAddress={handleAddAddress}
               error={state.error}
+              errorField={state.errorField}
             />
           )}
           {state.step === 3 && (
@@ -686,12 +699,13 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               method={state.order.paymentMethod ?? 'upi'}
               cost={cost}
               dispatch={dispatch}
+              errorField={state.errorField}
               agreed={agreed}
               onAgreedChange={(value) => {
                 setAgreed(value);
                 // Checking the box clears the "accept the terms" error so the
                 // Place order button re-enables immediately.
-                if (value) dispatch({ type: 'SET_ERROR', payload: null });
+                if (value) dispatch({ type: 'SET_ERROR', payload: { error: null } });
               }}
               error={state.error}
               couponCode={couponCode}
@@ -726,10 +740,13 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
                   </button>
                 )}
 
+              {/* Never disabled by validation: clicks are blocked with an
+                  under-field message instead (site-wide rule). `placing`
+                  stays — it guards a real in-flight order. */}
               <button
                 type="button"
                 onClick={goNext}
-                disabled={placing || state.error !== null}
+                disabled={placing}
                 className="btn-primary"
               >
                 {placing ? (

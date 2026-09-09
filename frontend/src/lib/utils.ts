@@ -123,8 +123,7 @@ export function countColorPages(spec: string | undefined | null, totalPages: num
 }
 
 /** Build a full URL for media stored on the backend. */
-export function getMediaUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
+export function getMediaUrl(path: string | null | undefined): string | null {  if (!path) return null;
   if (path.startsWith('http')) return path;
 
   let apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -135,9 +134,24 @@ export function getMediaUrl(path: string | null | undefined): string | null {
   }
   
   const baseUrl = apiUrl.replace(/\/api\/?$/, '');
-  
+
   // Ensure we return an absolute URL or at least a path starting with /
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  
+
   return `${baseUrl}${normalizedPath}`;
+}
+
+/**
+ * Validation failed: bring the offending control on screen and focus it.
+ * Site-wide rule — validation messages render under their input (see
+ * components/ui.tsx FieldError) and a failed submit scrolls to the FIRST
+ * invalid field. Every validated control carries a stable id.
+ */
+export function scrollToField(id: string): void {
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Focus the control itself when possible; wrappers/divs just get scrolled to.
+  if (el instanceof HTMLElement) el.focus({ preventScroll: true });
 }

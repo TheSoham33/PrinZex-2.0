@@ -46,13 +46,15 @@ import { photoFromPrice } from '@/lib/domain/photos';
 import { IconUpload, IconCheckCircle, IconFileText, IconTrash, IconEye } from '@/components/icons';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { PDFDocument } from 'pdf-lib';
-import { ErrorNote } from '@/components/ui';
+import { ErrorNote, FieldError } from '@/components/ui';
 
 const ACCEPTED = ACCEPTED_DOCUMENT_TYPES;
 
 interface SpecificationsStepProps {
   specs: OrderSpecifications;
   services: ServiceOffering[];
+  /** Id of the input the error belongs to (site-wide rule: show under the field). */
+  errorField?: string | null;
   /** Design files attached so far; the service's catalogue entry caps the count. */
   files: UploadedFile[];
   instructions: string;
@@ -105,6 +107,7 @@ export default function SpecificationsStep({
   instructions,
   dispatch,
   error,
+  errorField,
   availableCoverTypes,
   availableCoilTypes,
   availableCoverColors,
@@ -409,6 +412,8 @@ export default function SpecificationsStep({
 
   const applyCoverToAll = specs.applyCoverToAll !== false;
   const shownError = localError ?? error;
+  /** Field-scoped validation message (renders under the owning control). */
+  const fieldErrorOf = (id: string) => (errorField === id ? error : null);
 
   const totalPages = specs.totalPages || 0;
   /** How the first attached file's pages are counted (drives the Total pages card copy). */
@@ -725,9 +730,10 @@ export default function SpecificationsStep({
         </p>
       </header>
 
-      <ErrorNote message={shownError} />
+      {/* Form-level errors only — field-scoped ones render under their input */}
+      <ErrorNote message={errorField ? null : shownError} />
 
-      <section className={`space-y-4 ${isBusinessCard ? 'hidden' : ''}`}>
+      <section id="order-files" className={`space-y-4 ${isBusinessCard ? 'hidden' : ''}`}>
         <label className="label">
           {isTwinLoopBinding
             ? specs.twinLoopCoverSubmission === 'split'
@@ -741,6 +747,7 @@ export default function SpecificationsStep({
           )}
           <span className="text-red-500">*</span>
         </label>
+        <FieldError message={fieldErrorOf('order-files')} />
 
         {processing ? (
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 py-12 text-center">
@@ -960,6 +967,7 @@ export default function SpecificationsStep({
             );
           })}
         </select>
+        <FieldError message={fieldErrorOf('service')} />
       </section>
 
       <div className={`grid gap-6 sm:grid-cols-2 ${isBusinessCard ? 'hidden' : ''}`}>
@@ -992,6 +1000,7 @@ export default function SpecificationsStep({
               );
             })}
           </select>
+          <FieldError message={fieldErrorOf('order-paper-type')} />
         </section>
 
         <section>
@@ -1020,6 +1029,7 @@ export default function SpecificationsStep({
               );
             })}
           </select>
+          <FieldError message={fieldErrorOf('order-paper-size')} />
         </section>
       </div>
 
@@ -1083,6 +1093,7 @@ export default function SpecificationsStep({
               Minimum order for this service: {minQuantity}
             </p>
           )}
+          <FieldError message={fieldErrorOf('quantity')} />
         </section>
 
         <section className={isBusinessCard ? 'hidden' : ''}>
@@ -1247,6 +1258,7 @@ export default function SpecificationsStep({
                     </option>
                   ))}
                 </select>
+                <FieldError message={fieldErrorOf('photo-type')} />
               </div>
               <div>
                 <p className="label" id="photo-layout-label">
@@ -1300,7 +1312,7 @@ export default function SpecificationsStep({
         )}
 
         {selectedService?.id === 'lam-film' && (
-          <section className="animate-fade-in">
+          <section id="order-film-thickness" className="animate-fade-in">
             <p className="label">
               Film thickness <span className="text-red-500">*</span>
             </p>
@@ -1340,6 +1352,7 @@ export default function SpecificationsStep({
                 );
               })}
             </div>
+            <FieldError message={fieldErrorOf('order-film-thickness')} />
           </section>
         )}
       </div>
@@ -1372,38 +1385,51 @@ export default function SpecificationsStep({
         )}
 
       {isTwinLoopBinding && (
-        <TwinLoopCustomizationPanel
-          specs={specs}
-          service={selectedService}
-          dispatch={dispatch}
-        />
+        <div id="order-twinloop-panel">
+          <TwinLoopCustomizationPanel
+            specs={specs}
+            service={selectedService}
+            dispatch={dispatch}
+          />
+          <FieldError message={fieldErrorOf('order-twinloop-panel')} />
+        </div>
       )}
 
       {isTapeBinding && (
-        <TapeBindingCustomizationPanel
-          specs={specs}
-          dispatch={dispatch}
-          availableTapeColors={availableTapeColors}
-        />
+        <div id="order-tape-panel">
+          <TapeBindingCustomizationPanel
+            specs={specs}
+            dispatch={dispatch}
+            availableTapeColors={availableTapeColors}
+          />
+          <FieldError message={fieldErrorOf('order-tape-panel')} />
+        </div>
       )}
 
       {specs.serviceId === 'bind-perfect' && (
-        <GlueBindingCustomizationPanel specs={specs} dispatch={dispatch} />
+        <div id="order-glue-panel">
+          <GlueBindingCustomizationPanel specs={specs} dispatch={dispatch} />
+          <FieldError message={fieldErrorOf('order-glue-panel')} />
+        </div>
       )}
 
       {isBusinessCard && (
-        <BusinessCardCustomizationPanel
-          specs={specs}
-          service={selectedService}
-          dispatch={dispatch}
-        />
+        <div id="order-card-panel">
+          <BusinessCardCustomizationPanel
+            specs={specs}
+            service={selectedService}
+            dispatch={dispatch}
+          />
+          <FieldError message={fieldErrorOf('order-card-panel')} />
+        </div>
       )}
 
       {isCustomizableBinding && (
-        <section className="animate-fade-in rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6">
+        <section id="order-cover-panel" className="animate-fade-in rounded-2xl border-2 border-slate-100 bg-slate-50/50 p-6">
           <h3 className="mb-4 text-lg font-bold text-slate-900">
             Cover Customization
           </h3>
+          <FieldError message={fieldErrorOf('order-cover-panel')} />
 
           <div className="space-y-6">
             {isSpiralBinding && (
@@ -1818,6 +1844,7 @@ export default function SpecificationsStep({
                         placeholder="PH.D. THESIS — JOHN DOE — 2026"
                         className="input"
                       />
+                      <FieldError message={fieldErrorOf('spine-text')} />
                       <p className="mt-1 text-right text-xs text-slate-400">
                         {specs.spineText?.length ?? 0}/50
                       </p>

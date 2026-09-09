@@ -22,6 +22,31 @@ import {
   type SellerRegistrationState,
   type StoreInfo,
 } from '@/lib/seller-types';
+import { scrollToField } from '@/lib/utils';
+
+/** Render order of validated inputs — a failed step scrolls to the FIRST
+ *  invalid one (ids in the step components match these keys). */
+const STORE_FIELD_ORDER: (keyof StoreInfo)[] = [
+  'storeName',
+  'ownerName',
+  'email',
+  'phone',
+  'businessType',
+  'gstNumber',
+  'storeAddress',
+  'city',
+  'state',
+  'pincode',
+  'openingTime',
+  'closingTime',
+];
+const BANK_FIELD_ORDER: (keyof BankDetails)[] = [
+  'accountHolderName',
+  'accountNumber',
+  'confirmAccountNumber',
+  'ifscCode',
+  'panNumber',
+];
 import SellerStepper from '@/components/seller-onboarding/SellerStepper';
 import StoreInfoStep from '@/components/seller-onboarding/StoreInfoStep';
 import ServicesStep from '@/components/seller-onboarding/ServicesStep';
@@ -214,6 +239,9 @@ export default function SellerRegisterPage() {
     }
 
     setStoreErrors(errors);
+    // Site-wide rule: scroll to the first invalid field (ids match error keys).
+    const firstInvalid = STORE_FIELD_ORDER.find((field) => errors[field]);
+    if (firstInvalid) scrollToField(firstInvalid);
     return Object.keys(errors).length === 0;
   };
 
@@ -237,6 +265,9 @@ export default function SellerRegisterPage() {
     else if (!PAN_REGEX.test(bank.panNumber.trim())) errors.panNumber = 'Enter a valid PAN number';
 
     setBankErrors(errors);
+    // Site-wide rule: scroll to the first invalid field (ids match error keys).
+    const firstInvalid = BANK_FIELD_ORDER.find((field) => errors[field]);
+    if (firstInvalid) scrollToField(firstInvalid);
     return Object.keys(errors).length === 0;
   };
 
@@ -248,6 +279,7 @@ export default function SellerRegisterPage() {
     if (step === 2) {
       if (state.selectedServices.length === 0) {
         setStepError('Select at least one service you offer');
+        scrollToField('onboard-services');
         return false;
       }
       return true;
@@ -257,6 +289,7 @@ export default function SellerRegisterPage() {
       const invalid = state.pricing.filter((entry) => !entry.basePrice || entry.basePrice <= 0);
       if (invalid.length > 0) {
         setStepError(`Set a price for all ${state.pricing.length} services`);
+        scrollToField('onboard-pricing');
         return false;
       }
       return true;
@@ -268,6 +301,7 @@ export default function SellerRegisterPage() {
       const missing = state.documents.filter((doc) => !doc.file);
       if (missing.length > 0) {
         setStepError(`Upload all ${state.documents.length} required documents`);
+        scrollToField('onboard-documents');
         return false;
       }
       return true;
@@ -305,6 +339,7 @@ export default function SellerRegisterPage() {
   const submit = async () => {
     if (!agreed) {
       setStepError('Please accept the seller terms to submit');
+      scrollToField('onboard-review');
       return;
     }
     setSubmitting(true);
@@ -412,16 +447,18 @@ export default function SellerRegisterPage() {
 
       <div className="card p-6">
         {showReview ? (
-          <ReviewSubmitStep
-            state={state}
-            agreed={agreed}
-            onAgreedChange={setAgreed}
-            onEditStep={(step) => {
-              setShowReview(false);
-              dispatch({ type: 'SET_STEP', payload: step });
-            }}
-            error={stepError}
-          />
+          <div id="onboard-review">
+            <ReviewSubmitStep
+              state={state}
+              agreed={agreed}
+              onAgreedChange={setAgreed}
+              onEditStep={(step) => {
+                setShowReview(false);
+                dispatch({ type: 'SET_STEP', payload: step });
+              }}
+              error={stepError}
+            />
+          </div>
         ) : (
           <>
             {state.currentStep === 1 && (
@@ -432,21 +469,25 @@ export default function SellerRegisterPage() {
               />
             )}
             {state.currentStep === 2 && (
-              <ServicesStep
-                selected={state.selectedServices}
-                onToggle={(service) => dispatch({ type: 'UPDATE_SERVICES', payload: service })}
-                error={stepError}
-              />
+              <div id="onboard-services">
+                <ServicesStep
+                  selected={state.selectedServices}
+                  onToggle={(service) => dispatch({ type: 'UPDATE_SERVICES', payload: service })}
+                  error={stepError}
+                />
+              </div>
             )}
             {state.currentStep === 3 && (
-              <PricingSetupStep
-                pricing={state.pricing}
-                onUpdate={(serviceId, patch) =>
-                  dispatch({ type: 'UPDATE_PRICING', payload: { serviceId, patch } })
-                }
-                onSetAllUnits={(unit) => dispatch({ type: 'SET_ALL_UNITS', payload: unit })}
-                error={stepError}
-              />
+              <div id="onboard-pricing">
+                <PricingSetupStep
+                  pricing={state.pricing}
+                  onUpdate={(serviceId, patch) =>
+                    dispatch({ type: 'UPDATE_PRICING', payload: { serviceId, patch } })
+                  }
+                  onSetAllUnits={(unit) => dispatch({ type: 'SET_ALL_UNITS', payload: unit })}
+                  error={stepError}
+                />
+              </div>
             )}
             {state.currentStep === 4 && (
               <BankDetailsStep
@@ -456,11 +497,13 @@ export default function SellerRegisterPage() {
               />
             )}
             {state.currentStep === 5 && (
-              <DocumentUploadStep
-                documents={state.documents}
-                onUpload={(type, file) => dispatch({ type: 'UPDATE_DOC', payload: { type, file } })}
-                error={stepError}
-              />
+              <div id="onboard-documents">
+                <DocumentUploadStep
+                  documents={state.documents}
+                  onUpload={(type, file) => dispatch({ type: 'UPDATE_DOC', payload: { type, file } })}
+                  error={stepError}
+                />
+              </div>
             )}
           </>
         )}

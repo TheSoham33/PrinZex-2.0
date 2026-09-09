@@ -9,6 +9,7 @@ import { IconAlertCircle, IconPrinter, IconShieldCheck } from '@/components/icon
 import { EMAIL_REGEX } from '@/lib/seller-types';
 import { adminLogin } from '@/lib/api/auth';
 import { ErrorNote } from '@/components/ui';
+import { scrollToField } from '@/lib/utils';
 
 function AdminLoginContent() {
   const router = useRouter();
@@ -38,6 +39,9 @@ function AdminLoginContent() {
     else if (password.length < 6) next.password = 'Password must be at least 6 characters';
 
     setErrors(next);
+    // Scroll to the first invalid field (site-wide validation rule).
+    const firstInvalid = next.email ? 'admin-email' : next.password ? 'admin-password' : null;
+    if (firstInvalid) scrollToField(firstInvalid);
     if (Object.keys(next).length > 0) return;
 
     dispatch(adminLoginStart());

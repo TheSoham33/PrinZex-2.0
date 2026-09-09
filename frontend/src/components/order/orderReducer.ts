@@ -15,6 +15,9 @@ export interface OrderState {
   step: number;
   order: Partial<Order>;
   error: string | null;
+  /** Id of the input the error belongs to — the message renders under that
+   *  field and a failed submit scrolls to it. Null = form-level error. */
+  errorField: string | null;
 }
 
 /**
@@ -31,7 +34,7 @@ export type OrderAction =
   | { type: 'SET_COST'; payload: { field: keyof CostBreakdown; value: number } }
   | { type: 'SET_COST_BREAKDOWN'; payload: CostBreakdown }
   | { type: 'SET_STEP'; payload: number }
-  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_ERROR'; payload: { error: string | null; field?: string | null } }
   /** Rehydrate a persisted draft after a page refresh (see
    *  lib/domain/orderDraft.ts) — replaces step + order wholesale. */
   | { type: 'RESTORE'; payload: { step: number; order: Partial<Order> } };
@@ -65,6 +68,7 @@ export function createInitialState(
   return {
     step: 1,
     error: null,
+    errorField: null,
     order: {
       storeId,
       storeName,
@@ -120,6 +124,7 @@ export function orderReducer(
       return {
         ...state,
         error: null,
+        errorField: null,
         order: {
           ...state.order,
           specifications: {
@@ -133,6 +138,7 @@ export function orderReducer(
       return {
         ...state,
         error: null,
+        errorField: null,
         order: { ...state.order, files: action.payload },
       };
 
@@ -146,6 +152,7 @@ export function orderReducer(
       return {
         ...state,
         error: null,
+        errorField: null,
         order: { ...state.order, address: action.payload },
       };
 
@@ -159,6 +166,7 @@ export function orderReducer(
       return {
         ...state,
         error: null,
+        errorField: null,
         order: { ...state.order, paymentMethod: action.payload },
       };
 
@@ -179,13 +187,17 @@ export function orderReducer(
       };
 
     case 'SET_STEP':
-      return { ...state, step: action.payload, error: null };
+      return { ...state, step: action.payload, error: null, errorField: null };
 
     case 'SET_ERROR':
-      return { ...state, error: action.payload };
+      return {
+        ...state,
+        error: action.payload.error,
+        errorField: action.payload.field ?? null,
+      };
 
     case 'RESTORE':
-      return { ...state, step: action.payload.step, error: null, order: action.payload.order };
+      return { ...state, step: action.payload.step, error: null, errorField: null, order: action.payload.order };
 
     default:
       return state;

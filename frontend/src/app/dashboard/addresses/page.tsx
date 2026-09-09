@@ -4,7 +4,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAddresses, createAddress, deleteAddress, setDefaultAddress } from '@/lib/api/customer';
 import { IconAlertCircle, IconMapPin, IconPlus, IconTrash, IconX, IconRefreshCw } from '@/components/icons';
-import { StateCard } from '@/components/ui';
+import { FieldError, StateCard } from '@/components/ui';
+import { scrollToField } from '@/lib/utils';
 
 export default function AddressesPage() {
   const queryClient = useQueryClient();
@@ -23,6 +24,8 @@ export default function AddressesPage() {
     pincode: '' 
   });
   const [error, setError] = useState<string | null>(null);
+  /** Per-input validation for the add-address modal (messages render under fields). */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const createMutation = useMutation({
     mutationFn: createAddress,
@@ -69,14 +72,26 @@ export default function AddressesPage() {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!form.label.trim() || !form.fullAddress.trim() || !form.phone.trim() || !form.pincode.trim() || !form.city.trim() || !form.state.trim()) {
-      setError('All fields are required');
+    // Per-field validation — each message renders under its input;
+    // scroll to the first invalid one (site-wide rule).
+    const next: Record<string, string> = {};
+    if (!form.label.trim()) next.label = 'Label is required';
+    if (!form.fullAddress.trim()) next.fullAddress = 'Full address is required';
+    else if (form.fullAddress.trim().length < 5)
+      next.fullAddress = 'Full address must be at least 5 characters';
+    if (!form.city.trim()) next.city = 'City is required';
+    if (!form.state.trim()) next.state = 'State is required';
+    if (!form.pincode.trim()) next.pincode = 'Pincode is required';
+    if (!form.phone.trim()) next.phone = 'Phone number is required';
+    setFieldErrors(next);
+    const firstInvalid = ['label', 'fullAddress', 'city', 'state', 'pincode', 'phone'].find(
+      (id) => next[id],
+    );
+    if (firstInvalid) {
+      scrollToField(firstInvalid);
       return;
     }
-    if (form.fullAddress.trim().length < 5) {
-      setError('Full address must be at least 5 characters');
-      return;
-    }
+    setError(null);
     createMutation.mutate(form);
   };
 
@@ -196,8 +211,9 @@ export default function AddressesPage() {
                   value={form.label}
                   onChange={(event) => setForm({ ...form, label: event.target.value })}
                   placeholder="Home, Office, Hostel…"
-                  className="input"
+                  className={`input ${fieldErrors.label ? 'input-error' : ''}`}
                 />
+                <FieldError message={fieldErrors.label} />
               </div>
               <div>
                 <label htmlFor="fullAddress" className="label">Full address</label>
@@ -207,8 +223,9 @@ export default function AddressesPage() {
                   value={form.fullAddress}
                   onChange={(event) => setForm({ ...form, fullAddress: event.target.value })}
                   placeholder="Flat, building, street, area"
-                  className="input resize-none"
+                  className={`input resize-none ${fieldErrors.fullAddress ? 'input-error' : ''}`}
                 />
+                <FieldError message={fieldErrors.fullAddress} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -218,8 +235,9 @@ export default function AddressesPage() {
                     type="text"
                     value={form.city}
                     onChange={(event) => setForm({ ...form, city: event.target.value })}
-                    className="input"
+                    className={`input ${fieldErrors.city ? 'input-error' : ''}`}
                   />
+                  <FieldError message={fieldErrors.city} />
                 </div>
                 <div>
                   <label htmlFor="state" className="label">State</label>
@@ -228,8 +246,9 @@ export default function AddressesPage() {
                     type="text"
                     value={form.state}
                     onChange={(event) => setForm({ ...form, state: event.target.value })}
-                    className="input"
+                    className={`input ${fieldErrors.state ? 'input-error' : ''}`}
                   />
+                  <FieldError message={fieldErrors.state} />
                 </div>
               </div>
               <div>
@@ -241,8 +260,9 @@ export default function AddressesPage() {
                   onChange={(event) => setForm({ ...form, pincode: event.target.value })}
                   placeholder="700001"
                   maxLength={6}
-                  className="input"
+                  className={`input ${fieldErrors.pincode ? 'input-error' : ''}`}
                 />
+                <FieldError message={fieldErrors.pincode} />
               </div>
               <div>
                 <label htmlFor="phone" className="label">Phone number</label>
@@ -252,8 +272,9 @@ export default function AddressesPage() {
                   value={form.phone}
                   onChange={(event) => setForm({ ...form, phone: event.target.value })}
                   placeholder="9830012345"
-                  className="input"
+                  className={`input ${fieldErrors.phone ? 'input-error' : ''}`}
                 />
+                <FieldError message={fieldErrors.phone} />
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary flex-1">

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import { IconAlertCircle, IconCheckCircle, IconMailCheck } from '@/components/icons';
-import { fakeDelay } from '@/lib/utils';
+import { fakeDelay, scrollToField } from '@/lib/utils';
 
 const OTP_LENGTH = 6;
 
@@ -60,6 +60,7 @@ export default function VerifyEmailPage() {
     const code = digits.join('');
     if (code.length !== OTP_LENGTH) {
       setError(`Enter all ${OTP_LENGTH} digits`);
+      scrollToField('otp'); // site-wide rule: scroll to the invalid field
       return;
     }
     setVerifying(true);
@@ -98,7 +99,7 @@ export default function VerifyEmailPage() {
       </p>
 
       <div className="mt-8">
-        <div className="flex gap-2 sm:gap-3">
+        <div id="otp" className="flex gap-2 sm:gap-3">
           {digits.map((digit, index) => (
             <input
               key={index}

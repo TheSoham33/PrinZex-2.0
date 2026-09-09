@@ -2,6 +2,8 @@
 
 import { useEffect, useState, type FormEvent, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FieldError } from '@/components/ui';
+import { scrollToField } from '@/lib/utils';
 import {
   fetchBanners,
   fetchCategories,
@@ -57,6 +59,8 @@ export default function AdminContentPage() {
 
   const [bannerModal, setBannerModal] = useState(false);
   const [bannerForm, setBannerForm] = useState({ title: '', linkUrl: '', isActive: true, imageUrl: '' });
+  /** Per-input validation for the add-banner modal (messages render under fields). */
+  const [bannerFieldErrors, setBannerFieldErrors] = useState<Record<string, string>>({});
   const [tplModal, setTplModal] = useState(false);
   const [tplForm, setTplForm] = useState({ name: '', category: '' });
   const [deleteTarget, setDeleteTarget] = useState<{ kind: string; id: string; name: string } | null>(null);
@@ -414,8 +418,21 @@ export default function AdminContentPage() {
 
       <Modal open={bannerModal} title="Add banner" onClose={handleCloseBannerModal}>
         <form
+          noValidate
           onSubmit={(e: FormEvent) => {
             e.preventDefault();
+            // Client-side validation — under-field messages + scroll to the
+            // first invalid input (site-wide rule); the button is never
+            // disabled by validation, only while saving.
+            const next: Record<string, string> = {};
+            if (!bannerForm.title.trim()) next['bn-title'] = 'Title is required';
+            if (!bannerForm.linkUrl.trim()) next['bn-link'] = 'Link URL is required';
+            setBannerFieldErrors(next);
+            const firstInvalid = ['bn-title', 'bn-link'].find((id) => next[id]);
+            if (firstInvalid) {
+              scrollToField(firstInvalid);
+              return;
+            }
             addBannerM.mutate({
               title: bannerForm.title,
               linkUrl: bannerForm.linkUrl,
@@ -428,11 +445,13 @@ export default function AdminContentPage() {
         >
           <div>
             <label htmlFor="bn-title" className="label">Title</label>
-            <input id="bn-title" type="text" value={bannerForm.title} onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })} className="input" />
+            <input id="bn-title" type="text" value={bannerForm.title} onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })} className={`input ${bannerFieldErrors['bn-title'] ? 'input-error' : ''}`} />
+            <FieldError message={bannerFieldErrors['bn-title']} />
           </div>
           <div>
             <label htmlFor="bn-link" className="label">Link URL</label>
-            <input id="bn-link" type="text" value={bannerForm.linkUrl} onChange={(e) => setBannerForm({ ...bannerForm, linkUrl: e.target.value })} placeholder="/stores" className="input" />
+            <input id="bn-link" type="text" value={bannerForm.linkUrl} onChange={(e) => setBannerForm({ ...bannerForm, linkUrl: e.target.value })} placeholder="/stores" className={`input ${bannerFieldErrors['bn-link'] ? 'input-error' : ''}`} />
+            <FieldError message={bannerFieldErrors['bn-link']} />
           </div>
           <div>
             <label htmlFor="bn-image" className="label">Image URL <span className="font-normal text-slate-400">(optional)</span></label>
