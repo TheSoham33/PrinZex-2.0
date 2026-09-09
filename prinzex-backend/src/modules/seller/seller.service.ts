@@ -1348,7 +1348,9 @@ export async function rejectOrder(
       ? ' Refund processing hit an issue — our team will resolve it shortly.'
       : refund.channel === 'wallet'
         ? ' The amount is already back in your PrinZex Wallet.'
-        : ' Your refund is on its way to the original payment method.';
+        : refund.channel === 'split'
+          ? ` ₹${Number(order.walletAmount)} is already back in your PrinZex Wallet; the rest is on its way to your bank.`
+          : ' Your refund is on its way to the original payment method.';
   }
 
   await appendTimelineEvent(order.id, 'cancelled', sellerId, `Rejected by store: ${input.reason}`);

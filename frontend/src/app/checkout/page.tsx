@@ -5,6 +5,7 @@ import { clearCart, setCartOpen } from '@/store/slices/cartSlice';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAddresses } from '@/lib/api/customer';
 import { placeOrder } from '@/lib/api/orders';
+import { fetchWalletBalance } from '@/lib/api/wallet';
 import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -27,6 +28,15 @@ export default function CheckoutPage() {
     queryFn: fetchAddresses,
     enabled: !!user
   });
+
+  // Wallet balance powers the partial-wallet split at cart checkout, same
+  // rule as the single-order payment step.
+  const { data: walletBalance = 0 } = useQuery({
+    queryKey: ['wallet-balance'],
+    queryFn: fetchWalletBalance,
+    enabled: !!user
+  });
+  const [useWallet, setUseWallet] = useState(true);
 
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [deliverySpeed, setDeliverySpeed] = useState('STANDARD');
@@ -53,6 +63,17 @@ export default function CheckoutPage() {
   const deliveryFee = DELIVERY_SPEEDS.find(s => s.key.toUpperCase() === deliverySpeed)?.cost || 0;
   const total = subtotal + tax + deliveryFee;
 
+  // Wallet split for the chosen method — the backend drains the wallet
+  // across the cart's orders until the balance or the total runs out.
+  const methodIsOnline = paymentMethod === 'card' || paymentMethod === 'upi';
+  const walletApplied =
+    paymentMethod === 'wallet'
+      ? Math.min(walletBalance, total)
+      : methodIsOnline && useWallet
+        ? Math.min(walletBalance, total)
+        : 0;
+  const onlineDue = Math.max(0, total - walletApplied);
+
   const handleCheckout = async () => {
     if (!selectedAddressId && deliverySpeed !== 'PICKUP') {
       // Under-field message + scroll to the offending section (site-wide rule).
@@ -77,6 +98,9 @@ export default function CheckoutPage() {
         deliveryAddressId: selectedAddressId,
         deliverySpeed: toApiDeliverySpeed(deliverySpeed),
         paymentMethod: paymentMethod,
+        // Partial wallet on online methods — the backend debits each order
+        // with a guarded atomic decrement until the balance runs out.
+        useWallet: methodIsOnline && useWallet && walletBalance > 0 ? true : undefined,
         specialInstructions: item.specialInstructions,
         // Office files were converted to PDF and stored at attach time;
         // other types keep the pre-existing client-side stub for now.
@@ -212,6 +236,41 @@ export default function CheckoutPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Wallet: insufficient note for full-wallet, or the optional
+                    "use your balance first" split on online methods. */}
+                {paymentMethod === 'wallet' && walletBalance < total && (
+                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="flex items-start gap-2 text-sm text-amber-800">
+                      <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      Your wallet has {formatCurrency(walletBalance)} but this order needs{' '}
+                      {formatCurrency(total)}. Pick UPI/Card and tick &quot;use wallet balance&quot;
+                      to pay part from the wallet, or top up your wallet first.
+                    </p>
+                  </div>
+                )}
+                {methodIsOnline && walletBalance > 0 && (
+                  <div className="mt-4 rounded-xl border border-green-200 bg-green-50/60 p-4">
+                    <label className="flex cursor-pointer items-start gap-3 text-sm">
+                      <input
+                        id="checkout-use-wallet"
+                        type="checkbox"
+                        checked={useWallet}
+                        onChange={(e) => setUseWallet(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-green-600 focus:ring-2 focus:ring-green-500/30"
+                      />
+                      <span className="text-slate-700">
+                        <span className="font-semibold text-slate-900">
+                          Use wallet balance ({formatCurrency(walletBalance)} available)
+                        </span>
+                        <br />
+                        {walletApplied >= total
+                          ? 'Your wallet covers this order in full — nothing to pay online.'
+                          : `${formatCurrency(walletApplied)} goes from your wallet, ${formatCurrency(onlineDue)} via ${paymentMethod.toUpperCase()}.`}
+                      </span>
+                    </label>
+                  </div>
+                )}
               </section>
             </div>
 
@@ -237,6 +296,18 @@ export default function CheckoutPage() {
                   <span>Total</span>
                   <span>{formatCurrency(total)}</span>
                 </div>
+                {walletApplied > 0 && (
+                  <div className="space-y-2 text-sm mb-6 -mt-4">
+                    <div className="flex justify-between text-green-600">
+                      <span>From PrinZex Wallet</span>
+                      <span className="font-medium">−{formatCurrency(walletApplied)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-slate-900">
+                      <span>{paymentMethod === 'wallet' || onlineDue === 0 ? 'Due now' : 'Payable online'}</span>
+                      <span>{onlineDue === 0 ? 'Fully covered' : formatCurrency(onlineDue)}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Form-level errors only — field-scoped ones render under their section */}
                 {error && !errorField && (
@@ -252,7 +323,13 @@ export default function CheckoutPage() {
                   disabled={placing}
                   className="btn-primary w-full py-4 text-base shadow-lg shadow-blue-200"
                 >
-                  {placing ? 'Processing Order...' : `Pay & Place Order`}
+                  {placing
+                    ? 'Processing Order...'
+                    : walletApplied > 0 && onlineDue === 0
+                      ? 'Place Order — Pay from Wallet'
+                      : walletApplied > 0
+                        ? `Pay & Place Order · ${formatCurrency(onlineDue)} online`
+                        : 'Pay & Place Order'}
                 </button>
                 <p className="mt-4 text-center text-xs text-slate-400">
                   By placing an order, you agree to our Terms of Service.

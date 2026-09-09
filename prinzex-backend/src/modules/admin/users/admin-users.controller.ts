@@ -2,7 +2,7 @@ import { ApiResponse } from '../../../utils/ApiResponse';
 import { adminIdentity, logActivity } from '../../../utils/activityLogger';
 import { asyncHandler } from '../../../utils/asyncHandler';
 import * as adminUsersService from './admin-users.service';
-import type { SuspendBody, UsersQuery, WalletCreditBody } from './admin-users.routes';
+import type { SuspendBody, UsersQuery, WalletCreditBody, WalletCreditBulkBody } from './admin-users.routes';
 
 /** Admin user management. logActivity is fire-and-forget (no await) per spec. */
 
@@ -54,4 +54,20 @@ export const walletCredit = asyncHandler(async (req, res) => {
     req,
   });
   res.status(200).json(new ApiResponse(200, result, `₹${result.credited} credited — new balance ₹${result.balance}`));
+});
+
+export const walletCreditBulk = asyncHandler(async (req, res) => {
+  const { userIds, allCustomers, amount, reason } = req.body as WalletCreditBulkBody;
+  const result = await adminUsersService.creditWalletsBulk({ userIds, allCustomers, amount, reason });
+  void logActivity({
+    ...adminIdentity(req),
+    action: 'wallet.bulk_credited',
+    entityType: 'wallet',
+    entityId: allCustomers ? 'all-customers' : 'multiple',
+    metadata: { amount, reason, scope: allCustomers ? 'all-customers' : 'selected', userIds: userIds ?? null, credited: result.credited },
+    req,
+  });
+  res
+    .status(200)
+    .json(new ApiResponse(200, result, `₹${result.amount} credited to ${result.credited} wallet(s) — total outflow ₹${result.totalCredited}`));
 });

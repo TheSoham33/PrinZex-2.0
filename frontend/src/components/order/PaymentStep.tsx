@@ -35,6 +35,11 @@ interface PaymentStepProps {
   onCouponCodeChange: (code: string) => void;
   couponError: string | null;
   couponLoading: boolean;
+  /**
+   * Signed-in customer's wallet (balance drives the partial-wallet option and
+   * the full-wallet affordability note). Absent for guests.
+   */
+  wallet?: { balance: number; useWallet: boolean; onToggle: (value: boolean) => void };
 }
 
 export default function PaymentStep({
@@ -49,9 +54,19 @@ export default function PaymentStep({
   onCouponCodeChange,
   couponError,
   couponLoading,
+  wallet,
 }: PaymentStepProps) {
   const [code, setCode] = useState(couponCode);
   const couponApplied = !!couponCode && cost.discount > 0;
+
+  // Partial wallet: when toggled on an online method, the wallet settles as
+  // much of the total as it can; the gateway charges only the remainder.
+  const walletApplied = wallet && method !== 'cod' && wallet.useWallet
+    ? Math.min(wallet.balance, cost.total)
+    : method === 'wallet'
+      ? Math.min(wallet?.balance ?? 0, cost.total)
+      : 0;
+  const onlineDue = Math.max(0, cost.total - walletApplied);
 
   const handleApply = () => {
     onCouponCodeChange(code.trim().toUpperCase());
@@ -103,6 +118,41 @@ export default function PaymentStep({
           ))}
         </div>
       </section>
+
+      {/* Wallet: insufficient-balance note for full-wallet payment, or the
+          optional "use your balance first" panel on online methods. */}
+      {method === 'wallet' && wallet && wallet.balance < cost.total && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4" id="order-wallet">
+          <p className="flex items-start gap-2 text-sm text-amber-800">
+            <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            Your wallet has {formatCurrency(wallet.balance)} but this order needs{' '}
+            {formatCurrency(cost.total)}. Pick UPI/Card and tick &quot;use wallet balance&quot; to pay
+            part from the wallet, or top up your wallet first.
+          </p>
+        </div>
+      )}
+      {(method === 'upi' || method === 'card') && wallet && wallet.balance > 0 && (
+        <section id="order-wallet" className="rounded-xl border border-green-200 bg-green-50/60 p-4">
+          <label className="flex cursor-pointer items-start gap-3 text-sm">
+            <input
+              id="order-use-wallet"
+              type="checkbox"
+              checked={wallet.useWallet}
+              onChange={(event) => wallet.onToggle(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-green-600 focus:ring-2 focus:ring-green-500/30"
+            />
+            <span className="text-slate-700">
+              <span className="font-semibold text-slate-900">
+                Use wallet balance ({formatCurrency(wallet.balance)} available)
+              </span>
+              <br />
+              {Math.min(wallet.balance, cost.total) >= cost.total
+                ? 'Your wallet covers this order in full — nothing to pay online.'
+                : `${formatCurrency(Math.min(wallet.balance, cost.total))} goes from your wallet, ${formatCurrency(onlineDue)} via ${method.toUpperCase()}.`}
+            </span>
+          </label>
+        </section>
+      )}
 
       <section>
         <label htmlFor="coupon" className="label">
@@ -176,6 +226,22 @@ export default function PaymentStep({
             <dt className="font-semibold text-slate-900">Total payable</dt>
             <dd className="text-lg font-extrabold text-slate-900">{formatCurrency(cost.total)}</dd>
           </div>
+          {walletApplied > 0 && (
+            <>
+              <div className="flex justify-between text-green-600">
+                <dt>From PrinZex Wallet</dt>
+                <dd className="font-medium">−{formatCurrency(walletApplied)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-semibold text-slate-900">
+                  {method === 'wallet' || onlineDue === 0 ? 'Due now' : 'Payable online'}
+                </dt>
+                <dd className="text-lg font-extrabold text-slate-900">
+                  {onlineDue === 0 ? 'Fully covered' : formatCurrency(onlineDue)}
+                </dd>
+              </div>
+            </>
+          )}
         </dl>
       </section>
 

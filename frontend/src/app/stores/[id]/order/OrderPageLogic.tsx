@@ -9,6 +9,7 @@ import { type StoreDetail } from '@/lib/types';
 import { createAddress, fetchAddresses } from '@/lib/api/customer';
 import { getOrderQuote, placeOrder as placeOrderApi } from '@/lib/api/orders';
 import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
+import { fetchWalletBalance } from '@/lib/api/wallet';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { fileUrlsForOrder } from '@/lib/domain/files';
@@ -81,6 +82,16 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     queryFn: fetchAddresses,
     enabled: !!token,
   });
+
+  // Wallet balance powers the partial-wallet option at the payment step.
+  const { data: walletBalance = 0 } = useQuery({
+    queryKey: ['wallet-balance'],
+    queryFn: fetchWalletBalance,
+    enabled: !!token,
+  });
+  // Default ON: if there is balance, most customers want it used first (they
+  // can untick it at the payment step).
+  const [useWallet, setUseWallet] = useState(true);
 
   // Persist a new address (from the DeliveryStep modal), refresh the list and
   // auto-select it so the customer stays in the order flow.
@@ -334,6 +345,18 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     return computeCost(specs, service, 0, 0, pageRateFallback, staplingOptionsCatalog, filmOptionsCatalog, photoTypesCatalog);
   }, [token, quoteData, quoteLoading, specs, service, pageRateFallback, staplingOptionsCatalog, filmOptionsCatalog, photoTypesCatalog]);
 
+  // Wallet split for the chosen method — mirrors PaymentStep's math so the
+  // Place-order button and the payload both tell the truth.
+  const method = state.order.paymentMethod ?? 'upi';
+  const methodIsOnline = method === 'card' || method === 'upi';
+  const walletApplied =
+    method === 'wallet'
+      ? Math.min(walletBalance, cost.total)
+      : methodIsOnline && useWallet
+        ? Math.min(walletBalance, cost.total)
+        : 0;
+  const onlineDue = Math.max(0, cost.total - walletApplied);
+
   useEffect(() => {
     if (quoteData) {
       dispatch({ type: 'SET_COST_BREAKDOWN', payload: quoteData });
@@ -544,6 +567,9 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         deliveryAddressId: (state.order.address as any)?.id,
         deliverySpeed: toApiDeliverySpeed(state.order.deliverySpeed),
         paymentMethod: state.order.paymentMethod,
+        // Partial wallet: only meaningful on online methods with balance —
+        // the backend ignores this flag for 'wallet' (full) and 'cod'.
+        useWallet: methodIsOnline && useWallet && walletBalance > 0 ? true : undefined,
         specialInstructions: state.order.specialInstructions,
         couponCode: couponCode || undefined,
         // Office files were converted to PDF and stored at attach time;
@@ -553,10 +579,15 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
       const orderId = result.order.id;
 
+      // Wallet may have covered the whole total — the backend flips such
+      // orders straight to 'paid', and the Razorpay popup must NOT open.
+      const settledWithoutGateway = result.order?.paymentStatus === 'paid';
+
       // Handle Online Payment (Razorpay)
       if (
-        state.order.paymentMethod === 'card' ||
-        state.order.paymentMethod === 'upi'
+        !settledWithoutGateway &&
+        (state.order.paymentMethod === 'card' ||
+        state.order.paymentMethod === 'upi')
       ) {
         try {
           const rzpOrder = await createPaymentOrder(orderId);
@@ -712,6 +743,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               onCouponCodeChange={setCouponCode}
               couponError={couponError}
               couponLoading={quoteLoading}
+              wallet={{ balance: walletBalance, useWallet, onToggle: setUseWallet }}
             />
           )}
 
@@ -752,7 +784,13 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
                 {placing ? (
                   'Placing order…'
                 ) : state.step === TOTAL_STEPS ? (
-                  <>Place order · {formatCurrency(cost.total)}</>
+                  walletApplied > 0 && onlineDue === 0 ? (
+                    <>Place order — pay from wallet</>
+                  ) : walletApplied > 0 ? (
+                    <>Place order · pay {formatCurrency(onlineDue)} online</>
+                  ) : (
+                    <>Place order · {formatCurrency(cost.total)}</>
+                  )
                 ) : (
                   <>
                     Continue <IconArrowRight className="h-4 w-4" />

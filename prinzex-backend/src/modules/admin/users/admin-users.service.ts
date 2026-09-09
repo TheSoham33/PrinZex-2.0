@@ -255,3 +255,59 @@ export async function creditUserWallet(
 
   return { userId: user.id, credited: amount, balance };
 }
+
+// ── POST /wallet-credit-bulk ───────────────────────────────────────────────
+
+/**
+ * Credit many wallets at once — an explicit user-id list or every customer.
+ * Only CUSTOMER accounts are eligible: wallet balances exist for buyers, so
+ * random ids / staff accounts are rejected loudly instead of silently skipped.
+ * Credits run sequentially through creditUserWallet so every wallet gets its
+ * own journal entry, balance update and notification; one bad id aborts the
+ * whole call (already-processed users stay credited — amounts are real money,
+ * never auto-reverted).
+ */
+export async function creditWalletsBulk(input: {
+  userIds?: string[];
+  allCustomers?: boolean;
+  amount: number;
+  reason: string;
+}): Promise<{ credited: number; amount: number; totalCredited: number }> {
+  let targetIds: string[];
+  if (input.allCustomers) {
+    const customers = await prisma.user.findMany({
+      where: { role: 'CUSTOMER', isActive: true },
+      select: { id: true },
+    });
+    targetIds = customers.map((customer) => customer.id);
+    if (targetIds.length === 0) {
+      throw ApiError.badRequest('No active customers to credit');
+    }
+  } else {
+    const ids = [...new Set(input.userIds ?? [])];
+    const found = await prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, role: true },
+    });
+    const byId = new Map(found.map((user) => [user.id, user.role]));
+    for (const id of ids) {
+      const role = byId.get(id);
+      if (!role) throw ApiError.notFound(`User ${id} not found — bulk credit aborted`);
+      if (role !== 'CUSTOMER') {
+        throw ApiError.badRequest(`User ${id} is a ${role.toLowerCase()} — wallets belong to customers`);
+      }
+    }
+    targetIds = ids;
+  }
+
+  for (const id of targetIds) {
+    await creditUserWallet(id, { amount: input.amount, reason: input.reason });
+  }
+
+  const amount = roundMoney(input.amount);
+  return {
+    credited: targetIds.length,
+    amount,
+    totalCredited: roundMoney(amount * targetIds.length),
+  };
+}

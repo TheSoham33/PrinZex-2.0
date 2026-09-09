@@ -7,7 +7,7 @@ import { NotificationModel } from '../../models/mongo/Notification.model';
 import { ActivityLogModel } from '../../models/mongo/ActivityLog.model';
 import { ApiError } from '../../utils/ApiError';
 import { getCache, setCache } from '../../utils/cache';
-import { roundMoney, rupeesToPaise } from '../../utils/financial';
+import { roundMoney, rupeesToPaise, splitWalletGateway } from '../../utils/financial';
 import {
   buildPaginatedResponse,
   toSkipTake,
@@ -93,7 +93,15 @@ export async function createPaymentOrder(
   }
 
   assertGatewayConfigured();
-  const amountPaise = rupeesToPaise(Number(order.total));
+  // Charge only what the wallet didn't cover (partial wallet checkout):
+  // order.walletAmount was already debited at placement, so the gateway
+  // collects the remainder. Zero/negative should never happen — orders
+  // covered entirely by the wallet are 'paid' before reaching here.
+  const gatewayDue = roundMoney(Number(order.total) - Number(order.walletAmount ?? 0));
+  if (gatewayDue <= 0) {
+    throw ApiError.badRequest('Nothing left to pay — wallet already covers this order');
+  }
+  const amountPaise = rupeesToPaise(gatewayDue);
   const razorpayOrder = await razorpayClient().orders.create({
     amount: amountPaise,
     currency: 'INR',
@@ -222,7 +230,7 @@ export async function verifyPayment(
 export interface RefundResult {
   orderId: string;
   refunded: number;
-  channel: 'wallet' | 'gateway';
+  channel: 'wallet' | 'gateway' | 'split';
   newPaymentStatus: string;
   razorpayRefundId?: string;
 }
@@ -245,47 +253,51 @@ export async function processAdminRefund(
   }
 
   const newPaymentStatus = amount < Number(order.total) ? 'partially_refunded' : 'refunded';
-  let channel: RefundResult['channel'];
+
+  // Route each leg to its source: what was taken from the wallet (capped at
+  // walletAmount) returns to the wallet; anything above that returns to the
+  // bank through the gateway. Pure 'wallet' orders have walletAmount ===
+  // total, so the gateway leg stays 0 for them.
+  const { walletPart, gatewayPart } = splitWalletGateway(amount, Number(order.walletAmount ?? 0));
+  const channel: RefundResult['channel'] =
+    walletPart > 0 && gatewayPart > 0 ? 'split' : walletPart > 0 ? 'wallet' : 'gateway';
   let razorpayRefundId: string | undefined;
 
-  if (order.paymentMethod === 'wallet') {
-    // Wallet never touched the gateway — credit directly.
-    channel = 'wallet';
-    await prisma.$transaction(async (tx) => {
-      const wallet =
-        (await tx.wallet.findUnique({ where: { userId: order.customerId } })) ??
-        (await tx.wallet.create({ data: { userId: order.customerId } }));
-      await tx.wallet.update({ where: { id: wallet.id }, data: { balance: { increment: amount } } });
-      await tx.transaction.create({
-        data: {
-          walletId: wallet.id,
-          type: 'CREDIT',
-          reason: 'REFUND',
-          amount,
-          description: `Admin refund for order ${order.id}: ${input.reason}`,
-          referenceId: order.id,
-        },
-      });
-      await tx.order.update({ where: { id: order.id }, data: { paymentStatus: newPaymentStatus } });
-    });
-  } else {
+  // Gateway leg FIRST — if it throws, nothing has committed and the admin can
+  // simply retry. The wallet leg + status flip then land in one atomic tx.
+  if (gatewayPart > 0) {
     // card / upi / razorpay — REAL gateway refund.
-    channel = 'gateway';
     if (!order.paymentId) {
       throw ApiError.badRequest('Order has no gateway payment reference to refund');
     }
     assertGatewayConfigured();
     const refund = await razorpayClient().payments.refund(order.paymentId, {
-      amount: rupeesToPaise(amount),
+      amount: rupeesToPaise(gatewayPart),
       notes: { reason: input.reason, adminId },
       speed: 'normal',
     });
     razorpayRefundId = refund.id;
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { paymentStatus: newPaymentStatus },
-    });
   }
+
+  await prisma.$transaction(async (tx) => {
+    if (walletPart > 0) {
+      const wallet =
+        (await tx.wallet.findUnique({ where: { userId: order.customerId } })) ??
+        (await tx.wallet.create({ data: { userId: order.customerId } }));
+      await tx.wallet.update({ where: { id: wallet.id }, data: { balance: { increment: walletPart } } });
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'CREDIT',
+          reason: 'REFUND',
+          amount: walletPart,
+          description: `Admin refund for order ${order.id}: ${input.reason}`,
+          referenceId: order.id,
+        },
+      });
+    }
+    await tx.order.update({ where: { id: order.id }, data: { paymentStatus: newPaymentStatus } });
+  });
 
   await runSideEffects('payment.refund', [
     () =>
@@ -315,9 +327,11 @@ export async function processAdminRefund(
 /**
  * Automatic money-back when an order is cancelled or seller-rejected AFTER
  * being paid — the caller owns the status change, this owns the money:
- *  - wallet orders are credited instantly (ledgered Transaction row);
- *  - card/upi/razorpay orders go back through the gateway on the stored
- *    payment id (real Razorpay refund, webhook confirms async);
+ *  - the walletAmount part returns to the wallet instantly (ledgered
+ *    Transaction row) — full for 'wallet' orders, partial for wallet-split
+ *    checkouts;
+ *  - the remainder goes back through the gateway on the stored payment id
+ *    (real Razorpay refund, webhook confirms async);
  *  - pending/COD orders are a no-op.
  * Gateway failures never throw: they mark the order 'refund_failed' and
  * log, so the cancellation itself can complete and ops can retry from
@@ -326,58 +340,69 @@ export async function processAdminRefund(
 export async function refundOrderToSource(
   orderId: string,
   reasonLabel: string,
-): Promise<{ refunded: boolean; channel: 'wallet' | 'gateway' | 'none' }> {
+): Promise<{ refunded: boolean; channel: 'wallet' | 'gateway' | 'split' | 'none' }> {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order || order.paymentStatus !== 'paid') return { refunded: false, channel: 'none' };
 
-  if (order.paymentMethod === 'wallet') {
-    const amount = Number(order.total);
-    await prisma.$transaction(async (tx) => {
+  // Split on what was actually taken from the wallet at checkout: walletAmount
+  // returns to the wallet instantly, the rest to the bank through the gateway.
+  // (For pure 'wallet' orders walletAmount === total, so the gateway leg is 0.)
+  const { walletPart, gatewayPart } = splitWalletGateway(
+    Number(order.total),
+    Number(order.walletAmount ?? 0),
+  );
+  const channel = walletPart > 0 && gatewayPart > 0 ? 'split' : walletPart > 0 ? 'wallet' : 'gateway';
+
+  // Gateway leg FIRST: only once the bank-side refund is accepted do we touch
+  // the wallet and flip the status — a gateway failure leaves the order
+  // cleanly retryable ('refund_failed', nothing half-returned).
+  if (gatewayPart > 0) {
+    if (!order.paymentId) {
+      logger.error('order_refund_failed', { orderId: order.id, reason: 'missing gateway paymentId' });
+      await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'refund_failed' } });
+      return { refunded: false, channel };
+    }
+    try {
+      assertGatewayConfigured();
+      await razorpayClient().payments.refund(order.paymentId, {
+        amount: rupeesToPaise(gatewayPart),
+        notes: { reason: reasonLabel },
+        speed: 'normal',
+      });
+    } catch (error) {
+      logger.error('order_refund_failed', {
+        orderId: order.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'refund_failed' } });
+      return { refunded: false, channel };
+    }
+  }
+
+  // Wallet leg + status flip, atomically.
+  await prisma.$transaction(async (tx) => {
+    if (walletPart > 0) {
       const wallet =
         (await tx.wallet.findUnique({ where: { userId: order.customerId } })) ??
         (await tx.wallet.create({ data: { userId: order.customerId } }));
       await tx.wallet.update({
         where: { id: wallet.id },
-        data: { balance: { increment: amount } },
+        data: { balance: { increment: walletPart } },
       });
       await tx.transaction.create({
         data: {
           walletId: wallet.id,
           type: 'CREDIT',
           reason: 'REFUND',
-          amount,
+          amount: walletPart,
           description: `${reasonLabel} — refund for order ${order.id}`,
           referenceId: order.id,
         },
       });
-      await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'refunded' } });
-    });
-    return { refunded: true, channel: 'wallet' };
-  }
-
-  if (!order.paymentId) {
-    logger.error('order_refund_failed', { orderId: order.id, reason: 'missing gateway paymentId' });
-    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'refund_failed' } });
-    return { refunded: false, channel: 'gateway' };
-  }
-
-  try {
-    assertGatewayConfigured();
-    await razorpayClient().payments.refund(order.paymentId, {
-      amount: rupeesToPaise(Number(order.total)),
-      notes: { reason: reasonLabel },
-      speed: 'normal',
-    });
-    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'refunded' } });
-    return { refunded: true, channel: 'gateway' };
-  } catch (error) {
-    logger.error('order_refund_failed', {
-      orderId: order.id,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'refund_failed' } });
-    return { refunded: false, channel: 'gateway' };
-  }
+    }
+    await tx.order.update({ where: { id: order.id }, data: { paymentStatus: 'refunded' } });
+  });
+  return { refunded: true, channel };
 }
 
 // ── GET /api/payments/history (customer) ───────────────────────────────────

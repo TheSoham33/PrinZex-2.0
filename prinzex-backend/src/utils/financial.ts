@@ -13,3 +13,18 @@ export function roundMoney(value: number): number {
 export function rupeesToPaise(rupees: number): number {
   return Math.round(rupees * 100);
 }
+
+/**
+ * Split a refund (or any money-back amount) between wallet and gateway:
+ * what came from the wallet (capped at the order's walletAmount) returns to
+ * the wallet, the rest returns to the bank/gateway. walletPart + gatewayPart
+ * always equals the rounded input — no paise dust ever appears or vanishes.
+ */
+export function splitWalletGateway(
+  amount: number,
+  walletAmount: number,
+): { walletPart: number; gatewayPart: number } {
+  const total = roundMoney(amount);
+  const walletPart = Math.max(0, Math.min(total, roundMoney(walletAmount)));
+  return { walletPart, gatewayPart: roundMoney(total - walletPart) };
+}
