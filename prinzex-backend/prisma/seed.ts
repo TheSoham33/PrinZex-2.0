@@ -50,7 +50,7 @@ async function wipe(): Promise<void> {
   await prisma.seller.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.wallet.deleteMany();
-  await prisma.otpCode.deleteMany();
+  // OTPs live in Redis (utils/otp) with TTLs — there is no OTP table to wipe.
   await prisma.refreshToken.deleteMany();
   await prisma.address.deleteMany();
   await prisma.adminRefreshToken.deleteMany();
