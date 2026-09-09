@@ -8,6 +8,7 @@ import { setStore } from '@/lib/api/client';
 import { restoreSession, type AuthState } from '@/store/slices/authSlice';
 import { restoreSellerSession, type SellerAuthState } from '@/store/slices/sellerAuthSlice';
 import { restoreAdminSession, type AdminAuthState } from '@/store/slices/adminAuthSlice';
+import { restoreDeliverySession } from '@/store/slices/deliveryAuthSlice';
 import { clearCart, addToCart } from '@/store/slices/cartSlice';
 import { clearAllOrderDrafts } from '@/lib/domain/orderDraft';
 import CartDrawer from '@/components/cart/CartDrawer';
@@ -18,6 +19,7 @@ setStore(store);
 const AUTH_STORAGE_KEY = 'prinzex_auth_state';
 const SELLER_STORAGE_KEY = 'prinzex_seller_state';
 const ADMIN_STORAGE_KEY = 'prinzex_admin_state';
+const DELIVERY_STORAGE_KEY = 'prinzex_delivery_state';
 const CART_STORAGE_KEY = 'prinzex_cart_state';
 
 function makeQueryClient() {
@@ -56,6 +58,13 @@ function SessionBridge({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      const raw = window.localStorage.getItem(DELIVERY_STORAGE_KEY);
+      if (raw) store.dispatch(restoreDeliverySession(JSON.parse(raw)));
+    } catch {
+      window.localStorage.removeItem(DELIVERY_STORAGE_KEY);
+    }
+
+    try {
       const raw = window.localStorage.getItem(CART_STORAGE_KEY);
       if (raw) {
         const { items } = JSON.parse(raw);
@@ -73,7 +82,7 @@ function SessionBridge({ children }: { children: React.ReactNode }) {
 
     return store.subscribe(() => {
       const state = store.getState() as RootState;
-      const { auth, sellerAuth, adminAuth, cart } = state;
+      const { auth, sellerAuth, adminAuth, deliveryAuth, cart } = state;
       const hasCustomer = !!auth.user;
       if (hadCustomer && !hasCustomer) clearAllOrderDrafts();
       hadCustomer = hasCustomer;
@@ -94,6 +103,12 @@ function SessionBridge({ children }: { children: React.ReactNode }) {
           window.localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(adminAuth));
         } else {
           window.localStorage.removeItem(ADMIN_STORAGE_KEY);
+        }
+
+        if (deliveryAuth.deliveryBoy) {
+          window.localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(deliveryAuth));
+        } else {
+          window.localStorage.removeItem(DELIVERY_STORAGE_KEY);
         }
 
         if (cart.items.length > 0) {

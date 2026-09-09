@@ -41,7 +41,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
   if (store) {
     const state = store.getState() as RootState;
     let token = state.auth.accessToken;
-    
+
     // Prioritize tokens based on the endpoint
     if (endpoint.startsWith('/admin')) {
       token = state.adminAuth.accessToken || state.auth.accessToken;
@@ -52,6 +52,12 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
       } else {
         token = state.sellerAuth.accessToken || state.auth.accessToken;
       }
+    } else if (endpoint.startsWith('/delivery')) {
+      // Rider self-service carries the delivery JWT (OTP login);
+      // /delivery/register + /delivery/auth stay public.
+      token = endpoint.startsWith('/delivery/register') || endpoint.startsWith('/delivery/auth')
+        ? ''
+        : state.deliveryAuth.accessToken || '';
     } else {
       token = state.auth.accessToken || state.sellerAuth.accessToken || state.adminAuth.accessToken;
     }
@@ -80,6 +86,9 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
           const { sellerLogout } = await import('@/store/slices/sellerAuthSlice');
           store.dispatch(sellerLogout());
         }
+      } else if (endpoint.startsWith('/delivery')) {
+        const { deliveryLogout } = await import('@/store/slices/deliveryAuthSlice');
+        store.dispatch(deliveryLogout());
       } else {
         store.dispatch(logout());
       }
