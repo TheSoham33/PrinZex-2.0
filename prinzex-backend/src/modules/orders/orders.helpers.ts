@@ -79,6 +79,8 @@ export interface QuoteResult {
   discount: number;
   /** Platform commission: subtotal * Seller.commissionRate. */
   commissionAmount: number;
+  /** Flat admin-configured platform fee — part of total, never seller earnings. */
+  platformFee: number;
   total: number;
   /** Binding services only — page printing component (pageRate × pages × copies). */
   pageCost?: number;
@@ -337,6 +339,8 @@ export interface QuoteComputationInput {
   deliverySpeed: DeliverySpeed;
   commissionRate: number; // Seller.commissionRate
   discount: number; // validated coupon discount (0 when none)
+  /** Admin-configured flat platform fee (₹) — added LAST, after discount. */
+  platformFee?: number;
   sellerMetadata?: Prisma.JsonValue | null;
   /** Seller's cheapest per-page rate — fallback for binding services, whose
    *  own basePrice is per-document and must never be used as a page rate. */
@@ -508,7 +512,11 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const deliveryFee = DELIVERY_FEES[input.deliverySpeed];
   const tax = round2(subtotal * GST_RATE);
   const commissionAmount = round2(subtotal * input.commissionRate);
-  const total = round2(subtotal + rushFee + deliveryFee + tax - input.discount);
+  // Platform fee rides on top after the discount — it is platform revenue,
+  // never seller earnings (netOrderEarnings excludes it) and, by default,
+  // never wallet-payable (see utils/platformFee.walletCoverableMax).
+  const platformFee = round2(input.platformFee ?? 0);
+  const total = round2(subtotal + rushFee + deliveryFee + tax - input.discount + platformFee);
   // Spine width estimate: sheets (2 pages each) × paper caliper. Hard
   // binding needs ≥2 mm of spine; thermal tape grip ≥4 mm, glued paperback
   // ≥3 mm. Tape and Glue Binding offer no paper-thickness option — their
@@ -563,6 +571,7 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     tax,
     discount: round2(input.discount),
     commissionAmount,
+    platformFee,
     total,
     ...(pageCost !== undefined ? { pageCost } : {}),
     ...(bindingCost !== undefined ? { bindingCost } : {}),

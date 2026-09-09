@@ -44,6 +44,7 @@ export default function OrderSummarySidebar({
       display: cost.deliveryFee === 0 ? 'Free' : undefined,
     },
     { label: 'GST (18%)', value: cost.tax },
+    ...((cost.platformFee ?? 0) > 0 ? [{ label: 'Platform fee', value: cost.platformFee! }] : []),
     ...(cost.discount > 0
       ? [
           {

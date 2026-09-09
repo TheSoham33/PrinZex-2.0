@@ -212,7 +212,8 @@ export function recalcTotal(cost: CostBreakdown): number {
         cost.rushFee +
         cost.deliveryFee +
         cost.tax -
-        cost.discount,
+        cost.discount +
+        (cost.platformFee ?? 0),
     ),
   );
 }
@@ -262,6 +263,8 @@ export function computeCost(
   filmOptions: ReadonlyArray<{ value: string; price: number }> = FILM_THICKNESS_OPTIONS,
   /** Admin-catalogue photo-type list (default per-photo rates). */
   photoTypes: ReadonlyArray<{ value: string; price: number }> = PHOTO_TYPES,
+  /** Admin-configured flat platform fee (public settings); 0 when absent. */
+  platformFee = 0,
 ): CostBreakdown {
   const base = service?.startingPrice ?? 0;
   const quantity = Math.max(1, specs.quantity || 1);
@@ -433,6 +436,7 @@ export function computeCost(
     deliveryFee,
     tax,
     discount,
+    platformFee,
     total: 0,
     ...(pageCost !== undefined ? { pageCost } : {}),
     ...(bindingCost !== undefined ? { bindingCost } : {}),

@@ -23,7 +23,8 @@ import Modal from '@/components/seller-dashboard/Modal';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { EMAIL_REGEX } from '@/lib/seller-types';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, scrollToField } from '@/lib/utils';
+import { FieldError } from '@/components/ui';
 import { IconArrowLeft, IconPlus, IconShieldOff, IconRefreshCw } from '@/components/icons';
 
 const TABS = ['Admin accounts', 'Commission', 'Platform', 'Activity log'] as const;
@@ -56,7 +57,11 @@ export default function AdminSettingsPage() {
     minPayout: 500,
     maintenance: false,
     maxUploadFileSizeMb: 100,
+    platformFeeEnabled: false,
+    platformFee: 0,
+    platformFeeFromWallet: false,
   });
+  const [platformFeeError, setPlatformFeeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (settingsQ.data) {
@@ -109,6 +114,15 @@ export default function AdminSettingsPage() {
   const handleCloseRevokeModal = useCallback(() => setRevokeTarget(null), []);
 
   const save = async (label: string) => {
+    // Platform fee sanity before the API — under-field message + scroll
+    // (site-wide rule); the backend re-validates as the source of truth.
+    const fee = Number(platform.platformFee);
+    if (!Number.isFinite(fee) || fee < 0 || fee > 10000 || Math.abs(fee * 100 - Math.round(fee * 100)) > 1e-9) {
+      setPlatformFeeError('Enter a fee between 0 and 10,000 (at most 2 decimals)');
+      scrollToField('p-platformfee');
+      return;
+    }
+    setPlatformFeeError(null);
     saveSettingsM.mutate(platform);
   };
 
@@ -269,6 +283,62 @@ export default function AdminSettingsPage() {
               Whole MB, 1–128 — 128 is the converter sidecar&apos;s hard ceiling.
             </p>
           </div>
+
+          <fieldset className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <legend className="label px-1">Platform fee</legend>
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                id="p-platformfee-enabled"
+                type="checkbox"
+                checked={platform.platformFeeEnabled}
+                onChange={(e) => setPlatform({ ...platform, platformFeeEnabled: e.target.checked })}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
+              />
+              <span className="text-slate-700">
+                <span className="font-semibold text-slate-900">Charge a platform fee on every order</span>
+                <br />
+                Master switch. Off = no fee is charged anywhere; the amount below is kept
+                for when you switch it back on.
+              </span>
+            </label>
+            <div>
+              <label htmlFor="p-platformfee" className="label">Amount per order (₹)</label>
+              <input
+                id="p-platformfee"
+                type="number"
+                min={0}
+                step="0.01"
+                value={platform.platformFee}
+                onChange={(e) => {
+                  setPlatform({ ...platform, platformFee: Number(e.target.value) });
+                  setPlatformFeeError(null);
+                }}
+                className={`input max-w-[12rem] ${platformFeeError ? 'input-error' : ''}`}
+                aria-describedby="p-platformfee-hint"
+              />
+              <p id="p-platformfee-hint" className="mt-1 text-xs text-slate-500">
+                Charged on every order and shown as its own &quot;Platform fee&quot; line at payment —
+                only while the switch above is ON.
+              </p>
+              <FieldError message={platformFeeError} />
+            </div>
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                id="p-platformfee-wallet"
+                type="checkbox"
+                checked={platform.platformFeeFromWallet}
+                onChange={(e) => setPlatform({ ...platform, platformFeeFromWallet: e.target.checked })}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
+              />
+              <span className="text-slate-700">
+                <span className="font-semibold text-slate-900">Allow platform fee from PrinZex Wallet</span>
+                <br />
+                Off (default): customers ALWAYS pay the fee online from real money — wallet
+                credit can only cover the rest of the order. On: the wallet may settle the
+                whole order including the fee.
+              </span>
+            </label>
+          </fieldset>
 
           <div className="rounded-xl border border-red-200 bg-red-50/50 p-4">
             <div className="flex items-start justify-between gap-4">

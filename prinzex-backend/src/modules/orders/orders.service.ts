@@ -25,6 +25,7 @@ import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import { refundOrderToSource } from '../payments/payments.service';
 import { roundMoney, splitWalletGateway } from '../../utils/financial';
+import { getPlatformFeeConfig, walletCoverableMax } from '../../utils/platformFee';
 import {
   emitAdminGlobalEvent,
   emitNewOrder,
@@ -450,6 +451,9 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     }
   }
 
+  // Platform fee (admin-configured) is part of every quote total.
+  const feeConfig = await getPlatformFeeConfig();
+
   const quote = computeQuote({
     basePrice: Number(service.basePrice), unit: service.unit,
     categoryId: service.categoryId,
@@ -459,6 +463,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     deliverySpeed: input.deliverySpeed,
     commissionRate: Number(seller.commissionRate),
     discount,
+    platformFee: feeConfig.fee,
     sellerMetadata: seller.metadata,
     pageRateFallback,
   });
@@ -642,6 +647,8 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     appliedCoupon = validation.coupon!.code;
   }
 
+  const feeConfig = await getPlatformFeeConfig();
+
   const quote = computeQuote({
     basePrice: Number(service.basePrice), unit: service.unit,
     categoryId: service.categoryId,
@@ -651,11 +658,22 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     deliverySpeed: input.deliverySpeed,
     commissionRate: Number(seller.commissionRate),
     discount,
+    platformFee: feeConfig.fee,
     sellerMetadata: seller.metadata,
     pageRateFallback,
   });
 
   const paysByWallet = input.paymentMethod === 'wallet';
+  // Platform fee money rule (Settings → Platform): unless the admin checkbox
+  // allows it, the wallet may settle everything EXCEPT the fee — the fee is
+  // always paid online from real money. A pure 'wallet' payment is then
+  // impossible whenever a fee exists.
+  const coverableMax = walletCoverableMax(quote.total, quote.platformFee, feeConfig.fromWallet);
+  if (paysByWallet && coverableMax < quote.total) {
+    throw ApiError.badRequest(
+      `The platform fee of ₹${quote.platformFee} must be paid online — choose UPI/Card and let your wallet cover the rest.`,
+    );
+  }
   // Partial wallet: with useWallet=true on an online method (card/upi) the
   // wallet settles as much of the total as its balance covers; the gateway
   // collects the remainder. If the wallet covers everything the gateway is
@@ -694,7 +712,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
       if (wallet) {
         const desired = paysByWallet
           ? quote.total
-          : roundMoney(Math.min(Number(wallet.balance), quote.total));
+          : roundMoney(Math.min(Number(wallet.balance), coverableMax));
         if (desired > 0) {
           // Guarded debit: the "balance >= amount" condition holds ATOMICALLY
           // at write time, so a concurrent spend (e.g. two cart orders placed
@@ -713,7 +731,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
             // Partial only: a concurrent debit landed first — take what
             // ACTUALLY remains; the rest simply stays for the gateway.
             const fresh = await tx.wallet.findUniqueOrThrow({ where: { id: wallet.id } });
-            contribution = roundMoney(Math.min(Number(fresh.balance), quote.total));
+            contribution = roundMoney(Math.min(Number(fresh.balance), coverableMax));
             if (contribution > 0) {
               debit = await tx.wallet.updateMany({
                 where: { id: wallet.id, balance: { gte: contribution } },
@@ -761,6 +779,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
         paymentMethod: settledByWallet ? 'wallet' : input.paymentMethod,
         paymentStatus,
         walletAmount: walletContribution,
+        platformFee: quote.platformFee,
         // Rush-eligible speeds flag the order for the seller queue.
         isRush: input.deliverySpeed === 'EXPRESS' || input.deliverySpeed === 'SAME_DAY',
         items: {

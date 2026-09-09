@@ -446,6 +446,10 @@ model Order {
   // nothing taken from the wallet). Refunds split on this column: walletAmount
   // goes back to the wallet, the rest to the original bank/gateway source.
   walletAmount      Decimal       @default(0) @db.Decimal(10, 2)
+  // Flat platform fee (admin-configurable via Settings → Platform). Whether
+  // the wallet may cover it is a settings toggle; by default it is always
+  // paid online. Sellers never earn it (see netOrderEarnings).
+  platformFee       Decimal       @default(0) @db.Decimal(10, 2)
   isRush            Boolean       @default(false)
   cancelledAt       DateTime?
   cancelReason      String?
