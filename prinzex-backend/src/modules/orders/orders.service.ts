@@ -691,22 +691,48 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     let walletContribution = 0;
     if (paysByWallet || useWalletPart) {
       const wallet = await tx.wallet.findUnique({ where: { userId: customerId } });
-      const balance = wallet ? Number(wallet.balance) : 0;
-      if (paysByWallet) {
-        if (!wallet) {
-          throw ApiError.badRequest('Wallet not found — top up first');
+      if (wallet) {
+        const desired = paysByWallet
+          ? quote.total
+          : roundMoney(Math.min(Number(wallet.balance), quote.total));
+        if (desired > 0) {
+          // Guarded debit: the "balance >= amount" condition holds ATOMICALLY
+          // at write time, so a concurrent spend (e.g. two cart orders placed
+          // together) can never push the wallet negative.
+          let debit = await tx.wallet.updateMany({
+            where: { id: wallet.id, balance: { gte: desired } },
+            data: { balance: { decrement: desired } },
+          });
+          let contribution = desired;
+          if (debit.count === 0) {
+            if (paysByWallet) {
+              throw ApiError.badRequest(
+                `Insufficient wallet balance — need ₹${quote.total}, have ₹${Number(wallet.balance)}`,
+              );
+            }
+            // Partial only: a concurrent debit landed first — take what
+            // ACTUALLY remains; the rest simply stays for the gateway.
+            const fresh = await tx.wallet.findUniqueOrThrow({ where: { id: wallet.id } });
+            contribution = roundMoney(Math.min(Number(fresh.balance), quote.total));
+            if (contribution > 0) {
+              debit = await tx.wallet.updateMany({
+                where: { id: wallet.id, balance: { gte: contribution } },
+                data: { balance: { decrement: contribution } },
+              });
+              if (debit.count === 0) contribution = 0; // raced twice — gateway pays all
+            }
+          }
+          if (contribution > 0) {
+            walletContribution = contribution;
+            walletId = wallet.id;
+          }
         }
-        if (balance < quote.total) {
-          throw ApiError.badRequest(
-            `Insufficient wallet balance — need ₹${quote.total}, have ₹${Number(wallet.balance)}`,
-          );
-        }
-        walletContribution = quote.total;
-      } else if (balance > 0) {
-        // Partial: take whatever the balance covers, up to the full total.
-        walletContribution = Math.min(balance, quote.total);
       }
-      if (walletContribution > 0) walletId = wallet!.id;
+      if (paysByWallet && walletContribution !== quote.total) {
+        // Full-wallet payment without a wallet row (or impossibly, a partial
+        // debit) — nothing to charge online for this method.
+        throw ApiError.badRequest('Wallet not found — top up first');
+      }
     }
     // What still has to come from the bank/gateway after the wallet's share.
     const gatewayDue = roundMoney(quote.total - walletContribution);
@@ -767,13 +793,10 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
       });
     }
 
-    // 5d. Wallet debit + ledger entry, atomically with the order — full
-    //     wallet orders take the whole total, partial ones just their share.
+    // 5d. Ledger row for the wallet debit that already landed above,
+    //     atomically with the order — full wallet orders take the whole
+    //     total, partial ones just their share.
     if (walletId && walletContribution > 0) {
-      await tx.wallet.update({
-        where: { id: walletId },
-        data: { balance: { decrement: walletContribution } },
-      });
       await tx.transaction.create({
         data: {
           walletId,

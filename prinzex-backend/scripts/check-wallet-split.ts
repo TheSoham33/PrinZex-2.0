@@ -58,4 +58,24 @@ assert.deepEqual(balanceCovers(800, 500), { walletContribution: 500, gatewayDue:
 assert.deepEqual(balanceCovers(200, 500), { walletContribution: 200, gatewayDue: 300 }); // split
 assert.deepEqual(balanceCovers(0, 500), { walletContribution: 0, gatewayDue: 500 }); // gateway only
 
+// Cart drain: N orders share one balance — total debited is capped at the
+// balance and the wallet NEVER goes negative (the guarded-debit invariant).
+const drain = (balance: number, totals: number[]) => {
+  let left = balance;
+  return totals.map((total) => {
+    const part = roundMoney(Math.min(left, total));
+    left = roundMoney(left - part);
+    assert.ok(left >= 0, `wallet went negative draining ${totals} from ${balance}`);
+    return part;
+  });
+};
+assert.deepEqual(drain(500, [400, 400]), [400, 100]); // second order takes the rest
+assert.deepEqual(drain(500, [300, 300, 300]), [300, 200, 0]); // runs out mid-cart
+assert.deepEqual(drain(1000, [300, 300]), [300, 300]); // fully covers the cart
+for (let b = 0; b <= 800; b += 77.13) {
+  const parts = drain(b, [199.5, 250.25, 99.75]);
+  assert.ok(roundMoney(parts.reduce((a, c) => a + c, 0)) <= roundMoney(199.5 + 250.25 + 99.75));
+  assert.ok(b - parts.reduce((a, c) => a + c, 0) >= 0);
+}
+
 console.log('check-wallet-split: all assertions passed');
