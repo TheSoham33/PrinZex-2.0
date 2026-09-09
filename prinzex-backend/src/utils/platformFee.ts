@@ -48,11 +48,23 @@ export function walletCoverableMax(total: number, fee: number, fromWallet: boole
   return fromWallet ? roundMoney(total) : Math.max(0, roundMoney(total - fee));
 }
 
+/**
+ * The fee that actually applies: the admin master switch decides. A settings
+ * document predating the switch (no key stored) keeps its old behaviour —
+ * a configured fee stays live — so an existing fee never silently stops.
+ * Returns 0 whenever the switch is OFF or the amount is unusable.
+ */
+export function effectivePlatformFee(feeEnabled: unknown, fee: unknown): number {
+  const amount = parsePlatformFee(fee) ?? 0;
+  const enabled = feeEnabled === undefined ? amount > 0 : feeEnabled === true;
+  return enabled ? amount : 0;
+}
+
 const readFromSettings = async (): Promise<PlatformFeeConfig | null> => {
   const doc = await ContentModel.findOne({ type: 'settings' }).lean();
   if (!doc) return null;
   return {
-    fee: parsePlatformFee(doc.metadata?.platformFee) ?? 0,
+    fee: effectivePlatformFee(doc.metadata?.platformFeeEnabled, doc.metadata?.platformFee),
     fromWallet: doc.metadata?.platformFeeFromWallet === true,
   };
 };

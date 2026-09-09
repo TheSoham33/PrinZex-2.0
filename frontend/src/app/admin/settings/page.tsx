@@ -57,6 +57,7 @@ export default function AdminSettingsPage() {
     minPayout: 500,
     maintenance: false,
     maxUploadFileSizeMb: 100,
+    platformFeeEnabled: false,
     platformFee: 0,
     platformFeeFromWallet: false,
   });
@@ -285,6 +286,21 @@ export default function AdminSettingsPage() {
 
           <fieldset className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
             <legend className="label px-1">Platform fee</legend>
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                id="p-platformfee-enabled"
+                type="checkbox"
+                checked={platform.platformFeeEnabled}
+                onChange={(e) => setPlatform({ ...platform, platformFeeEnabled: e.target.checked })}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
+              />
+              <span className="text-slate-700">
+                <span className="font-semibold text-slate-900">Charge a platform fee on every order</span>
+                <br />
+                Master switch. Off = no fee is charged anywhere; the amount below is kept
+                for when you switch it back on.
+              </span>
+            </label>
             <div>
               <label htmlFor="p-platformfee" className="label">Amount per order (₹)</label>
               <input
@@ -301,8 +317,8 @@ export default function AdminSettingsPage() {
                 aria-describedby="p-platformfee-hint"
               />
               <p id="p-platformfee-hint" className="mt-1 text-xs text-slate-500">
-                Charged on every order and shown as its own &quot;Platform fee&quot; line at payment.
-                0 disables the fee entirely.
+                Charged on every order and shown as its own &quot;Platform fee&quot; line at payment —
+                only while the switch above is ON.
               </p>
               <FieldError message={platformFeeError} />
             </div>

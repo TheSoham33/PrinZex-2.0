@@ -10,7 +10,7 @@
  */
 import assert from 'node:assert/strict';
 import { roundMoney, splitWalletGateway } from '../src/utils/financial';
-import { parsePlatformFee, walletCoverableMax } from '../src/utils/platformFee';
+import { effectivePlatformFee, parsePlatformFee, walletCoverableMax } from '../src/utils/platformFee';
 
 const s = splitWalletGateway;
 
@@ -96,5 +96,15 @@ assert.equal(parsePlatformFee(-5), null);
 assert.equal(parsePlatformFee(20000), null);
 assert.equal(parsePlatformFee('abc'), null);
 assert.equal(parsePlatformFee(undefined), null);
+
+// Master ON/OFF switch (Settings → Platform): off ⇒ effective fee is 0 no
+// matter the stored amount; a settings doc predating the switch keeps its
+// live fee (back-compat: no stored key + amount>0 ⇒ treated as on).
+assert.equal(effectivePlatformFee(true, 10), 10);
+assert.equal(effectivePlatformFee(false, 10), 0); // switched off
+assert.equal(effectivePlatformFee(undefined, 10), 10); // legacy doc, fee was live
+assert.equal(effectivePlatformFee(undefined, 0), 0); // legacy doc, no fee set
+assert.equal(effectivePlatformFee(true, 'junk'), 0); // switch on but unusable amount
+assert.equal(effectivePlatformFee(false, undefined), 0);
 
 console.log('check-wallet-split: all assertions passed');

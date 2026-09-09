@@ -348,6 +348,8 @@ export interface PlatformSettingsDto {
   maintenance: boolean;
   /** Admin-set cap for the customer order-file upload, in whole MB. */
   maxUploadFileSizeMb: number;
+  /** Master ON/OFF switch for the platform fee (Settings → Platform). */
+  platformFeeEnabled: boolean;
   /** Flat per-order platform fee in ₹ (0 = no fee). */
   platformFee: number;
   /** Checkbox: when OFF (default) the platform fee is ALWAYS paid online —
@@ -365,6 +367,7 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
       minPayout: 500,
       maintenance: false,
       maxUploadFileSizeMb: DEFAULT_MAX_UPLOAD_MB,
+      platformFeeEnabled: false,
       platformFee: 0,
       platformFeeFromWallet: false,
     };
@@ -376,6 +379,12 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
     minPayout: doc.metadata?.minPayout as number ?? 500,
     maintenance: doc.isActive ?? false,
     maxUploadFileSizeMb: parseMaxUploadMb(doc.metadata?.maxUploadFileSizeMb) ?? DEFAULT_MAX_UPLOAD_MB,
+    // The switch defaults to "on" for settings docs written before it existed:
+    // a fee the admin already set stayed live then, so it stays live now.
+    platformFeeEnabled:
+      doc.metadata?.platformFeeEnabled === undefined
+        ? (parsePlatformFee(doc.metadata?.platformFee) ?? 0) > 0
+        : doc.metadata?.platformFeeEnabled === true,
     platformFee: parsePlatformFee(doc.metadata?.platformFee) ?? 0,
     platformFeeFromWallet: doc.metadata?.platformFeeFromWallet === true,
   };
@@ -406,6 +415,7 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
           schedule: input.schedule,
           minPayout: input.minPayout,
           maxUploadFileSizeMb,
+          platformFeeEnabled: input.platformFeeEnabled === true,
           platformFee,
           platformFeeFromWallet: input.platformFeeFromWallet === true,
         },

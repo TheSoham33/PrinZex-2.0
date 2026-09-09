@@ -1,6 +1,7 @@
 import { ApiResponse } from '../../../utils/ApiResponse';
 import { adminIdentity, logActivity } from '../../../utils/activityLogger';
 import { asyncHandler } from '../../../utils/asyncHandler';
+import { getPlatformFeeConfig } from '../../../utils/platformFee';
 import * as adminContentService from './admin-content.service';
 import type {
   BannerCreateBody,
@@ -194,12 +195,19 @@ export const getSettings = asyncHandler(async (_req, res) => {
 });
 
 /** Public subset — only what the order/checkout pages must know before
- *  placing an order: the platform fee and whether the wallet may cover it. */
+ *  placing an order: the EFFECTIVE platform fee (0 whenever the admin
+ *  switch is off) and whether the wallet may cover it. */
 export const getPublicSettings = asyncHandler(async (_req, res) => {
-  const { platformFee, platformFeeFromWallet } = await adminContentService.getSettings();
+  const config = await getPlatformFeeConfig();
   res
     .status(200)
-    .json(new ApiResponse(200, { platformFee, platformFeeFromWallet }, 'Public settings fetched'));
+    .json(
+      new ApiResponse(
+        200,
+        { platformFee: config.fee, platformFeeFromWallet: config.fromWallet },
+        'Public settings fetched',
+      ),
+    );
 });
 
 export const updateSettings = asyncHandler(async (req, res) => {
