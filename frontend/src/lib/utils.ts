@@ -155,3 +155,14 @@ export function scrollToField(id: string): void {
   // Focus the control itself when possible; wrappers/divs just get scrolled to.
   if (el instanceof HTMLElement) el.focus({ preventScroll: true });
 }
+
+/**
+ * The share of an order total the wallet is ALLOWED to settle — mirrors the
+ * backend rule in prinzex-backend/src/utils/platformFee.ts: unless the admin
+ * checkbox (Settings → Platform) allows it, the wallet may cover everything
+ * except the platform fee, which is always paid online from real money.
+ */
+export function walletCoverableMax(total: number, platformFee: number, feeFromWallet: boolean): number {
+  const round2 = (v: number) => Math.round(v * 100) / 100;
+  return feeFromWallet ? round2(total) : Math.max(0, round2(total - platformFee));
+}

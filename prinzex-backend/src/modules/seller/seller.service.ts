@@ -1375,13 +1375,20 @@ export interface PendingBalance {
   blockedByPayoutId: string | null;
 }
 
-/** Net seller earnings per order: total minus platform commission and delivery fee. */
+/** Net seller earnings per order: total minus platform commission, platform
+ *  fee and delivery fee (fees are platform revenue, never the seller's). */
 export function netOrderEarnings(order: {
   total: Prisma.Decimal | number | string;
   commissionAmount: Prisma.Decimal | number | string;
   deliveryFee: Prisma.Decimal | number | string;
+  platformFee?: Prisma.Decimal | number | string | null;
 }): number {
-  return Number(order.total) - Number(order.commissionAmount) - Number(order.deliveryFee);
+  return (
+    Number(order.total) -
+    Number(order.commissionAmount) -
+    Number(order.deliveryFee) -
+    Number(order.platformFee ?? 0)
+  );
 }
 
 export async function getPendingBalance(sellerId: string): Promise<PendingBalance> {
@@ -1389,7 +1396,7 @@ export async function getPendingBalance(sellerId: string): Promise<PendingBalanc
   const [orders, blocking] = await Promise.all([
     prisma.order.findMany({
       where: { sellerId, status: 'delivered', payoutId: null },
-      select: { total: true, commissionAmount: true, deliveryFee: true },
+      select: { total: true, commissionAmount: true, deliveryFee: true, platformFee: true },
     }),
     prisma.payout.findFirst({
       where: { sellerId, recipientType: 'seller', status: { in: ['PENDING', 'PROCESSING'] } },
@@ -1459,7 +1466,7 @@ export async function requestPayout(sellerId: string) {
 
     const eligible = await tx.order.findMany({
       where: { sellerId, status: 'delivered', payoutId: null },
-      select: { id: true, total: true, commissionAmount: true, deliveryFee: true },
+      select: { id: true, total: true, commissionAmount: true, deliveryFee: true, platformFee: true },
     });
     const amount = round2(eligible.reduce((sum, order) => sum + netOrderEarnings(order), 0));
 

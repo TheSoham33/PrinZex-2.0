@@ -8,6 +8,11 @@ import {
   invalidateUploadLimitCache,
   parseMaxUploadMb,
 } from '../../../utils/uploadLimits';
+import {
+  MAX_PLATFORM_FEE,
+  invalidatePlatformFeeCache,
+  parsePlatformFee,
+} from '../../../utils/platformFee';
 import type { BannerCreateBody, BannerUpdateBody, FaqCreateBody, FaqUpdateBody } from './admin-content.routes';
 
 /**
@@ -343,6 +348,11 @@ export interface PlatformSettingsDto {
   maintenance: boolean;
   /** Admin-set cap for the customer order-file upload, in whole MB. */
   maxUploadFileSizeMb: number;
+  /** Flat per-order platform fee in ₹ (0 = no fee). */
+  platformFee: number;
+  /** Checkbox: when OFF (default) the platform fee is ALWAYS paid online —
+   *  the wallet may only settle the rest of the order. */
+  platformFeeFromWallet: boolean;
 }
 
 export async function getSettings(): Promise<PlatformSettingsDto> {
@@ -355,6 +365,8 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
       minPayout: 500,
       maintenance: false,
       maxUploadFileSizeMb: DEFAULT_MAX_UPLOAD_MB,
+      platformFee: 0,
+      platformFeeFromWallet: false,
     };
   }
   return {
@@ -364,6 +376,8 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
     minPayout: doc.metadata?.minPayout as number ?? 500,
     maintenance: doc.isActive ?? false,
     maxUploadFileSizeMb: parseMaxUploadMb(doc.metadata?.maxUploadFileSizeMb) ?? DEFAULT_MAX_UPLOAD_MB,
+    platformFee: parsePlatformFee(doc.metadata?.platformFee) ?? 0,
+    platformFeeFromWallet: doc.metadata?.platformFeeFromWallet === true,
   };
 }
 
@@ -372,6 +386,12 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
   if (maxUploadFileSizeMb === null) {
     throw ApiError.badRequest(
       `maxUploadFileSizeMb must be a whole number between 1 and ${MAX_CONFIGURABLE_UPLOAD_MB}`,
+    );
+  }
+  const platformFee = parsePlatformFee(input.platformFee);
+  if (platformFee === null) {
+    throw ApiError.badRequest(
+      `platformFee must be a number between 0 and ${MAX_PLATFORM_FEE} with at most 2 decimal places`,
     );
   }
   await ContentModel.findOneAndUpdate(
@@ -386,6 +406,8 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
           schedule: input.schedule,
           minPayout: input.minPayout,
           maxUploadFileSizeMb,
+          platformFee,
+          platformFeeFromWallet: input.platformFeeFromWallet === true,
         },
         updatedBy: adminId,
       },
@@ -395,5 +417,7 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
   // The upload path reads this value through a 60s cache — flush it so the
   // new cap applies on the very next upload.
   invalidateUploadLimitCache();
+  // Same for the platform fee the order/quote path caches for 60s.
+  invalidatePlatformFeeCache();
   return getSettings();
 }

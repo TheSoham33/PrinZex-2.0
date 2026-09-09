@@ -10,6 +10,7 @@
  */
 import assert from 'node:assert/strict';
 import { roundMoney, splitWalletGateway } from '../src/utils/financial';
+import { parsePlatformFee, walletCoverableMax } from '../src/utils/platformFee';
 
 const s = splitWalletGateway;
 
@@ -77,5 +78,23 @@ for (let b = 0; b <= 800; b += 77.13) {
   assert.ok(roundMoney(parts.reduce((a, c) => a + c, 0)) <= roundMoney(199.5 + 250.25 + 99.75));
   assert.ok(b - parts.reduce((a, c) => a + c, 0) >= 0);
 }
+
+// ── Platform fee wallet-cap (Settings → Platform checkbox) ───────────────
+// Checkbox OFF (default): the wallet may cover everything EXCEPT the fee.
+assert.equal(walletCoverableMax(500, 10, false), 490);
+assert.equal(walletCoverableMax(500, 0, false), 500); // no fee → no cap
+assert.equal(walletCoverableMax(8, 10, false), 0); // fee above total → wallet pays nothing
+assert.equal(walletCoverableMax(500, 10, true), 500); // checkbox ON → whole total
+assert.equal(walletCoverableMax(33.33, 3.33, false), 30); // 2dp-exact, no dust
+
+// Fee validation: sane numbers pass, junk is rejected.
+assert.equal(parsePlatformFee(0), 0);
+assert.equal(parsePlatformFee(9.99), 9.99);
+assert.equal(parsePlatformFee('25'), 25);
+assert.equal(parsePlatformFee(10.001), null); // more than 2dp
+assert.equal(parsePlatformFee(-5), null);
+assert.equal(parsePlatformFee(20000), null);
+assert.equal(parsePlatformFee('abc'), null);
+assert.equal(parsePlatformFee(undefined), null);
 
 console.log('check-wallet-split: all assertions passed');

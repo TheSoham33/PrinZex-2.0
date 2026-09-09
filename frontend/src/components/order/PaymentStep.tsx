@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { CostBreakdown, PaymentMethod } from '@/lib/domain/stores';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, walletCoverableMax } from '@/lib/utils';
 import type { OrderAction } from './orderReducer';
 import {
   IconAlertCircle,
@@ -40,6 +40,11 @@ interface PaymentStepProps {
    * the full-wallet affordability note). Absent for guests.
    */
   wallet?: { balance: number; useWallet: boolean; onToggle: (value: boolean) => void };
+  /**
+   * Admin toggle (Settings → Platform): may the wallet settle the platform
+   * fee? Default false — the fee is always paid online from real money.
+   */
+  platformFeeFromWallet?: boolean;
 }
 
 export default function PaymentStep({
@@ -55,18 +60,23 @@ export default function PaymentStep({
   couponError,
   couponLoading,
   wallet,
+  platformFeeFromWallet = false,
 }: PaymentStepProps) {
   const [code, setCode] = useState(couponCode);
   const couponApplied = !!couponCode && cost.discount > 0;
 
-  // Partial wallet: when toggled on an online method, the wallet settles as
-  // much of the total as it can; the gateway charges only the remainder.
-  const walletApplied = wallet && method !== 'cod' && wallet.useWallet
-    ? Math.min(wallet.balance, cost.total)
-    : method === 'wallet'
-      ? Math.min(wallet?.balance ?? 0, cost.total)
+  // The wallet may settle everything EXCEPT the platform fee (unless the
+  // admin checkbox allows wallet-paid fees) — the fee always comes from real
+  // money online. Partial wallet: the wallet settles up to that ceiling, the
+  // gateway charges the remainder.
+  const coverableMax = walletCoverableMax(cost.total, cost.platformFee ?? 0, platformFeeFromWallet);
+  const walletApplied =
+    wallet && method !== 'cod' && (method === 'wallet' || wallet.useWallet)
+      ? Math.min(wallet.balance, coverableMax)
       : 0;
   const onlineDue = Math.max(0, cost.total - walletApplied);
+  // Pure-wallet payment is impossible while a fee exists that it may not cover.
+  const feeBlocksWallet = (cost.platformFee ?? 0) > 0 && !platformFeeFromWallet;
 
   const handleApply = () => {
     onCouponCodeChange(code.trim().toUpperCase());
@@ -119,15 +129,26 @@ export default function PaymentStep({
         </div>
       </section>
 
-      {/* Wallet: insufficient-balance note for full-wallet payment, or the
-          optional "use your balance first" panel on online methods. */}
-      {method === 'wallet' && wallet && wallet.balance < cost.total && (
+      {/* Wallet: guidance for full-wallet payment — balance too low, or the
+          platform fee that must be paid online — plus the optional "use your
+          balance first" panel on online methods. */}
+      {method === 'wallet' && wallet && (wallet.balance < cost.total || feeBlocksWallet) && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4" id="order-wallet">
           <p className="flex items-start gap-2 text-sm text-amber-800">
             <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            Your wallet has {formatCurrency(wallet.balance)} but this order needs{' '}
-            {formatCurrency(cost.total)}. Pick UPI/Card and tick &quot;use wallet balance&quot; to pay
-            part from the wallet, or top up your wallet first.
+            {feeBlocksWallet ? (
+              <>
+                The platform fee of {formatCurrency(cost.platformFee ?? 0)} must be paid
+                online. Pick UPI/Card and tick &quot;use wallet balance&quot; — the wallet covers
+                everything except that fee.
+              </>
+            ) : (
+              <>
+                Your wallet has {formatCurrency(wallet.balance)} but this order needs{' '}
+                {formatCurrency(cost.total)}. Pick UPI/Card and tick &quot;use wallet balance&quot; to pay
+                part from the wallet, or top up your wallet first.
+              </>
+            )}
           </p>
         </div>
       )}
@@ -146,9 +167,9 @@ export default function PaymentStep({
                 Use wallet balance ({formatCurrency(wallet.balance)} available)
               </span>
               <br />
-              {Math.min(wallet.balance, cost.total) >= cost.total
+              {walletApplied >= cost.total
                 ? 'Your wallet covers this order in full — nothing to pay online.'
-                : `${formatCurrency(Math.min(wallet.balance, cost.total))} goes from your wallet, ${formatCurrency(onlineDue)} via ${method.toUpperCase()}.`}
+                : `${formatCurrency(walletApplied)} goes from your wallet, ${formatCurrency(onlineDue)} via ${method.toUpperCase()}.`}
             </span>
           </label>
         </section>
@@ -216,6 +237,12 @@ export default function PaymentStep({
             <dt className="text-slate-600">GST (18%)</dt>
             <dd className="font-medium text-slate-900">{formatCurrency(cost.tax)}</dd>
           </div>
+          {(cost.platformFee ?? 0) > 0 && (
+            <div className="flex justify-between">
+              <dt className="text-slate-600">Platform fee</dt>
+              <dd className="font-medium text-slate-900">{formatCurrency(cost.platformFee!)}</dd>
+            </div>
+          )}
           {cost.discount > 0 && (
             <div className="flex justify-between text-green-600">
               <dt>Discount</dt>

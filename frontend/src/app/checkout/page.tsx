@@ -6,13 +6,14 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchAddresses } from '@/lib/api/customer';
 import { placeOrder } from '@/lib/api/orders';
 import { fetchWalletBalance } from '@/lib/api/wallet';
+import { fetchPublicPlatformSettings } from '@/lib/api/settings';
 import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
-import { formatCurrency, scrollToField, toApiDeliverySpeed } from '@/lib/utils';
+import { formatCurrency, scrollToField, toApiDeliverySpeed, walletCoverableMax } from '@/lib/utils';
 import { IconCreditCard, IconAlertCircle } from '@/components/icons';
 import { FieldError } from '@/components/ui';
 import { DELIVERY_SPEEDS } from '@/lib/domain/stores';
@@ -38,6 +39,16 @@ export default function CheckoutPage() {
   });
   const [useWallet, setUseWallet] = useState(true);
 
+  // Admin-configured platform fee (+ whether the wallet may cover it). The
+  // backend charges it PER ORDER — a cart of N becomes N orders.
+  const { data: platformSettings } = useQuery({
+    queryKey: ['public-platform-settings'],
+    queryFn: fetchPublicPlatformSettings,
+    staleTime: 60_000,
+  });
+  const platformFee = (platformSettings?.platformFee ?? 0) * Math.max(1, items.length);
+  const feeFromWallet = platformSettings?.platformFeeFromWallet ?? false;
+
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [deliverySpeed, setDeliverySpeed] = useState('STANDARD');
   const [paymentMethod, setPaymentMethod] = useState('upi');
@@ -61,18 +72,20 @@ export default function CheckoutPage() {
   const subtotal = items.reduce((sum, item) => sum + item.costBreakdown.subtotal, 0);
   const tax = items.reduce((sum, item) => sum + item.costBreakdown.tax, 0);
   const deliveryFee = DELIVERY_SPEEDS.find(s => s.key.toUpperCase() === deliverySpeed)?.cost || 0;
-  const total = subtotal + tax + deliveryFee;
+  const total = subtotal + tax + deliveryFee + platformFee;
 
   // Wallet split for the chosen method — the backend drains the wallet
-  // across the cart's orders until the balance or the total runs out.
+  // across the cart's orders until the balance or the coverable total runs
+  // out (platform fee excluded unless the admin checkbox allows it).
   const methodIsOnline = paymentMethod === 'card' || paymentMethod === 'upi';
+  const coverableMax = walletCoverableMax(total, platformFee, feeFromWallet);
   const walletApplied =
-    paymentMethod === 'wallet'
-      ? Math.min(walletBalance, total)
-      : methodIsOnline && useWallet
-        ? Math.min(walletBalance, total)
-        : 0;
+    paymentMethod === 'wallet' || (methodIsOnline && useWallet)
+      ? Math.min(walletBalance, coverableMax)
+      : 0;
   const onlineDue = Math.max(0, total - walletApplied);
+  // A pure wallet payment is impossible while a fee exists it may not cover.
+  const feeBlocksWallet = platformFee > 0 && !feeFromWallet;
 
   const handleCheckout = async () => {
     if (!selectedAddressId && deliverySpeed !== 'PICKUP') {
@@ -237,15 +250,26 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {/* Wallet: insufficient note for full-wallet, or the optional
+                {/* Wallet: guidance for full-wallet (low balance, or the
+                    platform fee that must be paid online), or the optional
                     "use your balance first" split on online methods. */}
-                {paymentMethod === 'wallet' && walletBalance < total && (
+                {paymentMethod === 'wallet' && (walletBalance < total || feeBlocksWallet) && (
                   <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
                     <p className="flex items-start gap-2 text-sm text-amber-800">
                       <IconAlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                      Your wallet has {formatCurrency(walletBalance)} but this order needs{' '}
-                      {formatCurrency(total)}. Pick UPI/Card and tick &quot;use wallet balance&quot;
-                      to pay part from the wallet, or top up your wallet first.
+                      {feeBlocksWallet ? (
+                        <>
+                          The platform fee of {formatCurrency(platformFee)} must be paid online.
+                          Pick UPI/Card and tick &quot;use wallet balance&quot; — the wallet covers
+                          everything except that fee.
+                        </>
+                      ) : (
+                        <>
+                          Your wallet has {formatCurrency(walletBalance)} but this order needs{' '}
+                          {formatCurrency(total)}. Pick UPI/Card and tick &quot;use wallet balance&quot;
+                          to pay part from the wallet, or top up your wallet first.
+                        </>
+                      )}
                     </p>
                   </div>
                 )}
@@ -291,6 +315,12 @@ export default function CheckoutPage() {
                     <span>Delivery Fee</span>
                     <span>{formatCurrency(deliveryFee)}</span>
                   </div>
+                  {platformFee > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Platform fee</span>
+                      <span>{formatCurrency(platformFee)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-between text-xl font-bold text-slate-900 mb-6">
                   <span>Total</span>

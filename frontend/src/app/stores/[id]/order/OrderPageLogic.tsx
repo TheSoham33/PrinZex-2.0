@@ -10,11 +10,12 @@ import { createAddress, fetchAddresses } from '@/lib/api/customer';
 import { getOrderQuote, placeOrder as placeOrderApi } from '@/lib/api/orders';
 import { createPaymentOrder, verifyPayment } from '@/lib/api/payments';
 import { fetchWalletBalance } from '@/lib/api/wallet';
+import { fetchPublicPlatformSettings } from '@/lib/api/settings';
 import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { formatCurrency, getMediaUrl, scrollToField, toApiDeliverySpeed } from '@/lib/utils';
+import { formatCurrency, getMediaUrl, scrollToField, toApiDeliverySpeed, walletCoverableMax } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
 import SpecificationsStep from '@/components/order/SpecificationsStep';
@@ -89,6 +90,15 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     queryFn: fetchWalletBalance,
     enabled: !!token,
   });
+  // Admin-configured platform fee + whether the wallet may cover it (the
+  // Settings → Platform checkbox). Public, so guests see the same numbers.
+  const { data: platformSettings } = useQuery({
+    queryKey: ['public-platform-settings'],
+    queryFn: fetchPublicPlatformSettings,
+    staleTime: 60_000,
+  });
+  const platformFee = platformSettings?.platformFee ?? 0;
+  const feeFromWallet = platformSettings?.platformFeeFromWallet ?? false;
   // Default ON: if there is balance, most customers want it used first (they
   // can untick it at the payment step).
   const [useWallet, setUseWallet] = useState(true);
@@ -342,19 +352,24 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // estimate so the summary resets immediately instead of showing stale prices.
   const cost = useMemo(() => {
     if (token && quoteData && !quoteLoading) return quoteData;
-    return computeCost(specs, service, 0, 0, pageRateFallback, staplingOptionsCatalog, filmOptionsCatalog, photoTypesCatalog);
-  }, [token, quoteData, quoteLoading, specs, service, pageRateFallback, staplingOptionsCatalog, filmOptionsCatalog, photoTypesCatalog]);
+    return computeCost(specs, service, 0, 0, pageRateFallback, staplingOptionsCatalog, filmOptionsCatalog, photoTypesCatalog, platformFee);
+  }, [token, quoteData, quoteLoading, specs, service, pageRateFallback, staplingOptionsCatalog, filmOptionsCatalog, photoTypesCatalog, platformFee]);
 
   // Wallet split for the chosen method — mirrors PaymentStep's math so the
-  // Place-order button and the payload both tell the truth.
+  // Place-order button and the payload both tell the truth. The wallet may
+  // only cover up to coverableMax (platform fee excluded unless the admin
+  // checkbox allows wallet-paid fees).
   const method = state.order.paymentMethod ?? 'upi';
   const methodIsOnline = method === 'card' || method === 'upi';
+  const coverableMax = walletCoverableMax(
+    cost.total,
+    cost.platformFee ?? platformFee,
+    feeFromWallet,
+  );
   const walletApplied =
-    method === 'wallet'
-      ? Math.min(walletBalance, cost.total)
-      : methodIsOnline && useWallet
-        ? Math.min(walletBalance, cost.total)
-        : 0;
+    method === 'wallet' || (methodIsOnline && useWallet)
+      ? Math.min(walletBalance, coverableMax)
+      : 0;
   const onlineDue = Math.max(0, cost.total - walletApplied);
 
   useEffect(() => {
@@ -744,6 +759,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               couponError={couponError}
               couponLoading={quoteLoading}
               wallet={{ balance: walletBalance, useWallet, onToggle: setUseWallet }}
+              platformFeeFromWallet={feeFromWallet}
             />
           )}
 

@@ -193,6 +193,15 @@ export const getSettings = asyncHandler(async (_req, res) => {
   res.status(200).json(new ApiResponse(200, settings, 'Settings fetched'));
 });
 
+/** Public subset — only what the order/checkout pages must know before
+ *  placing an order: the platform fee and whether the wallet may cover it. */
+export const getPublicSettings = asyncHandler(async (_req, res) => {
+  const { platformFee, platformFeeFromWallet } = await adminContentService.getSettings();
+  res
+    .status(200)
+    .json(new ApiResponse(200, { platformFee, platformFeeFromWallet }, 'Public settings fetched'));
+});
+
 export const updateSettings = asyncHandler(async (req, res) => {
   const identity = adminIdentity(req);
   const settings = await adminContentService.updateSettings(identity.adminId, req.body as adminContentService.PlatformSettingsDto);

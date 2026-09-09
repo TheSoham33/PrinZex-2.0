@@ -243,6 +243,8 @@ export interface CostBreakdown {
   deliveryFee: number;
   tax: number;
   discount: number;
+  /** Flat admin-configured platform fee (0 or absent = none). */
+  platformFee?: number;
   total: number;
   /** Binding services only — page printing component (₹). */
   pageCost?: number;

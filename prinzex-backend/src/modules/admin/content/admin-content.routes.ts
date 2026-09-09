@@ -91,3 +91,5 @@ export const publicContentRouter = Router();
 
 publicContentRouter.get('/banners', validate({ query: publicBannersQuery }), adminContentController.listPublicBanners);
 publicContentRouter.get('/faqs', validate({ query: publicFaqsQuery }), adminContentController.listPublicFaqs);
+// Public platform-fee subset (order/checkout pages need it pre-placement).
+publicContentRouter.get('/settings', adminContentController.getPublicSettings);
