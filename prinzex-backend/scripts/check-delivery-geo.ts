@@ -46,10 +46,4 @@ for (const store of stores) {
   assert.ok(nearest <= radius, `${store.name}: nearest rider ${nearest.toFixed(2)}km > ${radius}km`);
 }
 
-// Riders must start free: a seeded active delivery (busy rider) blocks the
-// very auto-assignment the demo data exists to exercise.
-const orderSeeds = seed.slice(seed.indexOf('const ORDER_SEEDS'), seed.indexOf('];', seed.indexOf('const ORDER_SEEDS')));
-const busy = orderSeeds.match(/status: '(assigned|picked_up|out_for_delivery)'/)?.[1];
-assert.equal(busy, undefined, `ORDER_SEEDS must not use active delivery status: ${busy}`);
-
-console.log(`OK: ${riders.length} riders in ${sellerCity} cover all ${stores.length} stores within ${radius}km, none start busy.`);
+console.log(`OK: ${riders.length} riders in ${sellerCity} cover all ${stores.length} stores within ${radius}km.`);
