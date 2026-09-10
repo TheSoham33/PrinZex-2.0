@@ -41,10 +41,12 @@ deliveryAuthRouter.post(
   deliveryAuthController.verifyOtp,
 );
 
+// Logout is intentionally unauthenticated + idempotent: the client fires it
+// while cleaning up a session whose access token may already be expired, and
+// a red 401 there helps nobody. The presented refresh token (the credential
+// that actually matters) is revoked by value.
 deliveryAuthRouter.post(
   '/logout',
-  authenticate,
-  authorizeRoles('DELIVERY_BOY'),
   validate({ body: deliveryLogoutBody }),
   deliveryAuthController.logout,
 );

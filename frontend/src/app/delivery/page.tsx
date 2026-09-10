@@ -46,8 +46,8 @@ export default function DeliveryDashboardPage() {
     queryFn: fetchDeliveryProfile,
   });
 
-  // The backend 404s when there is no active delivery — the data stays
-  // undefined, which the UI treats as the idle state, not an error screen.
+  // Polled every 30s; the backend returns 200 + null when the rider is idle,
+  // so this query never enters an error state for the normal "nothing yet" case.
   const activeQ = useQuery({
     queryKey: ['delivery-active'],
     queryFn: fetchActiveDelivery,

@@ -21,7 +21,7 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { deliveryBoy, accessToken } = useAppSelector((state) => state.deliveryAuth);
+  const { deliveryBoy, accessToken, refreshToken } = useAppSelector((state) => state.deliveryAuth);
   // Give the persisted session one tick to rehydrate before redirecting.
   const [checked, setChecked] = useState(false);
 
@@ -49,9 +49,9 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
   }
 
   const handleLogout = () => {
-    void deliveryLogoutApi().catch(() => {
-      /* best-effort — the local session clears regardless */
-    });
+    // Server-side revocation is best-effort (idempotent endpoint, always 200);
+    // the local session clears regardless.
+    void deliveryLogoutApi(refreshToken ?? undefined).catch(() => {});
     dispatch(deliveryLogout());
     router.replace('/delivery/login');
   };

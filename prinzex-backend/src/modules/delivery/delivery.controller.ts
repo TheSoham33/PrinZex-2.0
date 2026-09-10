@@ -88,7 +88,11 @@ export const setAvailability = asyncHandler(async (req, res) => {
 
 export const getActiveDelivery = asyncHandler(async (req, res) => {
   const active = await deliveryService.getActiveDelivery(deliveryBoyId(req));
-  res.status(200).json(new ApiResponse(200, active, 'Active delivery fetched'));
+  // 200 + null when the rider is idle — "no active delivery" is a normal
+  // state (the dashboard polls this), not an error worth a red console 404.
+  res
+    .status(200)
+    .json(new ApiResponse(200, active, active ? 'Active delivery fetched' : 'No active delivery right now'));
 });
 
 export const pingLocation = asyncHandler(async (req, res) => {

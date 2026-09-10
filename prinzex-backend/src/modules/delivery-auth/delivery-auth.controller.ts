@@ -19,11 +19,10 @@ export const verifyOtp: RequestHandler = asyncHandler(async (req, res) => {
 });
 
 export const logout: RequestHandler = asyncHandler(async (req, res) => {
-  if (!req.user || !req.token || req.user.role !== 'DELIVERY_BOY' || !('userId' in req.user)) {
-    throw ApiError.unauthorized();
-  }
+  // No session guard — logout must succeed even when the access token is
+  // already expired/absent (route docs). Always 200.
   const body = req.body as { refreshToken?: string };
-  await deliveryAuthService.logout(req.user.userId, req.token, body.refreshToken);
+  await deliveryAuthService.logout(body.refreshToken);
   res.status(200).json(new ApiResponse(200, null, 'Logged out successfully'));
 });
 
