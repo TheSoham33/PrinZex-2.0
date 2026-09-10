@@ -517,6 +517,12 @@ export async function confirmPickup(
   if (delivery.status !== 'assigned') {
     throw ApiError.badRequest(`Cannot confirm pickup — delivery is "${delivery.status}"`);
   }
+  // The seller must first mark the order ready — otherwise the rider could
+  // "pick up" a parcel the store has not even packed, and the order would
+  // jump its state machine (placed/confirmed/processing → out_for_delivery).
+  if (delivery.order.status !== 'ready_for_pickup') {
+    throw ApiError.conflict('The store has not marked this order ready for pickup yet');
+  }
 
   const order = await prisma.$transaction(async (tx) => {
     await tx.delivery.update({

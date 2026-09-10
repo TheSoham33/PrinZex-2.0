@@ -57,4 +57,17 @@ assert.equal(
   'location ping, pickup, deliver and fail must keep the throwing finder',
 );
 
+// ── pickup requires the seller's ready_for_pickup ────────────────────────
+// Without this gate a rider could "pick up" a parcel the store hasn't
+// packed, jumping the order state machine (placed/processing → out_for_delivery).
+const pickupBlock = service.slice(
+  service.indexOf('export async function confirmPickup'),
+  service.indexOf('export async function', service.indexOf('export async function confirmPickup') + 10),
+);
+assert.ok(
+  pickupBlock.includes("!== 'ready_for_pickup'"),
+  'confirmPickup must reject unless the order is ready_for_pickup',
+);
+assert.ok(pickupBlock.includes('ApiError.conflict'), 'early pickup must surface as a 409 conflict');
+
 console.log('OK: active-delivery reads stay 200 when idle; logout is an idempotent 200.');

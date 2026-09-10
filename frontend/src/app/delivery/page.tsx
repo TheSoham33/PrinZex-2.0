@@ -22,6 +22,7 @@ import StatusBadge from '@/components/admin/StatusBadge';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { FieldError } from '@/components/ui';
 import { formatCurrency, scrollToField } from '@/lib/utils';
+import { ORDER_STATUS_LABELS, type OrderStatus } from '@/lib/domain/orders';
 import {
   IconAlertCircle,
   IconClock,
@@ -282,17 +283,26 @@ export default function DeliveryDashboardPage() {
               </div>
             </div>
 
-            {/* Actions follow the delivery state, nothing hardcoded */}
+            {/* Actions follow the delivery state, nothing hardcoded. Pickup
+                additionally waits for the seller's ready_for_pickup — the
+                backend rejects an early pickup with a 409 either way. */}
             {awaitingPickup && (
-              <button
-                type="button"
-                onClick={() => pickupM.mutate()}
-                disabled={pickupM.isPending}
-                className="btn-primary w-full"
-              >
-                <IconTruck className="h-4 w-4" />
-                {pickupM.isPending ? 'Confirming…' : 'Confirm pickup from store'}
-              </button>
+              active.order.status === 'ready_for_pickup' ? (
+                <button
+                  type="button"
+                  onClick={() => pickupM.mutate()}
+                  disabled={pickupM.isPending}
+                  className="btn-primary w-full"
+                >
+                  <IconTruck className="h-4 w-4" />
+                  {pickupM.isPending ? 'Confirming…' : 'Confirm pickup from store'}
+                </button>
+              ) : (
+                <p className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-800">
+                  <IconClock className="h-4 w-4 shrink-0" />
+                  Waiting for the store — order is &quot;{ORDER_STATUS_LABELS[active.order.status as OrderStatus] ?? active.order.status}&quot;, pickup unlocks at &quot;Ready for pickup&quot;.
+                </p>
+              )
             )}
 
             {delivering && !failOpen && (
