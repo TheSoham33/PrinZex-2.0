@@ -426,7 +426,7 @@ model Order {
   customerId        String
   sellerId          String
   status            String        @default("placed")
-  // placed | confirmed | processing | ready_for_pickup | out_for_delivery | delivered | cancelled | returned
+  // placed | confirmed | processing | ready_for_pickup | picked_up | out_for_delivery | delivered | cancelled | returned
   total             Decimal       @db.Decimal(10, 2)
   subtotal          Decimal       @db.Decimal(10, 2)
   deliveryFee       Decimal       @default(0) @db.Decimal(10, 2)

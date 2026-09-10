@@ -5,6 +5,7 @@ export type OrderStatus =
   | 'confirmed'
   | 'processing'
   | 'ready_for_pickup'
+  | 'picked_up'
   | 'out_for_delivery'
   | 'delivered'
   | 'cancelled';
@@ -44,6 +45,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   confirmed: 'Confirmed',
   processing: 'Processing',
   ready_for_pickup: 'Ready for pickup',
+  picked_up: 'Picked up',
   out_for_delivery: 'Out for delivery',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
@@ -55,6 +57,7 @@ export const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
   confirmed: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
   processing: 'bg-amber-50 text-amber-700 ring-amber-600/20',
   ready_for_pickup: 'bg-purple-50 text-purple-700 ring-purple-600/20',
+  picked_up: 'bg-teal-50 text-teal-700 ring-teal-600/20',
   out_for_delivery: 'bg-orange-50 text-orange-700 ring-orange-600/20',
   delivered: 'bg-green-50 text-green-700 ring-green-600/20',
   cancelled: 'bg-red-50 text-red-700 ring-red-600/20',
@@ -65,6 +68,7 @@ export const ORDER_STATUS_DOT: Record<OrderStatus, string> = {
   confirmed: 'bg-indigo-500',
   processing: 'bg-amber-500',
   ready_for_pickup: 'bg-purple-500',
+  picked_up: 'bg-teal-500',
   out_for_delivery: 'bg-orange-500',
   delivered: 'bg-green-500',
   cancelled: 'bg-red-500',

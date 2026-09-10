@@ -20,11 +20,14 @@ interface OrderActionButtonsProps {
 /**
  * The single forward transition available from each seller-managed status.
  * Mirrors the backend state machine: placed → confirmed → processing →
- * ready_for_pickup (delivery takes over after that).
+ * ready_for_pickup → picked_up. The handover step is explicit: the seller
+ * taps it only after physically handing the parcel to the rider, and the
+ * rider can move the order further only from picked_up.
  */
 const NEXT_ACTION: Record<string, { next: string; label: string }> = {
   confirmed: { next: 'processing', label: 'Start processing' },
   processing: { next: 'ready_for_pickup', label: 'Mark ready for pickup' },
+  ready_for_pickup: { next: 'picked_up', label: 'Hand over to delivery partner' },
 };
 
 export default function OrderActionButtons({ order, onAnnounce }: OrderActionButtonsProps) {

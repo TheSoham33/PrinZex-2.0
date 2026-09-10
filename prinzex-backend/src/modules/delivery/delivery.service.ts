@@ -517,11 +517,12 @@ export async function confirmPickup(
   if (delivery.status !== 'assigned') {
     throw ApiError.badRequest(`Cannot confirm pickup — delivery is "${delivery.status}"`);
   }
-  // The seller must first mark the order ready — otherwise the rider could
-  // "pick up" a parcel the store has not even packed, and the order would
-  // jump its state machine (placed/confirmed/processing → out_for_delivery).
-  if (delivery.order.status !== 'ready_for_pickup') {
-    throw ApiError.conflict('The store has not marked this order ready for pickup yet');
+  // The seller confirms the physical handover by setting the order to
+  // picked_up — until then the rider must not move anything (the order
+  // would jump its state machine: placed/…/ready_for_pickup → out_for_delivery
+  // without the store ever releasing the parcel).
+  if (delivery.order.status !== 'picked_up') {
+    throw ApiError.conflict('The store has not handed this order over yet — wait for the seller to confirm handover');
   }
 
   const order = await prisma.$transaction(async (tx) => {

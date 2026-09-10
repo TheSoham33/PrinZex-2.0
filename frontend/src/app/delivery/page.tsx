@@ -284,10 +284,10 @@ export default function DeliveryDashboardPage() {
             </div>
 
             {/* Actions follow the delivery state, nothing hardcoded. Pickup
-                additionally waits for the seller's ready_for_pickup — the
-                backend rejects an early pickup with a 409 either way. */}
+                unlocks only after the seller confirms the handover (order →
+                picked_up) — the backend rejects an early pickup with a 409. */}
             {awaitingPickup && (
-              active.order.status === 'ready_for_pickup' ? (
+              active.order.status === 'picked_up' ? (
                 <button
                   type="button"
                   onClick={() => pickupM.mutate()}
@@ -300,7 +300,7 @@ export default function DeliveryDashboardPage() {
               ) : (
                 <p className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-800">
                   <IconClock className="h-4 w-4 shrink-0" />
-                  Waiting for the store — order is &quot;{ORDER_STATUS_LABELS[active.order.status as OrderStatus] ?? active.order.status}&quot;, pickup unlocks at &quot;Ready for pickup&quot;.
+                  Waiting for the store to hand the order over — it&apos;s &quot;{ORDER_STATUS_LABELS[active.order.status as OrderStatus] ?? active.order.status}&quot;; pickup unlocks once the seller confirms handover.
                 </p>
               )
             )}

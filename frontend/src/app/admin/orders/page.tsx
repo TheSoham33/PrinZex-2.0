@@ -13,7 +13,7 @@ import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { IconZap, IconRefreshCw } from '@/components/icons';
 
 const STATUSES = [
-  'placed', 'confirmed', 'processing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'cancelled', 'refunded',
+  'placed', 'confirmed', 'processing', 'ready_for_pickup', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled', 'refunded',
 ];
 
 function OrdersInner() {

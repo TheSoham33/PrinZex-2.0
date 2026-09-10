@@ -170,7 +170,7 @@ export const ordersQuery = z.object({
 export const orderParams = z.object({ orderId: z.string().min(1) });
 
 export const updateOrderStatusBody = z.object({
-  status: z.enum(['confirmed', 'processing', 'ready_for_pickup']),
+  status: z.enum(['confirmed', 'processing', 'ready_for_pickup', 'picked_up']),
   note: z.string().trim().max(500).optional(),
 });
 
