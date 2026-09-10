@@ -8,7 +8,10 @@ export const ORDER_TRANSITIONS: Record<string, string[]> = {
   placed: ['confirmed', 'cancelled'],
   confirmed: ['processing', 'cancelled'],
   processing: ['ready_for_pickup', 'cancelled'],
-  ready_for_pickup: ['out_for_delivery'],
+  // The seller marks picked_up at the physical handover to the rider; only
+  // then may the rider move the order out_for_delivery (delivery.service).
+  ready_for_pickup: ['picked_up'],
+  picked_up: ['out_for_delivery'],
   out_for_delivery: ['delivered', 'returned'],
   delivered: [], // terminal
   cancelled: [], // terminal

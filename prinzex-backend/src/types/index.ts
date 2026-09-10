@@ -28,6 +28,7 @@ export const ORDER_STATUSES = [
   'confirmed',
   'processing',
   'ready_for_pickup',
+  'picked_up',
   'out_for_delivery',
   'delivered',
   'cancelled',

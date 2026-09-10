@@ -18,7 +18,8 @@ type Tab = (typeof TABS)[number];
 function matchesTab(order: SellerOrder, tab: Tab): boolean {
   if (tab === 'New') return order.status === 'placed' || order.status === 'new';
   if (tab === 'Active') return ACTIVE_STATUSES.includes(order.status) || ['confirmed', 'processing', 'ready_for_pickup'].includes(order.status);
-  if (tab === 'Dispatched') return order.status === 'dispatched' || order.status === 'out_for_delivery';
+  // picked_up = handed to the rider already — the seller's part is done.
+  if (tab === 'Dispatched') return ['dispatched', 'picked_up', 'out_for_delivery'].includes(order.status);
   return HISTORY_STATUSES.includes(order.status) || ['delivered', 'cancelled', 'returned'].includes(order.status);
 }
 

@@ -1058,7 +1058,7 @@ export async function createReview(customerId: string, orderId: string, input: C
   }
   
   // Allow reviews after order is placed/uploaded, not just after delivery
-  const allowReviewStatuses = ['placed', 'confirmed', 'processing', 'ready_for_pickup', 'out_for_delivery', 'delivered'];
+  const allowReviewStatuses = ['placed', 'confirmed', 'processing', 'ready_for_pickup', 'picked_up', 'out_for_delivery', 'delivered'];
   if (!allowReviewStatuses.includes(order.status)) {
     throw ApiError.badRequest('You can review an order once it has been placed');
   }

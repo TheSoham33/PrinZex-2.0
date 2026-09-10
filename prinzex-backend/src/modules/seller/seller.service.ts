@@ -164,11 +164,12 @@ export function firstName(fullName: string): string {
 }
 
 // ── Order status state machine ─────────────────────────────────────────────
-// Seller-manageable slice of the lifecycle. Delivery statuses
-// (out_for_delivery/delivered) are owned by the delivery actor; cancelled /
-// returned are terminal for seller actions.
+// Seller-manageable slice of the lifecycle — picked_up is the seller's
+// handover confirmation (parcel handed to the rider). out_for_delivery /
+// delivered are owned by the delivery actor; cancelled / returned are
+// terminal for seller actions.
 
-export const ORDER_FLOW = ['placed', 'confirmed', 'processing', 'ready_for_pickup'] as const;
+export const ORDER_FLOW = ['placed', 'confirmed', 'processing', 'ready_for_pickup', 'picked_up'] as const;
 
 /** Statuses that count as "in flight" — block hard-deleting their services. */
 export const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
@@ -176,6 +177,7 @@ export const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
   'confirmed',
   'processing',
   'ready_for_pickup',
+  'picked_up',
   'out_for_delivery',
 ];
 
@@ -188,7 +190,7 @@ export function expectedNextStatus(current: string): (typeof ORDER_FLOW)[number]
 
 /**
  * Enforce the state machine: strictly one step forward along
- * placed → confirmed → processing → ready_for_pickup.
+ * placed → confirmed → processing → ready_for_pickup → picked_up (handover).
  * Skipping steps or moving backwards returns 400.
  */
 export function assertForwardTransition(current: string, next: string): void {

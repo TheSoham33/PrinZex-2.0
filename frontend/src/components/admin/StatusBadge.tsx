@@ -25,6 +25,7 @@ const STATUS_MAP: Record<string, StatusMeta> = {
   accepted: { label: 'Accepted', className: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20', dot: 'bg-indigo-500' },
   processing: { label: 'Processing', className: 'bg-amber-50 text-amber-700 ring-amber-600/20', dot: 'bg-amber-500' },
   ready_for_pickup: { label: 'Ready for pickup', className: 'bg-purple-50 text-purple-700 ring-purple-600/20', dot: 'bg-purple-500' },
+  picked_up: { label: 'Picked up', className: 'bg-teal-50 text-teal-700 ring-teal-600/20', dot: 'bg-teal-500' },
   dispatched: { label: 'Dispatched', className: 'bg-orange-50 text-orange-700 ring-orange-600/20', dot: 'bg-orange-500' },
   out_for_delivery: { label: 'Out for delivery', className: 'bg-orange-50 text-orange-700 ring-orange-600/20', dot: 'bg-orange-500' },
   delivered: { label: 'Delivered', className: 'bg-green-50 text-green-700 ring-green-600/20', dot: 'bg-green-500' },
