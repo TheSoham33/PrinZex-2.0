@@ -332,8 +332,9 @@ export async function setAvailability(
 
 // ── Active delivery ────────────────────────────────────────────────────────
 
-async function findActiveDeliveryOrThrow(deliveryBoyId: string) {
-  const delivery = await prisma.delivery.findFirst({
+/** Nullable finder — the read endpoint returns 200 + null when idle. */
+async function findActiveDelivery(deliveryBoyId: string) {
+  return prisma.delivery.findFirst({
     where: { deliveryBoyId, status: { in: [...DELIVERY_ACTIVE_STATUSES] } },
     orderBy: { createdAt: 'desc' },
     include: {
@@ -357,6 +358,11 @@ async function findActiveDeliveryOrThrow(deliveryBoyId: string) {
       },
     },
   });
+}
+
+/** Throwing variant for the mutation paths, which require an active delivery. */
+async function findActiveDeliveryOrThrow(deliveryBoyId: string) {
+  const delivery = await findActiveDelivery(deliveryBoyId);
   if (!delivery) {
     throw ApiError.notFound('No active delivery right now');
   }
@@ -364,7 +370,8 @@ async function findActiveDeliveryOrThrow(deliveryBoyId: string) {
 }
 
 export async function getActiveDelivery(deliveryBoyId: string) {
-  const delivery = await findActiveDeliveryOrThrow(deliveryBoyId);
+  const delivery = await findActiveDelivery(deliveryBoyId);
+  if (!delivery) return null;
   const { order } = delivery;
   const address = order.deliveryAddress as DeliveryAddressSnapshot | null;
 

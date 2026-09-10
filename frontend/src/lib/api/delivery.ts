@@ -125,7 +125,8 @@ export interface ActiveDelivery {
   } | null;
 }
 
-export const fetchActiveDelivery = async (): Promise<ActiveDelivery> => get('/delivery/active-delivery');
+export const fetchActiveDelivery = async (): Promise<ActiveDelivery | null> =>
+  get('/delivery/active-delivery');
 
 export const pingDeliveryLocation = async (lat: number, lng: number): Promise<{ etaMinutes: number | null }> =>
   patch('/delivery/active-delivery/location', { lat, lng });

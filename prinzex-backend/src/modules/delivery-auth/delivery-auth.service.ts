@@ -6,10 +6,8 @@ import { sendOtpSms } from '../../utils/email';
 import { canonicalPhone } from '../../utils/phone';
 import type { DeliveryTokenPayload } from '../../utils/jwt';
 import {
-  blacklistAccessToken,
   issueAndPersistTokens,
   rotateUserRefreshToken,
-  revokeUserRefreshToken,
   type TokenPair,
 } from '../auth/auth.helpers';
 
@@ -106,14 +104,15 @@ export async function verifyOtpLogin(input: DeliveryVerifyOtpInput): Promise<Del
 
 // ─── LOGOUT / REFRESH (same rotation pattern) ──────────────────────────────
 
-export async function logout(
-  userId: string,
-  accessToken: string,
-  refreshToken?: string,
-): Promise<void> {
-  await blacklistAccessToken(accessToken);
+export async function logout(refreshToken?: string): Promise<void> {
+  // Revoke by token value alone — the refresh token IS the credential, so
+  // knowing it authorizes its own revocation (the access token is short-lived
+  // and the client doesn't send it here, so there's nothing to blacklist).
   if (refreshToken) {
-    await revokeUserRefreshToken(userId, refreshToken);
+    await prisma.refreshToken.updateMany({
+      where: { token: refreshToken, isRevoked: false },
+      data: { isRevoked: true },
+    });
   }
 }
 
