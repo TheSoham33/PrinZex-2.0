@@ -1,4 +1,4 @@
-import { ContentModel } from '../models/mongo/Content.model';
+import { getSettingsMetadata, invalidatePlatformSettingsCache, parseBoundedNumber, SETTING_BOUNDS } from './platformSettings';
 import { roundMoney } from './financial';
 
 /**
@@ -25,17 +25,19 @@ export interface PlatformFeeConfig {
 
 const NO_FEE: PlatformFeeConfig = { fee: 0, fromWallet: false };
 
-/** Hard ceiling for a sane flat fee — guards against a fat-fingered admin. */
+/** Default fee ceiling — the admin can retune it (platformFeeMax setting). */
 export const MAX_PLATFORM_FEE = 10000;
 
 /**
- * Validate an admin-supplied fee: finite, 0..MAX, at most 2 decimals.
+ * Validate an admin-supplied fee: finite, 0..max, at most 2 decimals.
+ * The ceiling defaults to MAX_PLATFORM_FEE but the settings writer passes
+ * the admin-configured platformFeeMax instead.
  * Returns null when the input is unusable (mirrors parseMaxUploadMb).
  */
-export function parsePlatformFee(input: unknown): number | null {
+export function parsePlatformFee(input: unknown, max: number = MAX_PLATFORM_FEE): number | null {
   const value = typeof input === 'string' && input.trim() !== '' ? Number(input) : input;
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  if (value < 0 || value > MAX_PLATFORM_FEE) return null;
+  if (value < 0 || value > max) return null;
   return roundMoney(value) === value ? value : null;
 }
 
@@ -54,40 +56,30 @@ export function walletCoverableMax(total: number, fee: number, fromWallet: boole
  * a configured fee stays live — so an existing fee never silently stops.
  * Returns 0 whenever the switch is OFF or the amount is unusable.
  */
-export function effectivePlatformFee(feeEnabled: unknown, fee: unknown): number {
-  const amount = parsePlatformFee(fee) ?? 0;
+export function effectivePlatformFee(feeEnabled: unknown, fee: unknown, max: number = MAX_PLATFORM_FEE): number {
+  const amount = parsePlatformFee(fee, max) ?? 0;
   const enabled = feeEnabled === undefined ? amount > 0 : feeEnabled === true;
   return enabled ? amount : 0;
 }
 
-const readFromSettings = async (): Promise<PlatformFeeConfig | null> => {
-  const doc = await ContentModel.findOne({ type: 'settings' }).lean();
-  if (!doc) return null;
-  return {
-    fee: effectivePlatformFee(doc.metadata?.platformFeeEnabled, doc.metadata?.platformFee),
-    fromWallet: doc.metadata?.platformFeeFromWallet === true,
-  };
-};
-
-const CACHE_TTL_MS = 60_000;
-let cache: { config: PlatformFeeConfig; at: number } | null = null;
-
-/** Current fee config — falls back to NO_FEE when the store is unreadable. */
+/**
+ * Current fee config, layered over the shared settings-doc cache in
+ * platformSettings (one 60s Mongo read feeds every platform value).
+ * Falls back to NO_FEE when the doc is missing or the store is unreadable.
+ */
 export async function getPlatformFeeConfig(): Promise<PlatformFeeConfig> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
-    return cache.config;
-  }
-  let config = NO_FEE;
-  try {
-    config = (await readFromSettings()) ?? NO_FEE;
-  } catch {
-    // Settings store down — charge no fee rather than blocking checkout.
-  }
-  cache = { config, at: Date.now() };
-  return config;
+  const metadata = await getSettingsMetadata();
+  if (!metadata) return NO_FEE;
+  const max =
+    parseBoundedNumber(metadata.platformFeeMax, SETTING_BOUNDS.platformFeeMax.min, SETTING_BOUNDS.platformFeeMax.max) ??
+    MAX_PLATFORM_FEE;
+  return {
+    fee: effectivePlatformFee(metadata.platformFeeEnabled, metadata.platformFee, max),
+    fromWallet: metadata.platformFeeFromWallet === true,
+  };
 }
 
-/** Called by the settings writer so a just-saved fee applies immediately. */
+/** Kept for existing call sites — invalidates the shared settings cache. */
 export function invalidatePlatformFeeCache(): void {
-  cache = null;
+  invalidatePlatformSettingsCache();
 }

@@ -29,7 +29,9 @@ export const walletCreditBody = z.object({
   amount: z
     .number()
     .positive('Credit amount must be greater than 0')
-    .max(100000, 'Single admin credit is capped at ₹1,00,000')
+    // Absolute sanity ceiling — the configured cap (Settings → Platform)
+    // is enforced in the service, where the settings are reachable.
+    .max(10_000_000, 'Amount is beyond the absolute ceiling')
     .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-9, {
       message: 'Amount must have at most 2 decimal places',
     }),
@@ -39,7 +41,7 @@ export const walletCreditBody = z.object({
 /** Bulk wallet credit: specific users, or every customer at once. */
 export const walletCreditBulkBody = walletCreditBody
   .extend({
-    userIds: z.array(z.string().min(1)).min(1).max(500).optional(),
+    userIds: z.array(z.string().min(1)).min(1).max(2000, 'Payload too large').optional(),
     allCustomers: z.boolean().optional(),
   })
   .refine((value) => (value.userIds?.length ? true : value.allCustomers === true), {

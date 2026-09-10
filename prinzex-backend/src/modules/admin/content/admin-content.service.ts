@@ -9,10 +9,16 @@ import {
   parseMaxUploadMb,
 } from '../../../utils/uploadLimits';
 import {
-  MAX_PLATFORM_FEE,
   invalidatePlatformFeeCache,
   parsePlatformFee,
 } from '../../../utils/platformFee';
+import {
+  parseBoundedNumber,
+  parseSpeedMapStrict,
+  PLATFORM_SETTING_DEFAULTS,
+  platformValuesFromMetadata,
+  SETTING_BOUNDS,
+} from '../../../utils/platformSettings';
 import type { BannerCreateBody, BannerUpdateBody, FaqCreateBody, FaqUpdateBody } from './admin-content.routes';
 
 /**
@@ -355,10 +361,25 @@ export interface PlatformSettingsDto {
   /** Checkbox: when OFF (default) the platform fee is ALWAYS paid online —
    *  the wallet may only settle the rest of the order. */
   platformFeeFromWallet: boolean;
+  /** Validation ceiling for the platformFee input itself (₹). */
+  platformFeeMax: number;
+  /** GST charged on the order subtotal, in percent. */
+  gstRatePercent: number;
+  /** Customer-facing delivery charge per speed (₹). */
+  deliveryFees: Record<'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP', number>;
+  /** Promised delivery time per speed, in whole hours. */
+  deliveryEtaHours: Record<'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP', number>;
+  /** Rider search radius for auto-assignment, in km. */
+  assignRadiusKm: number;
+  /** Max ₹ a single admin wallet credit may carry. */
+  walletMaxCredit: number;
+  /** Max users per bulk wallet credit call. */
+  walletMaxBatchSize: number;
 }
 
 export async function getSettings(): Promise<PlatformSettingsDto> {
   const doc = await ContentModel.findOne({ type: 'settings' }).lean();
+  const defaults = PLATFORM_SETTING_DEFAULTS;
   if (!doc) {
     return {
       name: 'PrinZex',
@@ -370,8 +391,17 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
       platformFeeEnabled: false,
       platformFee: 0,
       platformFeeFromWallet: false,
+      platformFeeMax: defaults.platformFeeMax,
+      gstRatePercent: defaults.gstRatePercent,
+      deliveryFees: defaults.deliveryFees,
+      deliveryEtaHours: defaults.deliveryEtaHours,
+      assignRadiusKm: defaults.assignRadiusKm,
+      walletMaxCredit: defaults.walletMaxCredit,
+      walletMaxBatchSize: defaults.walletMaxBatchSize,
     };
   }
+  const values = platformValuesFromMetadata((doc.metadata ?? {}) as Record<string, unknown>);
+  const platformFee = parsePlatformFee(doc.metadata?.platformFee, values.platformFeeMax) ?? 0;
   return {
     name: doc.title ?? 'PrinZex',
     supportEmail: doc.metadata?.supportEmail as string ?? 'support@prinzex.in',
@@ -382,11 +412,16 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
     // The switch defaults to "on" for settings docs written before it existed:
     // a fee the admin already set stayed live then, so it stays live now.
     platformFeeEnabled:
-      doc.metadata?.platformFeeEnabled === undefined
-        ? (parsePlatformFee(doc.metadata?.platformFee) ?? 0) > 0
-        : doc.metadata?.platformFeeEnabled === true,
-    platformFee: parsePlatformFee(doc.metadata?.platformFee) ?? 0,
+      doc.metadata?.platformFeeEnabled === undefined ? platformFee > 0 : doc.metadata?.platformFeeEnabled === true,
+    platformFee,
     platformFeeFromWallet: doc.metadata?.platformFeeFromWallet === true,
+    platformFeeMax: values.platformFeeMax,
+    gstRatePercent: values.gstRatePercent,
+    deliveryFees: values.deliveryFees,
+    deliveryEtaHours: values.deliveryEtaHours,
+    assignRadiusKm: values.assignRadiusKm,
+    walletMaxCredit: values.walletMaxCredit,
+    walletMaxBatchSize: values.walletMaxBatchSize,
   };
 }
 
@@ -397,10 +432,26 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
       `maxUploadFileSizeMb must be a whole number between 1 and ${MAX_CONFIGURABLE_UPLOAD_MB}`,
     );
   }
-  const platformFee = parsePlatformFee(input.platformFee);
+  // New platform numbers — each validated against its bounds (utils/platformSettings).
+  const gstRatePercent = parseBoundedNumber(input.gstRatePercent, SETTING_BOUNDS.gstRatePercent.min, SETTING_BOUNDS.gstRatePercent.max);
+  if (gstRatePercent === null) throw ApiError.badRequest('gstRatePercent must be a number between 0 and 28');
+  const platformFeeMax = parseBoundedNumber(input.platformFeeMax, SETTING_BOUNDS.platformFeeMax.min, SETTING_BOUNDS.platformFeeMax.max);
+  if (platformFeeMax === null) throw ApiError.badRequest('platformFeeMax must be a number between 1 and 1000000 with at most 2 decimal places');
+  const assignRadiusKm = parseBoundedNumber(input.assignRadiusKm, SETTING_BOUNDS.assignRadiusKm.min, SETTING_BOUNDS.assignRadiusKm.max, 1);
+  if (assignRadiusKm === null) throw ApiError.badRequest('assignRadiusKm must be a number between 1 and 100 (at most 1 decimal)');
+  const walletMaxCredit = parseBoundedNumber(input.walletMaxCredit, SETTING_BOUNDS.walletMaxCredit.min, SETTING_BOUNDS.walletMaxCredit.max);
+  if (walletMaxCredit === null) throw ApiError.badRequest('walletMaxCredit must be a number between 1 and 10000000 with at most 2 decimal places');
+  const walletMaxBatchSize = parseBoundedNumber(input.walletMaxBatchSize, SETTING_BOUNDS.walletMaxBatchSize.min, SETTING_BOUNDS.walletMaxBatchSize.max, 0);
+  if (walletMaxBatchSize === null) throw ApiError.badRequest('walletMaxBatchSize must be a whole number between 1 and 2000');
+  const deliveryFees = parseSpeedMapStrict(input.deliveryFees, SETTING_BOUNDS.deliveryFee);
+  if (deliveryFees === null) throw ApiError.badRequest('deliveryFees must give every speed a charge between 0 and 10000 (at most 2 decimals)');
+  const deliveryEtaHours = parseSpeedMapStrict(input.deliveryEtaHours, SETTING_BOUNDS.deliveryEtaHours);
+  if (deliveryEtaHours === null) throw ApiError.badRequest('deliveryEtaHours must give every speed a whole number of hours between 1 and 168');
+
+  const platformFee = parsePlatformFee(input.platformFee, platformFeeMax);
   if (platformFee === null) {
     throw ApiError.badRequest(
-      `platformFee must be a number between 0 and ${MAX_PLATFORM_FEE} with at most 2 decimal places`,
+      `platformFee must be a number between 0 and ${platformFeeMax} with at most 2 decimal places`,
     );
   }
   await ContentModel.findOneAndUpdate(
@@ -418,6 +469,13 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
           platformFeeEnabled: input.platformFeeEnabled === true,
           platformFee,
           platformFeeFromWallet: input.platformFeeFromWallet === true,
+          platformFeeMax,
+          gstRatePercent,
+          deliveryFees,
+          deliveryEtaHours,
+          assignRadiusKm,
+          walletMaxCredit,
+          walletMaxBatchSize,
         },
         updatedBy: adminId,
       },

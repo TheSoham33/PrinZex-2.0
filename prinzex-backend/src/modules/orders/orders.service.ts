@@ -26,6 +26,7 @@ import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import { refundOrderToSource } from '../payments/payments.service';
 import { roundMoney, splitWalletGateway } from '../../utils/financial';
 import { getPlatformFeeConfig, walletCoverableMax } from '../../utils/platformFee';
+import { getPlatformSettingsValues } from '../../utils/platformSettings';
 import {
   emitAdminGlobalEvent,
   emitNewOrder,
@@ -452,7 +453,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
   }
 
   // Platform fee (admin-configured) is part of every quote total.
-  const feeConfig = await getPlatformFeeConfig();
+  const [feeConfig, platformValues] = await Promise.all([getPlatformFeeConfig(), getPlatformSettingsValues()]);
 
   const quote = computeQuote({
     basePrice: Number(service.basePrice), unit: service.unit,
@@ -464,6 +465,8 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     commissionRate: Number(seller.commissionRate),
     discount,
     platformFee: feeConfig.fee,
+    gstRate: platformValues.gstRatePercent / 100,
+    deliveryFees: platformValues.deliveryFees,
     sellerMetadata: seller.metadata,
     pageRateFallback,
   });
@@ -471,7 +474,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
   const timestamp = Date.now();
   const response: QuoteResponse = {
     ...quote,
-    estimatedDeliveryDate: estimatedDeliveryFor(input.deliverySpeed),
+    estimatedDeliveryDate: estimatedDeliveryFor(input.deliverySpeed, new Date(), platformValues.deliveryEtaHours),
     quoteKey: REDIS_KEYS.QUOTE(customerId, input.sellerServiceId, timestamp),
     coupon,
   };
@@ -647,7 +650,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     appliedCoupon = validation.coupon!.code;
   }
 
-  const feeConfig = await getPlatformFeeConfig();
+  const [feeConfig, platformValues] = await Promise.all([getPlatformFeeConfig(), getPlatformSettingsValues()]);
 
   const quote = computeQuote({
     basePrice: Number(service.basePrice), unit: service.unit,
@@ -659,6 +662,8 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     commissionRate: Number(seller.commissionRate),
     discount,
     platformFee: feeConfig.fee,
+    gstRate: platformValues.gstRatePercent / 100,
+    deliveryFees: platformValues.deliveryFees,
     sellerMetadata: seller.metadata,
     pageRateFallback,
   });
@@ -688,7 +693,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
   // TODO(payments step): for card/upi create a Razorpay order here and flip
   // paymentStatus to 'paid' from the webhook after signature verification.
 
-  const estimatedDelivery = estimatedDeliveryFor(input.deliverySpeed);
+  const estimatedDelivery = estimatedDeliveryFor(input.deliverySpeed, new Date(), platformValues.deliveryEtaHours);
 
   // 2. Address snapshot — the order keeps the original even if the address
   //    is edited/deleted later.
