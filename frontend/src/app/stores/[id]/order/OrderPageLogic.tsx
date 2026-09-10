@@ -38,6 +38,8 @@ import {
 import { IconArrowLeft, IconArrowRight, IconShoppingCart } from '@/components/icons';
 import { useCatalogOptions } from '@/lib/api/catalog';
 import {
+  applyDeliverySettings,
+  DELIVERY_SPEEDS,
   FILM_THICKNESS_OPTIONS as FILM_THICKNESS_OPTIONS_FALLBACK,
   PHOTO_TYPES as PHOTO_TYPES_FALLBACK,
   STAPLING_OPTIONS as STAPLING_OPTIONS_FALLBACK,
@@ -99,6 +101,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   });
   const platformFee = platformSettings?.platformFee ?? 0;
   const feeFromWallet = platformSettings?.platformFeeFromWallet ?? false;
+  // Admin-tuned delivery charges/promises overlay the static speed list.
+  const deliverySpeeds = applyDeliverySettings(DELIVERY_SPEEDS, platformSettings);
   // Default ON: if there is balance, most customers want it used first (they
   // can untick it at the payment step).
   const [useWallet, setUseWallet] = useState(true);
@@ -738,6 +742,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
               onAddAddress={handleAddAddress}
               error={state.error}
               errorField={state.errorField}
+              speeds={deliverySpeeds}
             />
           )}
           {state.step === 3 && (
@@ -825,6 +830,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
             cost={cost}
             isLoggedIn={!!token}
             specs={specs}
+            gstRatePercent={platformSettings?.gstRatePercent}
           />
         </div>
       </div>

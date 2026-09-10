@@ -57,6 +57,44 @@ export const DELIVERY_SPEEDS: DeliveryOption[] = [
   },
 ];
 
+/**
+ * DELIVERY_SPEEDS above are the static defaults; the admin-tuned delivery
+ * charge and promise time come from the public platform settings
+ * (Settings → Platform). The overlay below keeps every speed tile honest.
+ */
+
+type SpeedEnumKey = 'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP';
+const SPEED_ENUM: Record<T.DeliverySpeed, SpeedEnumKey> = {
+  standard: 'STANDARD',
+  express: 'EXPRESS',
+  'same-day': 'SAME_DAY',
+  pickup: 'PICKUP',
+};
+
+/** Hours → short tile label. */
+export function speedEtaLabel(hours: number): string {
+  if (hours < 24) return `Within ${hours} hours`;
+  const days = Math.round(hours / 24);
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
+/** Overlay configured fees/ETAs onto the static speed list (pure). */
+export function applyDeliverySettings(
+  speeds: DeliveryOption[],
+  settings: { deliveryFees: Record<SpeedEnumKey, number>; deliveryEtaHours: Record<SpeedEnumKey, number> } | null | undefined,
+): DeliveryOption[] {
+  if (!settings) return speeds;
+  return speeds.map((option) => {
+    const enumKey = SPEED_ENUM[option.key];
+    const etaHours = settings.deliveryEtaHours[enumKey];
+    return {
+      ...option,
+      cost: settings.deliveryFees[enumKey] ?? option.cost,
+      eta: typeof etaHours === 'number' ? speedEtaLabel(etaHours) : option.eta,
+    };
+  });
+}
+
 export const PAPER_TYPES = [
   {
     value: 'standard',

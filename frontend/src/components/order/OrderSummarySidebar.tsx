@@ -19,6 +19,8 @@ interface OrderSummarySidebarProps {
   cost: CostBreakdown;
   isLoggedIn?: boolean;
   specs?: OrderSpecifications;
+  /** Admin-set GST rate (Settings → Platform); the quote itself is server-side. */
+  gstRatePercent?: number;
 }
 
 export default function OrderSummarySidebar({
@@ -28,6 +30,7 @@ export default function OrderSummarySidebar({
   cost,
   isLoggedIn = true,
   specs,
+  gstRatePercent = 18,
 }: OrderSummarySidebarProps) {
   const photoTypes = useCatalogOptions('photo-types', PHOTO_TYPES);
   const photoAnchor =
@@ -43,7 +46,7 @@ export default function OrderSummarySidebar({
       value: cost.deliveryFee,
       display: cost.deliveryFee === 0 ? 'Free' : undefined,
     },
-    { label: 'GST (18%)', value: cost.tax },
+    { label: `GST (${gstRatePercent}%)`, value: cost.tax },
     ...((cost.platformFee ?? 0) > 0 ? [{ label: 'Platform fee', value: cost.platformFee! }] : []),
     ...(cost.discount > 0
       ? [

@@ -16,7 +16,7 @@ import Breadcrumbs from '@/components/common/Breadcrumbs';
 import { formatCurrency, scrollToField, toApiDeliverySpeed, walletCoverableMax } from '@/lib/utils';
 import { IconCreditCard, IconAlertCircle } from '@/components/icons';
 import { FieldError } from '@/components/ui';
-import { DELIVERY_SPEEDS } from '@/lib/domain/stores';
+import { applyDeliverySettings, DELIVERY_SPEEDS } from '@/lib/domain/stores';
 
 export default function CheckoutPage() {
   const dispatch = useAppDispatch();
@@ -71,7 +71,9 @@ export default function CheckoutPage() {
 
   const subtotal = items.reduce((sum, item) => sum + item.costBreakdown.subtotal, 0);
   const tax = items.reduce((sum, item) => sum + item.costBreakdown.tax, 0);
-  const deliveryFee = DELIVERY_SPEEDS.find(s => s.key.toUpperCase() === deliverySpeed)?.cost || 0;
+  // Admin-tuned delivery charges/promises overlay the static speed list.
+  const speedOptions = applyDeliverySettings(DELIVERY_SPEEDS, platformSettings);
+  const deliveryFee = speedOptions.find(s => s.key.toUpperCase() === deliverySpeed)?.cost || 0;
   const total = subtotal + tax + deliveryFee + platformFee;
 
   // Wallet split for the chosen method — the backend drains the wallet
@@ -175,7 +177,7 @@ export default function CheckoutPage() {
                 <div className="mb-6">
                   <label className="label">Delivery Speed</label>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {DELIVERY_SPEEDS.map((s) => (
+                    {speedOptions.map((s) => (
                       <button
                         key={s.key}
                         type="button"
@@ -308,7 +310,7 @@ export default function CheckoutPage() {
                     <span>{formatCurrency(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>GST (18%)</span>
+                    <span>GST ({platformSettings?.gstRatePercent ?? 18}%)</span>
                     <span>{formatCurrency(tax)}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">

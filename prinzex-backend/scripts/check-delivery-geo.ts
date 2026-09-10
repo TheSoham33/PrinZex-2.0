@@ -15,15 +15,16 @@ import { haversineDistanceKm } from '../src/utils/geo';
 
 const root = join(__dirname, '..');
 const seed = readFileSync(join(root, 'prisma', 'seed.ts'), 'utf8');
-const assignment = readFileSync(join(root, 'src/modules/delivery/delivery.assignment.ts'), 'utf8');
 
 const block = (src: string, start: string, end: string) => src.slice(src.indexOf(start), src.indexOf(end));
 const num = (s: string | undefined) => (s === undefined ? null : Number(s));
 
-// Radius comes from the engine itself (parsed as text — importing the module
-// would drag in prisma/redis config).
-const radius = num(assignment.match(/AUTO_ASSIGN_RADIUS_KM = (\d+)/)?.[1]);
-assert.ok(radius, 'could not read AUTO_ASSIGN_RADIUS_KM');
+// Radius comes from the settings defaults (parsed as text — importing the
+// module would drag in mongo/env config). The seed must self-assign under
+// the DEFAULT radius; an admin override can only widen it.
+const settingsUtil = readFileSync(join(root, 'src/utils/platformSettings.ts'), 'utf8');
+const radius = num(settingsUtil.match(/assignRadiusKm: (\d+)/)?.[1]);
+assert.ok(radius, 'could not read the default assignRadiusKm');
 
 // City strings must match byte-for-byte (Redis presence set is keyed by them).
 const windowAfter = (marker: string) => seed.slice(seed.indexOf(marker), seed.indexOf(marker) + 3000);

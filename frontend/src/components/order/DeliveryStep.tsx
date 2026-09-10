@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import {
   DELIVERY_SPEEDS,
   type DeliveryAddress,
+  type DeliveryOption,
   type DeliverySpeed,
 } from '@/lib/domain/stores';
 import { formatCurrency, scrollToField } from '@/lib/utils';
@@ -30,6 +31,8 @@ interface DeliveryStepProps {
   error: string | null;
   /** Id of the input the error belongs to (site-wide rule: show under the field). */
   errorField?: string | null;
+  /** Admin-tuned speed list (Settings → Platform); static defaults otherwise. */
+  speeds?: DeliveryOption[];
 }
 
 export default function DeliveryStep({
@@ -40,6 +43,7 @@ export default function DeliveryStep({
   onAddAddress,
   error,
   errorField,
+  speeds = DELIVERY_SPEEDS,
 }: DeliveryStepProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -191,7 +195,7 @@ export default function DeliveryStep({
       <section>
         <p className="label">Delivery speed</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          {DELIVERY_SPEEDS.map((option) => (
+          {speeds.map((option) => (
             <button
               key={option.key}
               type="button"

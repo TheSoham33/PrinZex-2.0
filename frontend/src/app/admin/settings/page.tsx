@@ -34,6 +34,26 @@ const ROLE_OPTIONS = [
   'SUPER_ADMIN', 'OPS_MANAGER', 'SUPPORT_AGENT', 'FINANCE_MANAGER', 'CONTENT_MANAGER',
 ];
 
+/** Delivery-speed rows for the Platform tab, keyed by the backend enum. */
+const SPEED_ROWS = [
+  { key: 'STANDARD', slug: 'standard', label: 'Standard' },
+  { key: 'EXPRESS', slug: 'express', label: 'Express' },
+  { key: 'SAME_DAY', slug: 'same-day', label: 'Same day' },
+  { key: 'PICKUP', slug: 'pickup', label: 'Store pickup' },
+] as const;
+type SpeedRowKey = (typeof SPEED_ROWS)[number]['key'];
+
+/**
+ * Mirrors parseBoundedNumber in prinzex-backend/src/utils/platformSettings.ts.
+ * Only drives under-field messages here — the backend re-validates the same
+ * bounds (SETTING_BOUNDS) as the source of truth on every save.
+ */
+const withinBounds = (value: number, min: number, max: number, maxDecimals: number): boolean => {
+  if (!Number.isFinite(value) || value < min || value > max) return false;
+  const factor = 10 ** maxDecimals;
+  return Math.abs(value * factor - Math.round(value * factor)) < 1e-9;
+};
+
 export default function AdminSettingsPage() {
   const canManageAdmins = usePermission('canManageAdmins');
   const { showToast } = useToast();
@@ -59,9 +79,17 @@ export default function AdminSettingsPage() {
     maxUploadFileSizeMb: 100,
     platformFeeEnabled: false,
     platformFee: 0,
+    platformFeeMax: 10000,
     platformFeeFromWallet: false,
+    gstRatePercent: 18,
+    deliveryFees: { STANDARD: 0, EXPRESS: 50, SAME_DAY: 120, PICKUP: 0 },
+    deliveryEtaHours: { STANDARD: 48, EXPRESS: 12, SAME_DAY: 6, PICKUP: 4 },
+    assignRadiusKm: 10,
+    walletMaxCredit: 100000,
+    walletMaxBatchSize: 500,
   });
-  const [platformFeeError, setPlatformFeeError] = useState<string | null>(null);
+  /** Under-field messages keyed by input id (site-wide rule). */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (settingsQ.data) {
@@ -113,16 +141,56 @@ export default function AdminSettingsPage() {
   const handleCloseInviteModal = useCallback(() => setInviteOpen(false), []);
   const handleCloseRevokeModal = useCallback(() => setRevokeTarget(null), []);
 
+  const clearFieldError = (id: string) =>
+    setFieldErrors((prev) => (prev[id] ? { ...prev, [id]: '' } : prev));
+
+  const setSpeedValue = (field: 'deliveryFees' | 'deliveryEtaHours', key: SpeedRowKey, value: number) => {
+    if (field === 'deliveryFees') {
+      setPlatform((prev) => ({ ...prev, deliveryFees: { ...prev.deliveryFees, [key]: value } }));
+    } else {
+      setPlatform((prev) => ({ ...prev, deliveryEtaHours: { ...prev.deliveryEtaHours, [key]: value } }));
+    }
+  };
+
   const save = async (label: string) => {
-    // Platform fee sanity before the API — under-field message + scroll
-    // (site-wide rule); the backend re-validates as the source of truth.
-    const fee = Number(platform.platformFee);
-    if (!Number.isFinite(fee) || fee < 0 || fee > 10000 || Math.abs(fee * 100 - Math.round(fee * 100)) > 1e-9) {
-      setPlatformFeeError('Enter a fee between 0 and 10,000 (at most 2 decimals)');
-      scrollToField('p-platformfee');
+    // Client-side sanity before the API — under-field messages and a scroll to
+    // the first invalid field (site-wide rule). Bounds mirror SETTING_BOUNDS in
+    // the backend, which re-validates everything as the source of truth.
+    const errors: Record<string, string> = {};
+    const feeMaxOk = withinBounds(platform.platformFeeMax, 1, 1_000_000, 2);
+    const feeCeiling = feeMaxOk ? platform.platformFeeMax : 10_000;
+    if (!withinBounds(platform.platformFee, 0, feeCeiling, 2)) {
+      errors['p-platformfee'] = `Enter a fee between 0 and ${feeCeiling} (at most 2 decimals)`;
+    }
+    if (!feeMaxOk) {
+      errors['p-platformfeemax'] = 'Enter a ceiling between 1 and 1,000,000 (at most 2 decimals)';
+    }
+    if (!withinBounds(platform.gstRatePercent, 0, 28, 2)) {
+      errors['p-gst'] = 'Enter a GST rate between 0 and 28 (at most 2 decimals)';
+    }
+    for (const { key, slug, label: speedLabel } of SPEED_ROWS) {
+      if (!withinBounds(platform.deliveryFees[key], 0, 10_000, 2)) {
+        errors[`p-fee-${slug}`] = `${speedLabel}: charge between 0 and 10,000 (at most 2 decimals)`;
+      }
+      if (!withinBounds(platform.deliveryEtaHours[key], 1, 168, 0)) {
+        errors[`p-eta-${slug}`] = `${speedLabel}: whole hours between 1 and 168`;
+      }
+    }
+    if (!withinBounds(platform.assignRadiusKm, 1, 100, 1)) {
+      errors['p-radius'] = 'Enter a radius between 1 and 100 km (at most 1 decimal)';
+    }
+    if (!withinBounds(platform.walletMaxCredit, 1, 10_000_000, 2)) {
+      errors['p-walletmax'] = 'Enter a limit between 1 and 10,000,000 (at most 2 decimals)';
+    }
+    if (!withinBounds(platform.walletMaxBatchSize, 1, 2_000, 0)) {
+      errors['p-walletbatch'] = 'Enter a whole number between 1 and 2,000';
+    }
+    setFieldErrors(errors);
+    const firstInvalid = Object.keys(errors)[0];
+    if (firstInvalid) {
+      scrollToField(firstInvalid);
       return;
     }
-    setPlatformFeeError(null);
     saveSettingsM.mutate(platform);
   };
 
@@ -311,16 +379,38 @@ export default function AdminSettingsPage() {
                 value={platform.platformFee}
                 onChange={(e) => {
                   setPlatform({ ...platform, platformFee: Number(e.target.value) });
-                  setPlatformFeeError(null);
+                  clearFieldError('p-platformfee');
                 }}
-                className={`input max-w-[12rem] ${platformFeeError ? 'input-error' : ''}`}
+                className={`input max-w-[12rem] ${fieldErrors['p-platformfee'] ? 'input-error' : ''}`}
                 aria-describedby="p-platformfee-hint"
               />
               <p id="p-platformfee-hint" className="mt-1 text-xs text-slate-500">
                 Charged on every order and shown as its own &quot;Platform fee&quot; line at payment —
                 only while the switch above is ON.
               </p>
-              <FieldError message={platformFeeError} />
+              <FieldError message={fieldErrors['p-platformfee'] || null} />
+            </div>
+            <div>
+              <label htmlFor="p-platformfeemax" className="label">Maximum allowed fee (₹)</label>
+              <input
+                id="p-platformfeemax"
+                type="number"
+                min={1}
+                max={1000000}
+                step="0.01"
+                value={platform.platformFeeMax}
+                onChange={(e) => {
+                  setPlatform({ ...platform, platformFeeMax: Number(e.target.value) });
+                  clearFieldError('p-platformfeemax');
+                }}
+                className={`input max-w-[12rem] ${fieldErrors['p-platformfeemax'] ? 'input-error' : ''}`}
+                aria-describedby="p-platformfeemax-hint"
+              />
+              <p id="p-platformfeemax-hint" className="mt-1 text-xs text-slate-500">
+                Validation ceiling for the amount above — raise it here before charging
+                a fee beyond ₹10,000. Guards against typos.
+              </p>
+              <FieldError message={fieldErrors['p-platformfeemax'] || null} />
             </div>
             <label className="flex cursor-pointer items-start gap-3 text-sm">
               <input
@@ -338,6 +428,147 @@ export default function AdminSettingsPage() {
                 whole order including the fee.
               </span>
             </label>
+          </fieldset>
+
+          <div>
+            <label htmlFor="p-gst" className="label">GST rate (%)</label>
+            <input
+              id="p-gst"
+              type="number"
+              min={0}
+              max={28}
+              step="0.01"
+              value={platform.gstRatePercent}
+              onChange={(e) => {
+                setPlatform({ ...platform, gstRatePercent: Number(e.target.value) });
+                clearFieldError('p-gst');
+              }}
+              className={`input max-w-[12rem] ${fieldErrors['p-gst'] ? 'input-error' : ''}`}
+              aria-describedby="p-gst-hint"
+            />
+            <p id="p-gst-hint" className="mt-1 text-xs text-slate-500">
+              Applied to the order subtotal in every quote and invoice — checkout renders
+              it in the &quot;GST&quot; line. India slabs cap at 28.
+            </p>
+            <FieldError message={fieldErrors['p-gst'] || null} />
+          </div>
+
+          <fieldset className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <legend className="label px-1">Delivery charge &amp; promise per speed</legend>
+            <p className="text-xs text-slate-500">
+              A charge of ₹0 shows as &quot;Free&quot; at checkout; the promise (in hours) becomes
+              the speed tile&apos;s ETA label and the quoted delivery estimate.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {SPEED_ROWS.map(({ key, slug, label: speedLabel }) => (
+                <div key={key} className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor={`p-fee-${slug}`} className="label">{speedLabel} charge (₹)</label>
+                    <input
+                      id={`p-fee-${slug}`}
+                      type="number"
+                      min={0}
+                      max={10000}
+                      step="0.01"
+                      value={platform.deliveryFees[key]}
+                      onChange={(e) => {
+                        setSpeedValue('deliveryFees', key, Number(e.target.value));
+                        clearFieldError(`p-fee-${slug}`);
+                      }}
+                      className={`input ${fieldErrors[`p-fee-${slug}`] ? 'input-error' : ''}`}
+                    />
+                    <FieldError message={fieldErrors[`p-fee-${slug}`] || null} />
+                  </div>
+                  <div>
+                    <label htmlFor={`p-eta-${slug}`} className="label">{speedLabel} promise (hours)</label>
+                    <input
+                      id={`p-eta-${slug}`}
+                      type="number"
+                      min={1}
+                      max={168}
+                      step={1}
+                      value={platform.deliveryEtaHours[key]}
+                      onChange={(e) => {
+                        setSpeedValue('deliveryEtaHours', key, Number(e.target.value));
+                        clearFieldError(`p-eta-${slug}`);
+                      }}
+                      className={`input ${fieldErrors[`p-eta-${slug}`] ? 'input-error' : ''}`}
+                    />
+                    <FieldError message={fieldErrors[`p-eta-${slug}`] || null} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </fieldset>
+
+          <div>
+            <label htmlFor="p-radius" className="label">Auto-assign radius (km)</label>
+            <input
+              id="p-radius"
+              type="number"
+              min={1}
+              max={100}
+              step="0.1"
+              value={platform.assignRadiusKm}
+              onChange={(e) => {
+                setPlatform({ ...platform, assignRadiusKm: Number(e.target.value) });
+                clearFieldError('p-radius');
+              }}
+              className={`input max-w-[12rem] ${fieldErrors['p-radius'] ? 'input-error' : ''}`}
+              aria-describedby="p-radius-hint"
+            />
+            <p id="p-radius-hint" className="mt-1 text-xs text-slate-500">
+              How far from the store the system searches for an online delivery partner
+              when auto-assigning a new delivery.
+            </p>
+            <FieldError message={fieldErrors['p-radius'] || null} />
+          </div>
+
+          <fieldset className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <legend className="label px-1">Wallet credit limits</legend>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="p-walletmax" className="label">Max credit per user (₹)</label>
+                <input
+                  id="p-walletmax"
+                  type="number"
+                  min={1}
+                  max={10000000}
+                  step="0.01"
+                  value={platform.walletMaxCredit}
+                  onChange={(e) => {
+                    setPlatform({ ...platform, walletMaxCredit: Number(e.target.value) });
+                    clearFieldError('p-walletmax');
+                  }}
+                  className={`input ${fieldErrors['p-walletmax'] ? 'input-error' : ''}`}
+                  aria-describedby="p-wallet-hint"
+                />
+                <FieldError message={fieldErrors['p-walletmax'] || null} />
+              </div>
+              <div>
+                <label htmlFor="p-walletbatch" className="label">Max users per bulk credit</label>
+                <input
+                  id="p-walletbatch"
+                  type="number"
+                  min={1}
+                  max={2000}
+                  step={1}
+                  value={platform.walletMaxBatchSize}
+                  onChange={(e) => {
+                    setPlatform({ ...platform, walletMaxBatchSize: Number(e.target.value) });
+                    clearFieldError('p-walletbatch');
+                  }}
+                  className={`input ${fieldErrors[`p-walletbatch`] ? 'input-error' : ''}`}
+                  aria-describedby="p-wallet-hint"
+                />
+                <FieldError message={fieldErrors['p-walletbatch'] || null} />
+              </div>
+            </div>
+            <p id="p-wallet-hint" className="text-xs text-slate-500">
+              Enforced when an admin credits PrinZex Wallet balances (single or bulk) —
+              the API rejects anything above these limits. &quot;All customers&quot; bulk credits
+              skip the batch cap by design.
+            </p>
           </fieldset>
 
           <div className="rounded-xl border border-red-200 bg-red-50/50 p-4">

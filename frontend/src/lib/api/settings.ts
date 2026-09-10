@@ -8,6 +8,12 @@ import { get } from './client';
 export interface PublicPlatformSettings {
   platformFee: number;
   platformFeeFromWallet: boolean;
+  /** GST on the order subtotal, in percent — labels render this, quotes use it. */
+  gstRatePercent: number;
+  /** Customer-facing delivery charge per speed (backend enum keys). */
+  deliveryFees: Record<'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP', number>;
+  /** Promised delivery time per speed, in hours (backend enum keys). */
+  deliveryEtaHours: Record<'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP', number>;
 }
 
 export const fetchPublicPlatformSettings = async (): Promise<PublicPlatformSettings> =>

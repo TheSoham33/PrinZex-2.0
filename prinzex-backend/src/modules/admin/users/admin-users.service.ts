@@ -3,6 +3,7 @@ import { prisma } from '../../../config/database';
 import { NotificationModel } from '../../../models/mongo/Notification.model';
 import { ApiError } from '../../../utils/ApiError';
 import { roundMoney } from '../../../utils/financial';
+import { getWalletLimits } from '../../../utils/platformSettings';
 import {
   buildPaginatedResponse,
   toSkipTake,
@@ -222,6 +223,13 @@ export async function creditUserWallet(
     throw ApiError.notFound('User not found');
   }
   const amount = roundMoney(input.amount);
+  // Admin-configured credit cap (Settings → Platform).
+  const { maxCredit } = await getWalletLimits();
+  if (amount > maxCredit) {
+    throw ApiError.badRequest(
+      `A single credit may not exceed ₹${maxCredit.toLocaleString('en-IN')} — adjust the limit under Settings → Platform.`,
+    );
+  }
 
   const balance = await prisma.$transaction(async (tx) => {
     const wallet =
@@ -273,6 +281,20 @@ export async function creditWalletsBulk(input: {
   amount: number;
   reason: string;
 }): Promise<{ credited: number; amount: number; totalCredited: number }> {
+  // Fail fast on the configured caps before any wallet is touched — the
+  // amount cap is re-checked per credit in creditUserWallet as well.
+  const { maxCredit, maxBatchSize } = await getWalletLimits();
+  if (roundMoney(input.amount) > maxCredit) {
+    throw ApiError.badRequest(
+      `A single credit may not exceed ₹${maxCredit.toLocaleString('en-IN')} — adjust the limit under Settings → Platform.`,
+    );
+  }
+  if (!input.allCustomers && [...new Set(input.userIds ?? [])].length > maxBatchSize) {
+    throw ApiError.badRequest(
+      `A bulk credit may target at most ${maxBatchSize} users per call — adjust the limit under Settings → Platform.`,
+    );
+  }
+
   let targetIds: string[];
   if (input.allCustomers) {
     const customers = await prisma.user.findMany({

@@ -7,6 +7,7 @@ import { ApiError } from '../../utils/ApiError';
 import { emitDeliveryAssigned, emitNotificationNew } from '../../realtime/realtime.emitters';
 import { getCache } from '../../utils/cache';
 import { boundingBox, haversineDistanceKm } from '../../utils/geo';
+import { getAssignRadiusKm } from '../../utils/platformSettings';
 
 // NOTE: mirrored deliberately instead of imported from delivery.service —
 // seller.service (ready_for_pickup hook) imports THIS module, and
@@ -31,8 +32,7 @@ interface CachedRiderLocation {
  * (`pending_assignment`) for a retry cron to pick up.
  */
 
-/** Maximum rider→store distance for auto-assignment. */
-export const AUTO_ASSIGN_RADIUS_KM = 10;
+/** Rider→store radius comes from Settings → Platform (getAssignRadiusKm). */
 
 /** 4-digit proof-of-delivery OTP (customer hands it to the rider). */
 export function generatePodOtp(): string {
@@ -170,7 +170,8 @@ export async function autoAssignDelivery(orderId: string): Promise<AssignmentRes
 
   const storeLat = order.seller.lat;
   const storeLng = order.seller.lng;
-  const box = storeLat != null && storeLng != null ? boundingBox(storeLat, storeLng, AUTO_ASSIGN_RADIUS_KM) : null;
+  const radiusKm = await getAssignRadiusKm();
+  const box = storeLat != null && storeLng != null ? boundingBox(storeLat, storeLng, radiusKm) : null;
 
   const candidates: RiderCandidate[] = [];
   for (const riderId of onlineIds) {
@@ -195,7 +196,7 @@ export async function autoAssignDelivery(orderId: string): Promise<AssignmentRes
     // Cheap bounding-box pre-filter, then the exact haversine check.
     if (lat < box.minLat || lat > box.maxLat || lng < box.minLng || lng > box.maxLng) continue;
     const distanceKm = haversineDistanceKm(storeLat, storeLng, lat, lng);
-    if (distanceKm <= AUTO_ASSIGN_RADIUS_KM) {
+    if (distanceKm <= radiusKm) {
       candidates.push({ id: riderId, lat, lng, distanceKm });
     }
   }

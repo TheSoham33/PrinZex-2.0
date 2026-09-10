@@ -74,7 +74,7 @@ export interface QuoteResult {
   subtotal: number;
   rushFee: number;
   deliveryFee: number;
-  /** 18% GST on subtotal. */
+  /** GST on subtotal (rate from Settings → Platform; default 18%). */
   tax: number;
   discount: number;
   /** Platform commission: subtotal * Seller.commissionRate. */
@@ -97,7 +97,8 @@ export interface QuoteResult {
 
 // ── Pricing constants ──────────────────────────────────────────────────────
 
-export const GST_RATE = 0.18; // 18% GST on subtotal
+/** Default GST fraction — admin may override under Settings → Platform. */
+export const GST_RATE = 0.18;
 
 
 /**
@@ -135,9 +136,8 @@ export {
 } from './photoPricing';
 import { photoPrintSubtotal } from './photoPricing';
 
-// These are the ONLY customer-facing delivery charges and must match the
-// DELIVERY_SPEEDS costs shown on the store page and at checkout.
-// Standard and pickup are free; express/same-day carry a flat premium.
+// Customer-facing delivery charge — these remain the DEFAULTS; the admin
+// overrides them under Settings → Platform (utils/platformSettings).
 export const RUSH_FEES: Record<DeliverySpeed, number> = {
   STANDARD: 0,
   EXPRESS: 0,
@@ -165,8 +165,12 @@ export function round2(value: number): number {
 }
 
 /** Quote timestamp + speed → estimated delivery instant. */
-export function estimatedDeliveryFor(speed: DeliverySpeed, from = new Date()): Date {
-  return new Date(from.getTime() + ESTIMATED_DELIVERY_HOURS[speed] * 60 * 60 * 1000);
+export function estimatedDeliveryFor(
+  speed: DeliverySpeed,
+  from = new Date(),
+  etaHours: Record<DeliverySpeed, number> = ESTIMATED_DELIVERY_HOURS,
+): Date {
+  return new Date(from.getTime() + etaHours[speed] * 60 * 60 * 1000);
 }
 
 /**
@@ -341,6 +345,10 @@ export interface QuoteComputationInput {
   discount: number; // validated coupon discount (0 when none)
   /** Admin-configured flat platform fee (₹) — added LAST, after discount. */
   platformFee?: number;
+  /** GST fraction on subtotal (Settings → Platform; default GST_RATE). */
+  gstRate?: number;
+  /** Per-speed delivery charge (Settings → Platform; default DELIVERY_FEES). */
+  deliveryFees?: Record<DeliverySpeed, number>;
   sellerMetadata?: Prisma.JsonValue | null;
   /** Seller's cheapest per-page rate — fallback for binding services, whose
    *  own basePrice is per-document and must never be used as a page rate. */
@@ -509,8 +517,8 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   }
 
   const rushFee = RUSH_FEES[input.deliverySpeed];
-  const deliveryFee = DELIVERY_FEES[input.deliverySpeed];
-  const tax = round2(subtotal * GST_RATE);
+  const deliveryFee = (input.deliveryFees ?? DELIVERY_FEES)[input.deliverySpeed];
+  const tax = round2(subtotal * (input.gstRate ?? GST_RATE));
   const commissionAmount = round2(subtotal * input.commissionRate);
   // Platform fee rides on top after the discount — it is platform revenue,
   // never seller earnings (netOrderEarnings excludes it) and, by default,
