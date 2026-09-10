@@ -148,6 +148,26 @@ export async function autoAssignDelivery(orderId: string): Promise<AssignmentRes
     });
   }
 
+  if (onlineIds.length === 0) {
+    // The presence set is empty right after a seed/Redis flush even though
+    // riders are online (isOnline persists in PostgreSQL). Recover from the
+    // DB and backfill Redis so the next lookup hits the fast path again.
+    const dbOnline = await prisma.deliveryBoy.findMany({
+      where: { city: order.seller.city, isOnline: true, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    onlineIds = dbOnline.map((b: { id: string }) => b.id);
+    if (onlineIds.length > 0) {
+      try {
+        await redis.sadd(REDIS_KEYS.ONLINE_DELIVERY_BOYS(order.seller.city), ...onlineIds);
+      } catch (error) {
+        logger.warn('auto_assign_presence_backfill_failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
   const storeLat = order.seller.lat;
   const storeLng = order.seller.lng;
   const box = storeLat != null && storeLng != null ? boundingBox(storeLat, storeLng, AUTO_ASSIGN_RADIUS_KM) : null;
