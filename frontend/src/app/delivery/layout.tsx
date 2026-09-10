@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -22,14 +22,22 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { deliveryBoy, accessToken } = useAppSelector((state) => state.deliveryAuth);
+  // Give the persisted session one tick to rehydrate before redirecting.
+  const [checked, setChecked] = useState(false);
 
   const isPublic = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
   useEffect(() => {
+    const timer = setTimeout(() => setChecked(true), 80);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!checked) return;
     if (!isPublic && !accessToken) {
       router.replace('/delivery/login');
     }
-  }, [isPublic, accessToken, router]);
+  }, [checked, isPublic, accessToken, router]);
 
   if (isPublic) {
     return <>{children}</>;
