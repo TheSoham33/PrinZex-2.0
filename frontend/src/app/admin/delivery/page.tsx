@@ -17,7 +17,7 @@ import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { IconStar, IconRefreshCw } from '@/components/icons';
 
 const DELIVERY_ZONES = [
-  'Salt Lake', 'New Town', 'Sector V', 'Koramangala', 'HSR Layout', 'Indiranagar'
+  'Salt Lake', 'New Town', 'Sector V', 'Esplanade', 'Park Street', 'Gariahat'
 ];
 
 export default function AdminDeliveryPage() {

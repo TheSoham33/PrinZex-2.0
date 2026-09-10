@@ -149,7 +149,7 @@ async function main(): Promise<void> {
     },
     {
       type: 'banner',
-      title: 'Same-Day Delivery in Bengaluru',
+      title: 'Same-Day Delivery in Kolkata',
       slug: 'banner-same-day',
       imageUrl: 'https://cdn.prinzex.com/banners/same-day.jpg',
       linkUrl: '/delivery/same-day',

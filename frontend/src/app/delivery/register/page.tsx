@@ -202,7 +202,7 @@ export default function DeliveryRegisterPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="dr-vehicle-reg" className="label">Vehicle registration no. <span className="text-red-500">*</span></label>
-                <input id="dr-vehicle-reg" type="text" value={form.vehicleRegNo} onChange={(e) => set('vehicleRegNo')(e.target.value.toUpperCase())} placeholder="KA01AB1234" className={`input ${errors['dr-vehicle-reg'] ? 'input-error' : ''}`} />
+                <input id="dr-vehicle-reg" type="text" value={form.vehicleRegNo} onChange={(e) => set('vehicleRegNo')(e.target.value.toUpperCase())} placeholder="WB01AB1234" className={`input ${errors['dr-vehicle-reg'] ? 'input-error' : ''}`} />
                 <FieldError message={errors['dr-vehicle-reg']} />
               </div>
               <div>
