@@ -519,7 +519,7 @@ const DELIVERY_BOYS: Array<{
 }> = [
   {
     name: 'Imran Khan',
-    phone: '+919700000001',
+    phone: '9700000001',
     email: 'imran.khan@example.com',
     vehicleType: 'bike',
     vehicleRegNo: 'KA01AB1234',
@@ -536,7 +536,7 @@ const DELIVERY_BOYS: Array<{
   },
   {
     name: 'Sunil Verma',
-    phone: '+919700000002',
+    phone: '9700000002',
     email: 'sunil.verma@example.com',
     vehicleType: 'scooter',
     vehicleRegNo: 'KA05CD5678',
@@ -553,7 +553,7 @@ const DELIVERY_BOYS: Array<{
   },
   {
     name: 'Deepak Yadav',
-    phone: '+919700000003',
+    phone: '9700000003',
     email: 'deepak.yadav@example.com',
     vehicleType: 'bike',
     vehicleRegNo: 'KA03EF9012',

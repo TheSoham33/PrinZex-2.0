@@ -3,6 +3,7 @@ import { env } from '../../config/env';
 import { ApiError } from '../../utils/ApiError';
 import { generateOtp, storeOtp, verifyOtp } from '../../utils/otp';
 import { sendOtpSms } from '../../utils/email';
+import { canonicalPhone } from '../../utils/phone';
 import type { DeliveryTokenPayload } from '../../utils/jwt';
 import {
   blacklistAccessToken,
@@ -38,7 +39,8 @@ const LOGIN_OTP_PURPOSE = 'login_otp';
 // Delivery boys authenticate with OTP only — no password is ever accepted.
 
 export async function login(input: DeliveryLoginInput): Promise<{ sent: true; devOtp?: string }> {
-  const { phone } = input;
+  // Stored format is 10 digits (registration) — accept +91… too.
+  const phone = canonicalPhone(input.phone);
 
   const boy = await prisma.deliveryBoy.findUnique({ where: { phone } });
 
@@ -70,7 +72,8 @@ export async function login(input: DeliveryLoginInput): Promise<{ sent: true; de
 // ─── VERIFY OTP (issue tokens) ─────────────────────────────────────────────
 
 export async function verifyOtpLogin(input: DeliveryVerifyOtpInput): Promise<DeliverySession> {
-  const { phone, otp } = input;
+  const { otp } = input;
+  const phone = canonicalPhone(input.phone);
 
   const ok = await verifyOtp(phone, LOGIN_OTP_PURPOSE, otp);
   if (!ok) {
