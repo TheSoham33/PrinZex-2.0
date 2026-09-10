@@ -12,7 +12,7 @@ import bcrypt from 'bcryptjs';
  *   4. 1 pending seller       (no documents yet)
  *   5. 3 active delivery boys (zones, bank details, verified documents)
  *   6. 10 orders              (every lifecycle status represented)
- *   7. deliveries             (for orders out_for_delivery or later)
+ *   7. deliveries             (delivered orders only — riders start free)
  *   8. reviews                (for delivered orders)
  *   9. 3 coupons              (WELCOME10, FIRSTORDER, FLAT50)
  *  10. 5 support tickets      (one thread with messages)
@@ -673,7 +673,7 @@ const ORDER_SEEDS: OrderSeed[] = [
     deliverySpeed: 'EXPRESS', isRush: true, paymentMethod: 'wallet', paymentStatus: 'paid', couponCode: 'WELCOME10', discount: 25,
   },
   {
-    status: 'out_for_delivery', placedHoursAgo: 3, customerIndex: 2, sellerIndex: 0,
+    status: 'delivered', placedHoursAgo: 26, customerIndex: 2, sellerIndex: 0,
     items: [
       { serviceKey: 'spec-photo-prints', quantity: 2, specs: { background: 'white', size: '35x45mm' }, fileUrl: 'https://cdn.prinzex.com/uploads/face.jpg' },
       { serviceKey: 'doc-print', quantity: 20, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/forms.pdf' },
@@ -682,7 +682,7 @@ const ORDER_SEEDS: OrderSeed[] = [
     specialInstructions: 'Call on arrival — gate security will hold the package.',
   },
   {
-    status: 'out_for_delivery', placedHoursAgo: 5, customerIndex: 3, sellerIndex: 2,
+    status: 'delivered', placedHoursAgo: 30, customerIndex: 3, sellerIndex: 2,
     items: [
       { serviceKey: 'lf-flex-banner', quantity: 3, specs: { paperType: 'Art paper 170gsm', size: 'A3', lamination: 'gloss' }, fileUrl: 'https://cdn.prinzex.com/uploads/poster.pdf' },
       { serviceKey: 'spec-canvas', quantity: 50, specs: { paperType: 'Ivory 250gsm', size: '5x7in', envelope: true }, fileUrl: 'https://cdn.prinzex.com/uploads/invite.pdf' },
@@ -835,40 +835,30 @@ async function seedDeliveries(
   orders: Awaited<ReturnType<typeof seedOrders>>,
   deliveryBoys: Awaited<ReturnType<typeof seedDeliveryBoys>>,
 ) {
-  console.log('… creating deliveries for out_for_delivery / delivered orders');
-  // FK-safe assignment: out_for_delivery & delivered orders each get a Delivery row.
-  const assignment: Record<string, { boyIndex: number; status: string }> = {
-    delivered: { boyIndex: 0, status: 'delivered' },
-    out_for_delivery: { boyIndex: 0, status: 'out_for_delivery' },
-  };
-
+  console.log('… creating deliveries for delivered orders');
+  // Only delivered orders carry a Delivery row — nothing active, so every
+  // rider starts free and auto-assignment can be exercised on a fresh seed.
   let deliveredBoyCursor = 0;
   for (const order of orders) {
-    const mapped = assignment[order.status];
-    if (!mapped) continue;
+    if (order.status !== 'delivered') continue;
 
-    if (order.status === 'delivered') {
-      // spread delivered orders over boys 0 and 1
-      mapped.boyIndex = deliveredBoyCursor;
-      deliveredBoyCursor = (deliveredBoyCursor + 1) % 2;
-    }
-    const boy = deliveryBoys[mapped.boyIndex === 0 && order.status === 'out_for_delivery' ? 0 : mapped.boyIndex];
-    const chosenBoy = order.status === 'out_for_delivery' && orders.indexOf(order) === 3 ? deliveryBoys[2] : boy;
+    // spread delivered orders over boys 0 and 1
+    const chosenBoy = deliveryBoys[deliveredBoyCursor];
+    deliveredBoyCursor = (deliveredBoyCursor + 1) % 2;
 
-    const isDelivered = order.status === 'delivered';
     await prisma.delivery.create({
       data: {
         orderId: order.id,
         deliveryBoyId: chosenBoy.id,
-        status: isDelivered ? 'delivered' : 'out_for_delivery',
-        pickedUpAt: hoursAgo(isDelivered ? 20 : 1),
-        deliveredAt: isDelivered ? hoursAgo(18) : null,
-        podPhotoUrl: isDelivered ? 'https://cdn.prinzex.com/pod/photo.jpg' : null,
-        podSignatureUrl: isDelivered ? 'https://cdn.prinzex.com/pod/signature.png' : null,
+        status: 'delivered',
+        pickedUpAt: hoursAgo(20),
+        deliveredAt: hoursAgo(18),
+        podPhotoUrl: 'https://cdn.prinzex.com/pod/photo.jpg',
+        podSignatureUrl: 'https://cdn.prinzex.com/pod/signature.png',
         podOtp: '4821',
-        podOtpVerified: isDelivered,
-        earningsAmount: isDelivered ? Number(order.deliveryFee) + Number(order.rushFee) : 0,
-        notes: isDelivered ? 'Delivered to customer in person' : 'Package picked up from store',
+        podOtpVerified: true,
+        earningsAmount: Number(order.deliveryFee) + Number(order.rushFee),
+        notes: 'Delivered to customer in person',
       },
     });
   }
