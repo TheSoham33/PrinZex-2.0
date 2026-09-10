@@ -2,8 +2,8 @@
 import mongoose from 'mongoose';
 import { PrismaClient } from '@prisma/client';
 import { env } from '../src/config/env';
-import { OrderTimelineModel, type IOrderTimelineEvent } from '../src/models/mongo/Order.model';
-import { TrackingModel, type ILocationPoint } from '../src/models/mongo/Tracking.model';
+import { OrderTimelineModel } from '../src/models/mongo/Order.model';
+import { TrackingModel } from '../src/models/mongo/Tracking.model';
 import { NotificationModel } from '../src/models/mongo/Notification.model';
 import { ActivityLogModel } from '../src/models/mongo/ActivityLog.model';
 import { ContentModel } from '../src/models/mongo/Content.model';
@@ -12,77 +12,17 @@ import { ContentModel } from '../src/models/mongo/Content.model';
  * MongoDB seed — run with `npm run db:seed:mongo` (AFTER `npm run db:seed`,
  * since every document references PostgreSQL rows).
  *
- *   1. Order timeline documents for each PostgreSQL order (matching statuses)
- *   2. Tracking documents for the out_for_delivery orders
- *   3. 10 notifications for each customer
- *   4. 5 activity log entries
- *   5. 3 banners + 8 FAQs as Content documents
+ *   1. 10 notifications for each customer
+ *   2. 4 activity log entries
+ *   3. 3 banners + 8 FAQs as Content documents
+ *
+ * No order timelines/tracking documents are created — PostgreSQL no longer
+ * seeds demo orders, and real orders generate their own documents at runtime.
+ * The wipe below still clears those collections so a re-run purges docs
+ * seeded by older versions.
  */
 
 const prisma = new PrismaClient();
-
-const STATUS_FLOW = [
-  'placed',
-  'confirmed',
-  'processing',
-  'ready_for_pickup',
-  'out_for_delivery',
-  'delivered',
-] as const;
-
-const STATUS_LABELS: Record<string, string> = {
-  placed: 'Order placed',
-  confirmed: 'Order confirmed by store',
-  processing: 'Printing in progress',
-  ready_for_pickup: 'Ready for pickup',
-  out_for_delivery: 'Out for delivery',
-  delivered: 'Delivered',
-  cancelled: 'Order cancelled',
-};
-
-function buildTimeline(order: {
-  id: string;
-  status: string;
-  createdAt: Date;
-  cancelledAt: Date | null;
-  delivery: { deliveredAt: Date | null } | null;
-}): IOrderTimelineEvent[] {
-  if (order.status === 'cancelled') {
-    return [
-      {
-        status: 'placed',
-        label: STATUS_LABELS.placed,
-        timestamp: order.createdAt,
-        updatedBy: 'system',
-      },
-      {
-        status: 'cancelled',
-        label: STATUS_LABELS.cancelled,
-        timestamp: order.cancelledAt ?? order.createdAt,
-        note: 'Cancelled by customer',
-        updatedBy: 'system',
-      },
-    ];
-  }
-
-  const statusIndex = STATUS_FLOW.indexOf(order.status as (typeof STATUS_FLOW)[number]);
-  const events: IOrderTimelineEvent[] = [];
-  for (let i = 0; i <= statusIndex; i += 1) {
-    const status = STATUS_FLOW[i];
-    events.push({
-      status,
-      label: STATUS_LABELS[status],
-      // 20 minutes between lifecycle steps, except the final one which uses
-      // the real delivery timestamp when available.
-      timestamp:
-        status === 'delivered' && order.delivery?.deliveredAt
-          ? order.delivery.deliveredAt
-          : new Date(order.createdAt.getTime() + i * 20 * 60 * 1000),
-      updatedBy: i === 0 ? 'system' : 'seller',
-    });
-  }
-  return events;
-}
 
 // ─── MAIN ──────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
@@ -98,70 +38,14 @@ async function main(): Promise<void> {
     ContentModel.deleteMany({}),
   ]);
 
-  const [orders, customers, admin] = await Promise.all([
-    prisma.order.findMany({ include: { delivery: true }, orderBy: { createdAt: 'asc' } }),
+  const [customers, admin] = await Promise.all([
     prisma.user.findMany({ where: { role: 'CUSTOMER' } }),
     prisma.admin.findFirst({ where: { role: 'SUPER_ADMIN' } }),
   ]);
 
   if (!admin) throw new Error('No super admin found — run `npm run db:seed` first.');
 
-  // 1. Order timelines ──────────────────────────────────────────────────────
-  console.log(`… creating order timeline documents for ${orders.length} orders`);
-  await OrderTimelineModel.insertMany(
-    orders.map((order) => ({
-      orderId: order.id,
-      timeline: buildTimeline(order),
-      adminNotes:
-        order.status === 'cancelled'
-          ? [
-              {
-                note: 'Refund issued to original payment method (Razorpay).',
-                adminId: admin.id,
-                createdAt: new Date(),
-              },
-            ]
-          : [],
-      disputeDetails: { isDisputed: false },
-    })),
-  );
-
-  // 2. Tracking for out_for_delivery orders ─────────────────────────────────
-  const outForDelivery = orders.filter((o) => o.status === 'out_for_delivery' && o.delivery);
-  console.log(`… creating tracking documents for ${outForDelivery.length} live deliveries`);
-
-  // GPS breadcrumb trail through south Bengaluru.
-  const breadcrumbs: Array<Pick<ILocationPoint, 'lat' | 'lng'>> = [
-    { lat: 12.9352, lng: 77.6245 },
-    { lat: 12.9291, lng: 77.6298 },
-    { lat: 12.9227, lng: 77.6351 },
-    { lat: 12.9163, lng: 77.6404 },
-  ];
-
-  await TrackingModel.insertMany(
-    outForDelivery.map((order, index) => {
-      const delivery = order.delivery!;
-      const history: ILocationPoint[] = breadcrumbs.map((point, step) => ({
-        ...point,
-        timestamp: new Date(Date.now() - (breadcrumbs.length - step) * 3 * 60 * 1000),
-        accuracy: 8,
-        speed: 28,
-        batteryLevel: 76 - step * 2,
-        coordinates: [point.lng, point.lat], // [lng, lat] for the 2dsphere index
-      }));
-      const current = history[history.length - 1];
-      return {
-        deliveryId: delivery.id,
-        deliveryBoyId: delivery.deliveryBoyId ?? undefined,
-        orderId: order.id,
-        locationHistory: history,
-        currentLocation: current,
-        etaMinutes: 12 + index * 4,
-      };
-    }),
-  );
-
-  // 3. Notifications — 10 per customer ──────────────────────────────────────
+  // 1. Notifications — 10 per customer ──────────────────────────────────────
   console.log(`… creating notifications for ${customers.length} customers`);
   const notificationTemplate: Array<{
     type: string;
@@ -181,16 +65,14 @@ async function main(): Promise<void> {
     { type: 'promo', title: 'Refer & earn', body: 'Share PrinZex with friends and earn wallet credits.', channel: ['email'] },
   ];
 
-  const notifications = customers.flatMap((customer, customerIndex) =>
+  const notifications = customers.flatMap((customer) =>
     notificationTemplate.map((template, templateIndex) => ({
       recipientId: customer.id,
       recipientType: 'customer' as const,
       type: template.type,
       title: template.title,
       body: template.body,
-      data: orders[customerIndex % orders.length]
-        ? { orderId: orders[customerIndex % orders.length].id }
-        : {},
+      data: {},
       isRead: templateIndex % 3 === 0,
       readAt: templateIndex % 3 === 0 ? new Date() : undefined,
       channel: template.channel,
@@ -198,8 +80,8 @@ async function main(): Promise<void> {
   );
   await NotificationModel.insertMany(notifications);
 
-  // 4. Activity logs ────────────────────────────────────────────────────────
-  console.log('… creating 5 admin activity log entries');
+  // 2. Activity logs ────────────────────────────────────────────────────────
+  console.log('… creating 4 admin activity log entries');
   const sellers = await prisma.seller.findMany({ orderBy: { createdAt: 'asc' } });
   await ActivityLogModel.insertMany([
     {
@@ -228,17 +110,6 @@ async function main(): Promise<void> {
       adminId: admin.id,
       adminName: admin.name,
       adminRole: admin.role,
-      action: 'order.cancelled',
-      entityType: 'order',
-      entityId: orders.find((o) => o.status === 'cancelled')?.id,
-      metadata: { refundIssued: true },
-      ipAddress: '10.0.0.12',
-      userAgent: 'PrinZexAdmin/1.0',
-    },
-    {
-      adminId: admin.id,
-      adminName: admin.name,
-      adminRole: admin.role,
       action: 'coupon.created',
       entityType: 'coupon',
       entityId: 'WELCOME10',
@@ -259,7 +130,7 @@ async function main(): Promise<void> {
     },
   ]);
 
-  // 5. Content — 3 banners + 8 FAQs ─────────────────────────────────────────
+  // 3. Content — 3 banners + 8 FAQs ─────────────────────────────────────────
   console.log('… creating CMS content (3 banners, 8 FAQs)');
   const now = new Date();
   await ContentModel.insertMany([
@@ -325,16 +196,12 @@ async function main(): Promise<void> {
   ]);
 
   const counts = await Promise.all([
-    OrderTimelineModel.countDocuments(),
-    TrackingModel.countDocuments(),
     NotificationModel.countDocuments(),
     ActivityLogModel.countDocuments(),
     ContentModel.countDocuments(),
   ]);
   console.log('✔ MongoDB seed complete:');
-  console.log(
-    `   orderTimelines=${counts[0]} tracking=${counts[1]} notifications=${counts[2]} activityLogs=${counts[3]} content=${counts[4]}`,
-  );
+  console.log(`   notifications=${counts[0]} activityLogs=${counts[1]} content=${counts[2]}`);
 }
 
 main()

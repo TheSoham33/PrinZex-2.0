@@ -11,19 +11,16 @@ import bcrypt from 'bcryptjs';
  *   3. 3 approved sellers     (services, bank details, verified documents, pincodes)
  *   4. 1 pending seller       (no documents yet)
  *   5. 3 active delivery boys (zones, bank details, verified documents)
- *   6. 10 orders              (every lifecycle status represented)
- *   7. deliveries             (for orders out_for_delivery or later)
- *   8. reviews                (for delivered orders)
- *   9. 3 coupons              (WELCOME10, FIRSTORDER, FLAT50)
- *  10. 5 support tickets      (one thread with messages)
+ *   6. 3 coupons              (WELCOME10, FIRSTORDER, FLAT50)
+ *   7. 5 support tickets      (one thread with messages)
  *
- * MongoDB seed (mongo-seed/seed.ts) builds linked documents on top of these.
+ * No orders/deliveries/reviews are seeded — every order on the platform is a
+ * real one placed through checkout.
  */
 
 const prisma = new PrismaClient();
 
 const hoursAgo = (h: number): Date => new Date(Date.now() - h * 60 * 60 * 1000);
-const hoursFromNow = (h: number): Date => new Date(Date.now() + h * 60 * 60 * 1000);
 const daysFromNow = (d: number): Date => new Date(Date.now() + d * 24 * 60 * 60 * 1000);
 
 async function wipe(): Promise<void> {
@@ -635,314 +632,9 @@ async function seedDeliveryBoys() {
   return created;
 }
 
-// ─── 6–7. ORDERS + ITEMS + DELIVERIES ──────────────────────────────────────
 type CustomerWithAddresses = Awaited<ReturnType<typeof seedCustomers>>[number];
 type SellerWithServices = Awaited<ReturnType<typeof seedSellers>>[number];
 
-interface OrderSeed {
-  status: string;
-  placedHoursAgo: number;
-  customerIndex: number;
-  sellerIndex: number;
-  items: Array<{ serviceKey: string; quantity: number; specs: Record<string, string | number | boolean>; fileUrl?: string }>;
-  deliverySpeed: 'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP';
-  isRush?: boolean;
-  paymentMethod?: string;
-  paymentStatus?: string;
-  cancelReason?: string;
-  specialInstructions?: string;
-  couponCode?: string;
-  discount?: number;
-}
-
-const ORDER_SEEDS: OrderSeed[] = [
-  {
-    status: 'delivered', placedHoursAgo: 192, customerIndex: 0, sellerIndex: 0,
-    items: [
-      { serviceKey: 'doc-print', quantity: 10, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/brochure.pdf' },
-      { serviceKey: 'spec-photo-prints', quantity: 1, specs: { paperType: 'Matte 300gsm', finish: 'matte_lamination', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/card_design.ai' },
-    ],
-    deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'paid',
-  },
-  {
-    status: 'delivered', placedHoursAgo: 120, customerIndex: 1, sellerIndex: 1,
-    items: [
-      { serviceKey: 'doc-print', quantity: 100, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/thesis.pdf' },
-      { serviceKey: 'bind-spiral', quantity: 2, specs: { bindingColor: 'black', cover: 'transparent' } },
-    ],
-    deliverySpeed: 'EXPRESS', isRush: true, paymentMethod: 'wallet', paymentStatus: 'paid', couponCode: 'WELCOME10', discount: 25,
-  },
-  {
-    status: 'out_for_delivery', placedHoursAgo: 3, customerIndex: 2, sellerIndex: 0,
-    items: [
-      { serviceKey: 'spec-photo-prints', quantity: 2, specs: { background: 'white', size: '35x45mm' }, fileUrl: 'https://cdn.prinzex.com/uploads/face.jpg' },
-      { serviceKey: 'doc-print', quantity: 20, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'single' }, fileUrl: 'https://cdn.prinzex.com/uploads/forms.pdf' },
-    ],
-    deliverySpeed: 'SAME_DAY', isRush: true, paymentMethod: 'razorpay', paymentStatus: 'paid',
-    specialInstructions: 'Call on arrival — gate security will hold the package.',
-  },
-  {
-    status: 'out_for_delivery', placedHoursAgo: 5, customerIndex: 3, sellerIndex: 2,
-    items: [
-      { serviceKey: 'lf-flex-banner', quantity: 3, specs: { paperType: 'Art paper 170gsm', size: 'A3', lamination: 'gloss' }, fileUrl: 'https://cdn.prinzex.com/uploads/poster.pdf' },
-      { serviceKey: 'spec-canvas', quantity: 50, specs: { paperType: 'Ivory 250gsm', size: '5x7in', envelope: true }, fileUrl: 'https://cdn.prinzex.com/uploads/invite.pdf' },
-    ],
-    deliverySpeed: 'EXPRESS', paymentMethod: 'cod', paymentStatus: 'pending',
-  },
-  {
-    status: 'ready_for_pickup', placedHoursAgo: 4, customerIndex: 4, sellerIndex: 1,
-    items: [
-      { serviceKey: 'doc-print', quantity: 10, specs: { size: 'A4', thickness: '125micron' } },
-    ],
-    deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'paid',
-  },
-  {
-    status: 'processing', placedHoursAgo: 2, customerIndex: 0, sellerIndex: 2,
-    items: [
-      { serviceKey: 'lf-flex-banner', quantity: 4, specs: { material: 'normal_flex', eyelets: true, dimensions: '2x3ft' }, fileUrl: 'https://cdn.prinzex.com/uploads/shop_banner.pdf' },
-    ],
-    deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'paid',
-  },
-  {
-    status: 'confirmed', placedHoursAgo: 24, customerIndex: 1, sellerIndex: 0,
-    items: [
-      { serviceKey: 'doc-print', quantity: 30, specs: { paperType: 'Bond 75gsm', size: 'A4', color: 'bw', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/notes.pdf' },
-    ],
-    deliverySpeed: 'PICKUP', paymentMethod: 'cod', paymentStatus: 'pending',
-  },
-  {
-    status: 'placed', placedHoursAgo: 1, customerIndex: 2, sellerIndex: 1,
-    items: [
-      { serviceKey: 'doc-print', quantity: 5, specs: { paperType: 'Glossy 120gsm', size: 'A4', color: 'colour', sides: 'single' } },
-    ],
-    deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'pending',
-  },
-  {
-    status: 'placed', placedHoursAgo: 0.5, customerIndex: 4, sellerIndex: 2,
-    items: [
-      { serviceKey: 'spec-canvas', quantity: 100, specs: { paperType: 'Metallic 300gsm', size: '5x7in', envelope: true }, fileUrl: 'https://cdn.prinzex.com/uploads/wedding_invite.pdf' },
-    ],
-    deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'pending',
-  },
-  {
-    status: 'cancelled', placedHoursAgo: 72, customerIndex: 3, sellerIndex: 0,
-    items: [
-      { serviceKey: 'spec-photo-prints', quantity: 1, specs: { paperType: 'Matte 300gsm', finish: 'spot_uv', sides: 'double' }, fileUrl: 'https://cdn.prinzex.com/uploads/old_card.ai' },
-    ],
-    deliverySpeed: 'STANDARD', paymentMethod: 'razorpay', paymentStatus: 'refunded',
-    cancelReason: 'Change in design requirements after placing the order',
-  },
-];
-
-function deliveryFeeFor(speed: OrderSeed['deliverySpeed']): number {
-  switch (speed) {
-    case 'PICKUP': return 0;
-    case 'SAME_DAY': return 80;
-    case 'EXPRESS': return 50;
-    default: return 30;
-  }
-}
-
-function estimatedHoursFor(speed: OrderSeed['deliverySpeed']): number {
-  switch (speed) {
-    case 'PICKUP': return 4;
-    case 'SAME_DAY': return 6;
-    case 'EXPRESS': return 12;
-    default: return 48;
-  }
-}
-
-async function seedOrders(
-  customers: CustomerWithAddresses[],
-  sellers: SellerWithServices[],
-) {
-  console.log('… creating 10 orders across statuses');
-  const approved = sellers.filter((s) => s.status === 'APPROVED');
-  const orders = [];
-
-  for (const seed of ORDER_SEEDS) {
-    const customer = customers[seed.customerIndex];
-    const seller = approved[seed.sellerIndex];
-    const address = customer.addresses.find((a) => a.isDefault) ?? customer.addresses[0];
-
-    const items = seed.items.map((item) => {
-      const service = seller.services.find((s) => s.serviceId === item.serviceKey);
-      if (!service) throw new Error(`Service ${item.serviceKey} missing for ${seller.storeName}`);
-      const unitPrice = Number(service.basePrice);
-      return {
-        sellerServiceId: service.id,
-        serviceName: service.serviceName,
-        quantity: item.quantity,
-        unitPrice,
-        total: Number((unitPrice * item.quantity).toFixed(2)),
-        specifications: item.specs,
-        fileUrl: item.fileUrl ?? null,
-      };
-    });
-
-    const subtotal = Number(items.reduce((sum, i) => sum + i.total, 0).toFixed(2));
-    const deliveryFee = deliveryFeeFor(seed.deliverySpeed);
-    const rushFee = seed.isRush ? 50 : 0;
-    const tax = Number((subtotal * 0.05).toFixed(2));
-    const discount = seed.discount ?? 0;
-    const total = Number((subtotal + deliveryFee + rushFee + tax - discount).toFixed(2));
-    const commissionAmount = Number((subtotal * 0.12).toFixed(2));
-    const isCancelled = seed.status === 'cancelled';
-
-    const order = await prisma.order.create({
-      data: {
-        customerId: customer.id,
-        sellerId: seller.id,
-        status: seed.status,
-        total,
-        subtotal,
-        deliveryFee,
-        rushFee,
-        tax,
-        discount,
-        commissionAmount,
-        deliverySpeed: seed.deliverySpeed,
-        deliveryAddress: {
-          label: address.label,
-          fullAddress: address.fullAddress,
-          city: address.city,
-          state: address.state,
-          pincode: address.pincode,
-          phone: address.phone,
-          lat: address.lat,
-          lng: address.lng,
-        },
-        estimatedDelivery: hoursFromNow(estimatedHoursFor(seed.deliverySpeed)),
-        specialInstructions: seed.specialInstructions ?? null,
-        couponCode: seed.couponCode ?? null,
-        paymentMethod: seed.paymentMethod ?? 'razorpay',
-        paymentStatus: seed.paymentStatus ?? 'pending',
-        paymentId: seed.paymentStatus === 'paid' || seed.paymentStatus === 'refunded' ? `pay_seed_${Math.round(seed.placedHoursAgo)}` : null,
-        isRush: seed.isRush ?? false,
-        cancelledAt: isCancelled ? hoursAgo(seed.placedHoursAgo - 1) : null,
-        cancelReason: seed.cancelReason ?? null,
-        createdAt: hoursAgo(seed.placedHoursAgo),
-        items: { create: items },
-      },
-      include: { items: true },
-    });
-    orders.push(order);
-  }
-  return orders;
-}
-
-async function seedDeliveries(
-  orders: Awaited<ReturnType<typeof seedOrders>>,
-  deliveryBoys: Awaited<ReturnType<typeof seedDeliveryBoys>>,
-) {
-  console.log('… creating deliveries for out_for_delivery / delivered orders');
-  // FK-safe assignment: out_for_delivery & delivered orders each get a Delivery row.
-  const assignment: Record<string, { boyIndex: number; status: string }> = {
-    delivered: { boyIndex: 0, status: 'delivered' },
-    out_for_delivery: { boyIndex: 0, status: 'out_for_delivery' },
-  };
-
-  let deliveredBoyCursor = 0;
-  for (const order of orders) {
-    const mapped = assignment[order.status];
-    if (!mapped) continue;
-
-    if (order.status === 'delivered') {
-      // spread delivered orders over boys 0 and 1
-      mapped.boyIndex = deliveredBoyCursor;
-      deliveredBoyCursor = (deliveredBoyCursor + 1) % 2;
-    }
-    const boy = deliveryBoys[mapped.boyIndex === 0 && order.status === 'out_for_delivery' ? 0 : mapped.boyIndex];
-    const chosenBoy = order.status === 'out_for_delivery' && orders.indexOf(order) === 3 ? deliveryBoys[2] : boy;
-
-    const isDelivered = order.status === 'delivered';
-    await prisma.delivery.create({
-      data: {
-        orderId: order.id,
-        deliveryBoyId: chosenBoy.id,
-        status: isDelivered ? 'delivered' : 'out_for_delivery',
-        pickedUpAt: hoursAgo(isDelivered ? 20 : 1),
-        deliveredAt: isDelivered ? hoursAgo(18) : null,
-        podPhotoUrl: isDelivered ? 'https://cdn.prinzex.com/pod/photo.jpg' : null,
-        podSignatureUrl: isDelivered ? 'https://cdn.prinzex.com/pod/signature.png' : null,
-        podOtp: '4821',
-        podOtpVerified: isDelivered,
-        earningsAmount: isDelivered ? Number(order.deliveryFee) + Number(order.rushFee) : 0,
-        notes: isDelivered ? 'Delivered to customer in person' : 'Package picked up from store',
-      },
-    });
-  }
-
-  // Backfill rider earning aggregates for the delivered seed deliveries so
-  // /api/delivery/earnings and pending balances demo realistically.
-  const deliveredRows = await prisma.delivery.findMany({
-    where: { status: 'delivered' },
-    select: { deliveryBoyId: true, earningsAmount: true },
-  });
-  const perBoy = new Map<string, { earnings: number; count: number }>();
-  for (const row of deliveredRows) {
-    if (!row.deliveryBoyId) continue;
-    const entry = perBoy.get(row.deliveryBoyId) ?? { earnings: 0, count: 0 };
-    entry.earnings += Number(row.earningsAmount);
-    entry.count += 1;
-    perBoy.set(row.deliveryBoyId, entry);
-  }
-  for (const [boyId, entry] of perBoy) {
-    await prisma.deliveryBoy.update({
-      where: { id: boyId },
-      data: { totalEarnings: entry.earnings, pendingEarnings: entry.earnings, totalDeliveries: entry.count },
-    });
-  }
-}
-
-// ─── 8. REVIEWS ────────────────────────────────────────────────────────────
-async function seedReviews(
-  orders: Awaited<ReturnType<typeof seedOrders>>,
-  deliveryBoys: Awaited<ReturnType<typeof seedDeliveryBoys>>,
-  sellers: SellerWithServices[],
-) {
-  console.log('… creating reviews for delivered orders');
-  const delivered = orders.filter((o) => o.status === 'delivered');
-
-  const [first, second] = delivered;
-  await prisma.review.create({
-    data: {
-      orderId: first.id,
-      customerId: first.customerId,
-      entityType: 'STORE',
-      entityId: first.sellerId,
-      overallRating: 5,
-      qualityRating: 5,
-      deliveryRating: 5,
-      communicationRating: 5,
-      valueRating: 4,
-      comment: 'Crisp colour prints and the business cards came out perfectly. Great experience!',
-      photoUrls: ['https://cdn.prinzex.com/reviews/cards.jpg'],
-      createdAt: hoursAgo(160),
-    },
-  });
-
-  await prisma.review.create({
-    data: {
-      orderId: second.id,
-      customerId: second.customerId,
-      entityType: 'DELIVERY_BOY',
-      entityId: deliveryBoys[1].id,
-      overallRating: 4,
-      qualityRating: 4,
-      deliveryRating: 4,
-      communicationRating: 4,
-      valueRating: 4,
-      comment: 'Thesis bound neatly and delivered ahead of time. Slight delay in pickup updates.',
-      photoUrls: [],
-      sellerReply: 'Thank you for the feedback — we have tightened our pickup scan process.',
-      sellerRepliedAt: hoursAgo(100),
-      createdAt: hoursAgo(110),
-    },
-  });
-
-  void sellers;
-}
 
 // ─── 9. COUPONS ────────────────────────────────────────────────────────────
 async function seedCoupons() {
@@ -985,17 +677,13 @@ async function seedCoupons() {
 // ─── 10. SUPPORT TICKETS ───────────────────────────────────────────────────
 async function seedSupportTickets(
   customers: CustomerWithAddresses[],
-  orders: Awaited<ReturnType<typeof seedOrders>>,
   adminId: string,
 ) {
   console.log('… creating 5 support tickets');
-  const deliveredOrder = orders.find((o) => o.status === 'delivered');
-  const cancelledOrder = orders.find((o) => o.status === 'cancelled');
 
   await prisma.supportTicket.create({
     data: {
       userId: customers[0].id,
-      orderId: deliveredOrder?.id,
       subject: 'Print quality issue with photos',
       category: 'QUALITY_ISSUE',
       priority: 'HIGH',
@@ -1031,7 +719,6 @@ async function seedSupportTickets(
   await prisma.supportTicket.create({
     data: {
       userId: customers[3].id,
-      orderId: cancelledOrder?.id,
       subject: 'Refund not received for cancelled order',
       category: 'PAYMENT_ISSUE',
       priority: 'HIGH',
@@ -1054,7 +741,6 @@ async function seedSupportTickets(
   await prisma.supportTicket.create({
     data: {
       userId: customers[2].id,
-      orderId: deliveredOrder?.id,
       subject: 'Need GST invoice for my order',
       category: 'OTHER',
       priority: 'LOW',
@@ -1083,15 +769,12 @@ async function main(): Promise<void> {
   const customers = await seedCustomers();
   const sellers = await seedSellers(admin.id);
   const deliveryBoys = await seedDeliveryBoys();
-  const orders = await seedOrders(customers, sellers);
-  await seedDeliveries(orders, deliveryBoys);
-  await seedReviews(orders, deliveryBoys, sellers);
   await seedCoupons();
-  await seedSupportTickets(customers, orders, admin.id);
+  await seedSupportTickets(customers, admin.id);
   await seedCatalog();
 
   console.log('✔ PostgreSQL seed complete:');
-  console.log(`   admins=1 customers=${customers.length} sellers=${sellers.length} deliveryBoys=${deliveryBoys.length} orders=${orders.length}`);
+  console.log(`   admins=1 customers=${customers.length} sellers=${sellers.length} deliveryBoys=${deliveryBoys.length} orders=0`);
 }
 
 main()
