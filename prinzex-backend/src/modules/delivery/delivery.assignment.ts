@@ -100,7 +100,7 @@ interface AssignSocketOrder {
   customer: { phone: string | null } | null;
 }
 
-/** delivery:assigned → the rider's /orders room (safe no-op when sockets down). */
+/** delivery.assigned → the rider's /orders room (safe no-op when sockets down). */
 function emitAssignedSocket(deliveryBoyId: string, deliveryId: string, order: AssignSocketOrder): void {
   const snapshot = order.deliveryAddress as { fullAddress?: string; phone?: string } | null;
   emitDeliveryAssigned(deliveryBoyId, {
