@@ -1,6 +1,7 @@
 import type { DeliverySpeed, Prisma } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { pickSlabRate } from './pricing.slabs';
+import { gstAmount, gstTaxableAmount } from './taxation';
 
 /**
  * Quote calculation, pricing constants, commission logic and coupon
@@ -74,8 +75,12 @@ export interface QuoteResult {
   subtotal: number;
   rushFee: number;
   deliveryFee: number;
-  /** GST on subtotal (rate from Settings → Platform; default 18%). */
+  /** GST charged (rate from Settings → Platform; default 18%). */
   tax: number;
+  /** The rupee base GST was computed on — subtotal + fees when gstOnFees. */
+  taxableAmount: number;
+  /** Whether delivery/rush/platform fees joined the taxable value. */
+  gstOnFees?: boolean;
   discount: number;
   /** Platform commission: subtotal * Seller.commissionRate. */
   commissionAmount: number;
@@ -376,8 +381,10 @@ export interface QuoteComputationInput {
   discount: number; // validated coupon discount (0 when none)
   /** Admin-configured flat platform fee (₹) — added LAST, after discount. */
   platformFee?: number;
-  /** GST fraction on subtotal (Settings → Platform; default GST_RATE). */
+  /** GST fraction (Settings → Platform; default GST_RATE). */
   gstRate?: number;
+  /** Fees join the taxable value? (Settings → Platform; default true — gap #9). */
+  gstOnFees?: boolean;
   /** Per-speed delivery charge (Settings → Platform; default DELIVERY_FEES). */
   deliveryFees?: Record<DeliverySpeed, number>;
   sellerMetadata?: Prisma.JsonValue | null;
@@ -552,12 +559,16 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
 
   const rushFee = RUSH_FEES[input.deliverySpeed];
   const deliveryFee = (input.deliveryFees ?? DELIVERY_FEES)[input.deliverySpeed];
-  const tax = round2(subtotal * (input.gstRate ?? GST_RATE));
-  const commissionAmount = round2(subtotal * input.commissionRate);
   // Platform fee rides on top after the discount — it is platform revenue,
   // never seller earnings (netOrderEarnings excludes it) and, by default,
   // never wallet-payable (see utils/platformFee.walletCoverableMax).
   const platformFee = round2(input.platformFee ?? 0);
+  // GST (gap #9): fees join the taxable value by default — the decision lives
+  // in orders/taxation.ts and the admin can flip it under Settings → Platform.
+  const gstOnFees = input.gstOnFees !== false; // default true (undefined ⇒ true)
+  const taxableAmount = gstTaxableAmount({ subtotal, rushFee, deliveryFee, platformFee, gstOnFees });
+  const tax = gstAmount(taxableAmount, input.gstRate ?? GST_RATE);
+  const commissionAmount = round2(subtotal * input.commissionRate);
   const total = round2(subtotal + rushFee + deliveryFee + tax - input.discount + platformFee);
   // Spine width estimate: sheets (2 pages each) × paper caliper. Hard
   // binding needs ≥2 mm of spine; thermal tape grip ≥4 mm, glued paperback
@@ -611,6 +622,8 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
     rushFee,
     deliveryFee,
     tax,
+    taxableAmount,
+    gstOnFees,
     discount: round2(input.discount),
     commissionAmount,
     platformFee,

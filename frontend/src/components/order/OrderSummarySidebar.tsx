@@ -46,6 +46,9 @@ export default function OrderSummarySidebar({
       value: cost.deliveryFee,
       display: cost.deliveryFee === 0 ? 'Free' : undefined,
     },
+    ...(typeof cost.taxableAmount === 'number' && cost.taxableAmount !== cost.subtotal
+      ? [{ label: 'Taxable value', value: cost.taxableAmount, className: 'text-slate-500' }]
+      : []),
     { label: `GST (${gstRatePercent}%)`, value: cost.tax },
     ...((cost.platformFee ?? 0) > 0 ? [{ label: 'Platform fee', value: cost.platformFee! }] : []),
     ...(cost.discount > 0

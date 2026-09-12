@@ -3,14 +3,16 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOrderById } from '@/lib/api/orders';
+import { downloadOrderInvoice, fetchOrderById } from '@/lib/api/orders';
 import OrderStatusBadge from '@/components/dashboard/OrderStatusBadge';
 import OrderTimeline from '@/components/dashboard/OrderTimeline';
 import ReviewModal from '@/components/dashboard/ReviewModal';
+import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import {
   IconAlertCircle,
   IconArrowLeft,
+  IconDownload,
   IconPhone,
   IconStore,
   IconTruck,
@@ -26,11 +28,25 @@ export default function OrderDetailPage({
   // `params` is a Promise in Next.js 15 — `use()` unwraps it in a Client Component.
   const { orderId } = use(params);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+  const { showToast } = useToast();
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['dashboard-orders', orderId],
     queryFn: () => fetchOrderById(orderId),
   });
+
+  const handleDownloadInvoice = async () => {
+    setDownloadingInvoice(true);
+    try {
+      await downloadOrderInvoice(orderId);
+      showToast('GST invoice downloaded');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not download invoice', 'error');
+    } finally {
+      setDownloadingInvoice(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -108,6 +124,15 @@ export default function OrderDetailPage({
               <dd className="text-lg font-bold text-slate-900">{formatCurrency(order.total)}</dd>
             </div>
           </dl>
+          <button
+            type="button"
+            onClick={handleDownloadInvoice}
+            disabled={downloadingInvoice}
+            className="btn-secondary mt-4 w-full justify-center"
+          >
+            <IconDownload className="h-4 w-4" />
+            {downloadingInvoice ? 'Preparing invoice…' : 'Download GST invoice'}
+          </button>
         </div>
 
         <div className="card flex flex-col p-5">

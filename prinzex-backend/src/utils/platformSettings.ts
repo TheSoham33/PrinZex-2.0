@@ -15,8 +15,11 @@ export type DeliverySpeedKey = 'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP';
 export const SPEED_KEYS: readonly DeliverySpeedKey[] = ['STANDARD', 'EXPRESS', 'SAME_DAY', 'PICKUP'];
 
 export interface PlatformSettingsValues {
-  /** GST on the order subtotal, in percent (India slabs cap at 28). */
+  /** GST rate, in percent (India slabs cap at 28). */
   gstRatePercent: number;
+  /** Whether delivery/rush/platform fees join the GST taxable value (gap #9).
+   *  true (default) = GST on subtotal + fees; false = subtotal only. */
+  gstOnFees: boolean;
   /** Customer-facing delivery charge per speed, in ₹. */
   deliveryFees: Record<DeliverySpeedKey, number>;
   /** Quoted delivery promise per speed, in hours. */
@@ -34,6 +37,7 @@ export interface PlatformSettingsValues {
 /** Code fallbacks — identical to the values that were previously hardcoded. */
 export const PLATFORM_SETTING_DEFAULTS: PlatformSettingsValues = {
   gstRatePercent: 18,
+  gstOnFees: true,
   deliveryFees: { STANDARD: 0, EXPRESS: 50, SAME_DAY: 120, PICKUP: 0 },
   deliveryEtaHours: { STANDARD: 48, EXPRESS: 12, SAME_DAY: 6, PICKUP: 4 },
   assignRadiusKm: 10,
@@ -118,6 +122,9 @@ export function platformValuesFromMetadata(metadata: SettingsMetadata): Platform
     gstRatePercent:
       parseBoundedNumber(metadata.gstRatePercent, SETTING_BOUNDS.gstRatePercent.min, SETTING_BOUNDS.gstRatePercent.max) ??
       DEFAULTS.gstRatePercent,
+    // Boolean toggle: a settings doc predating the key keeps the NEW policy
+    // (fees taxable) — the default is the decision, not merely a fallback.
+    gstOnFees: metadata.gstOnFees === undefined ? DEFAULTS.gstOnFees : metadata.gstOnFees === true,
     deliveryFees: mergeSpeedMap(metadata.deliveryFees, DEFAULTS.deliveryFees, SETTING_BOUNDS.deliveryFee),
     deliveryEtaHours: mergeSpeedMap(metadata.deliveryEtaHours, DEFAULTS.deliveryEtaHours, SETTING_BOUNDS.deliveryEtaHours),
     assignRadiusKm:
@@ -164,6 +171,7 @@ export async function getPlatformSettingsValues(): Promise<PlatformSettingsValue
 }
 
 export const getGstRate = async (): Promise<number> => (await getPlatformSettingsValues()).gstRatePercent / 100;
+export const getGstOnFees = async (): Promise<boolean> => (await getPlatformSettingsValues()).gstOnFees;
 export const getDeliveryFees = async (): Promise<Record<DeliverySpeedKey, number>> => (await getPlatformSettingsValues()).deliveryFees;
 export const getDeliveryEtaHours = async (): Promise<Record<DeliverySpeedKey, number>> => (await getPlatformSettingsValues()).deliveryEtaHours;
 export const getAssignRadiusKm = async (): Promise<number> => (await getPlatformSettingsValues()).assignRadiusKm;

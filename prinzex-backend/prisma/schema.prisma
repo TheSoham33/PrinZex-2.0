@@ -432,6 +432,11 @@ model Order {
   deliveryFee       Decimal       @default(0) @db.Decimal(10, 2)
   rushFee           Decimal       @default(0) @db.Decimal(10, 2)
   tax               Decimal       @default(0) @db.Decimal(10, 2)
+  // GST snapshot for the order invoice (gap #9): the rupee base GST was
+  // computed on and the rate used, so the invoice reproduces exactly what the
+  // customer was charged even after the admin retunes settings later.
+  taxableAmount     Decimal       @default(0) @db.Decimal(10, 2)
+  gstRatePercent    Decimal       @default(0) @db.Decimal(10, 2)
   discount          Decimal       @default(0) @db.Decimal(10, 2)
   commissionAmount  Decimal       @default(0) @db.Decimal(10, 2)
   deliverySpeed     DeliverySpeed
