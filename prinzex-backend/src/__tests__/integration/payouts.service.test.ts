@@ -22,8 +22,9 @@ import type { CreateOrderInput } from '../../modules/orders/orders.schema';
 import { NotificationModel } from '../../models/mongo/Notification.model';
 
 const ADMIN_META = { adminId: 'integration-test-admin' };
-/** Net earnings per delivered 50-page order: 118 − 11.8 commission = 106.2. */
-const NET_PER_ORDER = 106.2;
+/** Net earnings per delivered 50-page order: 118 − 10 commission (10% of the
+ *  ₹100 subtotal) = 108. */
+const NET_PER_ORDER = 108;
 
 let sellerId: string;
 let customerId: string;
