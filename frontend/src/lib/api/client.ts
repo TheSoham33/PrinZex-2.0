@@ -46,9 +46,12 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
     if (endpoint.startsWith('/admin')) {
       token = state.adminAuth.accessToken || state.auth.accessToken;
     } else if (endpoint.startsWith('/seller')) {
-      // Special case: Onboarding routes use the customer token
+      // Onboarding routes use the customer token. The shared document lane
+      // (/seller/register/documents + /status) is ALSO the seller-settings KYC
+      // self-service, where only a SELLER token exists — the backend accepts
+      // both, so fall back to the seller token.
       if (endpoint.startsWith('/seller/register')) {
-        token = state.auth.accessToken;
+        token = state.auth.accessToken || state.sellerAuth.accessToken;
       } else {
         token = state.sellerAuth.accessToken || state.auth.accessToken;
       }
@@ -79,8 +82,11 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
         const { adminLogout } = await import('@/store/slices/adminAuthSlice');
         store.dispatch(adminLogout());
       } else if (endpoint.startsWith('/seller')) {
-        // Special case: onboarding uses customer token
-        if (endpoint.startsWith('/seller/register')) {
+        // Onboarding (/seller/register with a customer token) clears the
+        // customer session; everything else — including the KYC self-service
+        // carrying a seller token — clears the seller session.
+        const state = store.getState() as RootState;
+        if (endpoint.startsWith('/seller/register') && !state.sellerAuth.accessToken) {
           store.dispatch(logout());
         } else {
           const { sellerLogout } = await import('@/store/slices/sellerAuthSlice');

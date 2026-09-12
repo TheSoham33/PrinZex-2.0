@@ -10,11 +10,12 @@ import {
   updateNotificationSettings
 } from '@/lib/api/seller-settings';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
+import SellerKycSection from '@/components/seller-dashboard/SellerKycSection';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { BUSINESS_TYPES, type BusinessType } from '@/lib/seller-types';
 import { IconAlertCircle, IconPlus, IconX, IconRefreshCw } from '@/components/icons';
 
-const TABS = ['Store info', 'Service hours', 'Delivery radius', 'Notifications'] as const;
+const TABS = ['Store info', 'Service hours', 'Delivery radius', 'Notifications', 'KYC documents'] as const;
 type Tab = (typeof TABS)[number];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -293,7 +294,7 @@ export default function SellerSettingsPage() {
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Settings</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Manage your store profile, hours and delivery area.
+          Manage your store profile, hours, delivery area and verification documents.
         </p>
       </header>
 
@@ -667,6 +668,8 @@ export default function SellerSettingsPage() {
           </button>
         </form>
       )}
+
+      {tab === 'KYC documents' && <SellerKycSection />}
     </div>
   );
 }
