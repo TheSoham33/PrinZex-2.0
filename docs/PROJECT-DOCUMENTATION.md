@@ -288,6 +288,7 @@ Single MongoDB `settings` document; public read endpoint `GET /api/content/setti
 
 - Seeds: 3 approved + 1 pending seller in Kolkata, 3 riders, 5 customers, coupons, settings — all wiped & recreated idempotently (`check-seed-wipe.ts`).
 - 24 runnable check scripts guard pricing, geo coverage, settings parity, phone canonicalisation, uploads.
+- **JWT `jti` (2026-09-12)**: every access/refresh token now carries a random `jti` — before, two token pairs issued for the same user within one second were byte-identical and the second `refreshToken.create` failed the UNIQUE constraint (P2002). Found by the new auth integration test; previously live in register→login-immediately and concurrent-device logins.
 
 ---
 
