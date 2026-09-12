@@ -1,4 +1,5 @@
-import { ActivityLogModel } from '../../../models/mongo/ActivityLog.model';
+import { type FilterQuery } from 'mongoose';
+import { ActivityLogModel, type IActivityLog } from '../../../models/mongo/ActivityLog.model';
 import { buildPaginatedResponse, type PaginatedResponse } from '../../../utils/pagination';
 
 export interface LogsQuery {
@@ -10,8 +11,8 @@ export interface LogsQuery {
   limit: number;
 }
 
-export async function listLogs(query: LogsQuery): Promise<PaginatedResponse<any>> {
-  const filter: any = {};
+export async function listLogs(query: LogsQuery): Promise<PaginatedResponse<IActivityLog>> {
+  const filter: FilterQuery<IActivityLog> = {};
   
   if (query.adminId) filter.adminId = query.adminId;
   if (query.entityType) filter.entityType = query.entityType;

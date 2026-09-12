@@ -333,6 +333,37 @@ export async function validateCoupon(
 
 // ── Quote calculation ──────────────────────────────────────────────────────
 
+/** Seller pricing overrides extracted from `seller.metadata` JSON — mirrors
+ *  `SellerMetadata['pricingOverrides']` (seller.service) plus the legacy
+ *  `colorOption` add-on kept as a fallback for older metadata. */
+interface SellerPricingOverrides {
+  /** Seller-wide per-page rates, common across all page services. */
+  pageRate?: { bw: number; color: number };
+  /** Legacy per-page add-ons — fallback when pageRate is absent. */
+  colorOption?: { bw: number; color: number };
+  staplingOptions?: Record<string, number>;
+  filmThicknessOptions?: Record<string, number>;
+  photoTypeOptions?: Record<string, Record<string, number>>;
+  coverType?: Record<string, number>;
+  coilType?: Record<string, number>;
+  coverColor?: Record<string, number>;
+  twinLoopOptions?: {
+    wireColors?: Record<string, number>;
+    frontCovers?: Record<string, number>;
+    backCovers?: Record<string, number>;
+    hangerPrice?: number;
+    concealedPrice?: number;
+  };
+  servicePaperOptions?: Record<
+    string,
+    {
+      paperTypes?: Record<string, number>;
+      paperSizes?: Record<string, number>;
+    }
+  >;
+  quantitySlabs?: Record<string, { qty: number; rate: number }[]>;
+}
+
 export interface QuoteComputationInput {
   basePrice: number; // SellerService.basePrice
   unit: string;
@@ -360,9 +391,12 @@ export function computeQuote(input: QuoteComputationInput): QuoteResult {
   const { specifications, sellerMetadata, unit } = input;
 
   // Extract overrides from metadata if they exist
-  let overrides: any = {};
+  let overrides: SellerPricingOverrides = {};
   if (sellerMetadata && typeof sellerMetadata === 'object' && !Array.isArray(sellerMetadata)) {
-    overrides = (sellerMetadata as any).pricingOverrides || {};
+    const extracted = (sellerMetadata as Record<string, unknown>).pricingOverrides;
+    if (extracted && typeof extracted === 'object' && !Array.isArray(extracted)) {
+      overrides = extracted as SellerPricingOverrides;
+    }
   }
 
   // Document Printing stapling is a dedicated mandatory spec: the seller's

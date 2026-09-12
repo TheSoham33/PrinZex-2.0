@@ -4,6 +4,7 @@ import { ApiResponse } from '../../utils/ApiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
 import type { SellerTokenPayload } from '../../utils/jwt';
 import * as sellerService from './seller.service';
+import type { SellerMetadata } from './seller.service';
 import type {
   AnalyticsQuery,
   BulkDiscountsInput,
@@ -244,7 +245,7 @@ export const updateStoreHours = asyncHandler(async (req, res) => {
 });
 
 export const updatePricingOverrides = asyncHandler(async (req, res) => {
-  const { overrides } = req.body as { overrides: any };
+  const { overrides } = req.body as { overrides: SellerMetadata['pricingOverrides'] };
   const result = await sellerService.updatePricingOverrides(sellerId(req), overrides);
   res.status(200).json(new ApiResponse(200, result, 'Pricing add-ons updated'));
 });

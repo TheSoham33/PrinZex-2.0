@@ -36,7 +36,6 @@ import {
 import {
   FILM_THICKNESS_PRICES,
   PHOTO_SHEET_COUNTS,
-  PHOTO_TYPE_PRICES,
   STAPLING_OPTION_PRICES,
   preferredPhotoCount,
   computeQuote,
