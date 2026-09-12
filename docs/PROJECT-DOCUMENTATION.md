@@ -382,7 +382,7 @@ Tests (backend, from `prinzex-backend/`):
 
 ```bash
 npm test                                  # unit tests — no services needed
-docker compose up -d postgres redis       # integration tests need these two
+docker compose up -d postgres redis mongodb   # integration tests need these
 npm run test:integration                  # builds + drops its own schema
 ```
 
