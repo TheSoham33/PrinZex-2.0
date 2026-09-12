@@ -224,33 +224,6 @@ describe('createOrder (integration — wallet money path)', () => {
     expect(Number(after.balance)).toBe(Number(before.balance)); // untouched
   });
 
-  test('DIAG: guarded debit when balance exactly equals the amount', async () => {
-    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: walletId } });
-    const desired = Number(wallet.balance); // exactly the current balance
-    const debit = await prisma.wallet.updateMany({
-      where: { id: wallet.id, balance: { gte: desired } },
-      data: { balance: { decrement: desired } },
-    });
-    console.error(`DIAG equal-debit: balance=${wallet.balance} desired=${desired} count=${debit.count}`);
-    if (debit.count > 0) {
-      await prisma.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { increment: desired } },
-      });
-    }
-    const below = await prisma.wallet.updateMany({
-      where: { id: wallet.id, balance: { gte: desired - 0.01 } },
-      data: { balance: { decrement: desired - 0.01 } },
-    });
-    console.error(`DIAG below-debit: gte=${desired - 0.01} count=${below.count}`);
-    if (below.count > 0) {
-      await prisma.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { increment: desired - 0.01 } },
-      });
-    }
-  });
-
   test('partial wallet on upi: wallet settles its balance, gateway owes the rest, seller not notified yet', async () => {
     const notificationsBefore = await NotificationModel.countDocuments({
       recipientId: sellerId,
@@ -258,18 +231,16 @@ describe('createOrder (integration — wallet money path)', () => {
     });
 
     // Balance 76.4 vs total 118 → wallet pays 76.4, gateway owes 41.6.
-    const walletBefore = await prisma.wallet.findUniqueOrThrow({ where: { id: walletId } });
-    const input = orderInput({
-      specifications: { ...baseSpecs, totalPages: 50 },
-      paymentMethod: 'upi',
-      useWallet: true,
-    });
-    console.error(
-      `DIAG before: balance=${walletBefore.balance} input.paymentMethod=${input.paymentMethod} input.useWallet=${input.useWallet}`,
-    );
-    const { order } = await ordersService.createOrder(customerId, input);
-    console.error(
-      `DIAG after: walletAmount=${order.walletAmount} total=${order.total} status=${order.paymentStatus} method=${order.paymentMethod}`,
+    // (Also the exact-equality regression for the guarded debit: the wallet's
+    // whole balance is taken — min(76.4, coverableMax) — which the old
+    // double-based gte filter silently failed to match.)
+    const { order } = await ordersService.createOrder(
+      customerId,
+      orderInput({
+        specifications: { ...baseSpecs, totalPages: 50 },
+        paymentMethod: 'upi',
+        useWallet: true,
+      }),
     );
 
     expect(order.paymentStatus).toBe('pending'); // gateway capture still owed
@@ -284,6 +255,22 @@ describe('createOrder (integration — wallet money path)', () => {
     expect(
       await NotificationModel.countDocuments({ recipientId: sellerId, type: 'new_order' }),
     ).toBe(notificationsBefore);
+  });
+
+  test('full wallet payment succeeds when the balance exactly equals the total', async () => {
+    // Regression: the guarded debit compared a JS double against the NUMERIC
+    // balance — at exact equality the double's binary-expansion epsilon made
+    // `gte` false, so a wallet holding EXACTLY the order total was rejected
+    // with "Insufficient wallet balance — need ₹X, have ₹X" (and partial
+    // wallet orders silently skipped the wallet debit).
+    await topUp(23.6); // balance 0 after the partial test → exactly ₹23.60
+
+    const { order } = await ordersService.createOrder(customerId, orderInput());
+    expect(order.paymentStatus).toBe('paid');
+    expect(order.paymentMethod).toBe('wallet');
+    expect(Number(order.walletAmount)).toBe(23.6);
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: walletId } });
+    expect(Number(wallet.balance)).toBe(0);
   });
 
   test("another customer's delivery address is rejected with 404", async () => {

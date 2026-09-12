@@ -1,4 +1,7 @@
-import type { Order, Prisma } from '@prisma/client';
+import type { Order } from '@prisma/client';
+// Value import: Prisma.Decimal is used for exact NUMERIC arithmetic in the
+// wallet's guarded debit (see createOrder).
+import { Prisma } from '@prisma/client';
 import { logger } from '../../config/logger';
 import { prisma } from '../../config/database';
 import { REDIS_KEYS, REDIS_TTL } from '../../config/redis';
@@ -718,12 +721,20 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
           ? quote.total
           : roundMoney(Math.min(Number(wallet.balance), coverableMax));
         if (desired > 0) {
+          // Exact Decimal arithmetic: the query engine compares a JS double
+          // against the NUMERIC balance via its binary expansion, so at EXACT
+          // equality (balance == amount) the double's epsilon makes `gte`
+          // false and the guarded debit matches zero rows — a wallet balance
+          // of exactly ₹76.40 failed against a desired debit of ₹76.4
+          // (found by the order integration suite). Compare and decrement in
+          // Decimal space; toFixed(2) keeps every paisa unambiguous.
+          const desiredDecimal = new Prisma.Decimal(desired.toFixed(2));
           // Guarded debit: the "balance >= amount" condition holds ATOMICALLY
           // at write time, so a concurrent spend (e.g. two cart orders placed
           // together) can never push the wallet negative.
           let debit = await tx.wallet.updateMany({
-            where: { id: wallet.id, balance: { gte: desired } },
-            data: { balance: { decrement: desired } },
+            where: { id: wallet.id, balance: { gte: desiredDecimal } },
+            data: { balance: { decrement: desiredDecimal } },
           });
           let contribution = desired;
           if (debit.count === 0) {
@@ -737,9 +748,10 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
             const fresh = await tx.wallet.findUniqueOrThrow({ where: { id: wallet.id } });
             contribution = roundMoney(Math.min(Number(fresh.balance), coverableMax));
             if (contribution > 0) {
+              const contributionDecimal = new Prisma.Decimal(contribution.toFixed(2));
               debit = await tx.wallet.updateMany({
-                where: { id: wallet.id, balance: { gte: contribution } },
-                data: { balance: { decrement: contribution } },
+                where: { id: wallet.id, balance: { gte: contributionDecimal } },
+                data: { balance: { decrement: contributionDecimal } },
               });
               if (debit.count === 0) contribution = 0; // raced twice — gateway pays all
             }
