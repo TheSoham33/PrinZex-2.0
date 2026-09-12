@@ -355,6 +355,8 @@ Frontend (`frontend/scripts/`): 10 mirrors for order-draft, duplex, binding cove
 
 CI gates used during development: backend `tsc --noEmit` baseline (153 pre-existing Prisma-client errors — compare, never regress), frontend `tsc --noEmit` clean, `next lint` ≤ 336 warnings.
 
+**These gates are now enforced in CI** (`.github/workflows/ci.yml`, added 2026-09-12): two GitHub Actions jobs (backend, frontend) run on every PR and on pushes to `main` — install (`npm ci`) → `tsc --noEmit` → lint → every `scripts/check-*` script (auto-discovered; a new check script joins the gate with no workflow edit). The backend job runs `prisma generate` before `tsc`, which eliminates the old "baseline" Prisma-client errors entirely — they were an artifact of typechecking without a generated client, so the gate is a true zero-error gate, not a diff-against-baseline. Turn the jobs into required status checks on `main` to block regressions from merging.
+
 ---
 
 ## 14. Local Runbook

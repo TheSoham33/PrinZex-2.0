@@ -44,7 +44,7 @@ export async function getCatalogEntry(key: string): Promise<CatalogEntry> {
 /** Admin replace: validate the group's schema, then upsert the whole row. */
 export async function replaceCatalogEntry(
   key: string,
-  input: { label?: string; data: unknown },
+  input: { label?: string; data?: unknown },
 ): Promise<CatalogEntry> {
   const group = DEFAULT_CATALOG[key];
   if (!group) {

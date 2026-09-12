@@ -298,12 +298,20 @@ function toTemplate(doc: IContent & { _id: unknown }): TemplateDto {
   };
 }
 
+/** Template create/update bodies (admin content routes). */
+export interface TemplateInput {
+  name?: string;
+  category?: string;
+  color?: string;
+  isActive?: boolean;
+}
+
 export async function listTemplates(): Promise<TemplateDto[]> {
   const docs = await ContentModel.find({ type: 'template' }).sort({ createdAt: -1 }).lean();
   return docs.map((doc) => toTemplate(doc));
 }
 
-export async function createTemplate(adminId: string, input: any): Promise<TemplateDto> {
+export async function createTemplate(adminId: string, input: TemplateInput): Promise<TemplateDto> {
   const doc = await ContentModel.create({
     type: 'template',
     title: input.name,
@@ -318,7 +326,11 @@ export async function createTemplate(adminId: string, input: any): Promise<Templ
   return toTemplate(doc);
 }
 
-export async function updateTemplate(adminId: string, id: string, input: any): Promise<TemplateDto> {
+export async function updateTemplate(
+  adminId: string,
+  id: string,
+  input: TemplateInput,
+): Promise<TemplateDto> {
   assertObjectId(id, 'Template');
   const doc = await ContentModel.findOneAndUpdate(
     { _id: id, type: 'template' },
