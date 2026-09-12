@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import jwt, { JsonWebTokenError, type SignOptions } from 'jsonwebtoken';
 import { env } from '../config/env';
 
@@ -49,11 +50,15 @@ const refreshOptions: SignOptions = {
 };
 
 export function generateAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, env.JWT_ACCESS_SECRET, accessOptions);
+  // jwtid: every issued token is unique even for an identical payload in the
+  // same second — RefreshToken.token has a UNIQUE constraint, and without a
+  // jti two same-second sessions (or a login racing a refresh) collide with
+  // P2002 on the persisted token value.
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, { ...accessOptions, jwtid: randomUUID() });
 }
 
 export function generateRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, refreshOptions);
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { ...refreshOptions, jwtid: randomUUID() });
 }
 
 export function verifyAccessToken(token: string): TokenPayload {

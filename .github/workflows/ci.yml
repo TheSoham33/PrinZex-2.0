@@ -1,7 +1,11 @@
 # CI — the quality gates from the docs (section: Verification & Quality
 # Gates), enforced on every PR (and after merges to main):
 #
-#   install → tsc --noEmit → lint → all check scripts
+#   install → tsc --noEmit → lint → all check scripts → jest
+#
+# Three jobs: backend (typecheck + lint + check scripts + unit tests),
+# backend-integration (jest against a disposable Postgres schema + Redis
+# service containers), frontend (typecheck + lint + check scripts).
 #
 # The check scripts are self-contained by design (pg-mem, mock servers,
 # pure functions) — no databases or sidecars are needed. The backend's
@@ -67,6 +71,76 @@ jobs:
             echo "::endgroup::"
           done
           exit $status
+
+      - name: Unit tests (jest)
+        run: npm test
+
+  backend-integration:
+    name: Backend — integration tests (disposable Postgres schema)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: prinzex-backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: prinzex_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: prinzex-backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # The suite builds its own disposable schema (CREATE SCHEMA +
+      # migrate deploy), runs against it, and drops it in the teardown —
+      # see test/integration-global-setup.ts. Failures are echoed as
+      # workflow annotations so the error text is visible from the API
+      # even when full logs are inconvenient to fetch.
+      - name: Integration tests (jest)
+        run: |
+          set -o pipefail
+          status=0
+          npm run test:integration 2>&1 | tee /tmp/integration.log || status=1
+          if [ "$status" -ne 0 ]; then
+            grep -aE "●|✕|Expected|Received|Error:|FAIL |Tests:" /tmp/integration.log \
+              | head -60 | sed 's/^/::error::/' || true
+          fi
+          exit $status
+        env:
+          INTEGRATION_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/prinzex_ci
 
   frontend:
     name: Frontend — typecheck, lint, check scripts

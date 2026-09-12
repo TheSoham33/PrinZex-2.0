@@ -27,7 +27,8 @@
     "test": "jest",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f"
+    "docker:logs": "docker-compose logs -f",
+    "test:integration": "jest --config jest.integration.config.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
