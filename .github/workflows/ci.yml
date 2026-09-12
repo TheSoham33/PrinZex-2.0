@@ -126,9 +126,19 @@ jobs:
 
       # The suite builds its own disposable schema (CREATE SCHEMA +
       # migrate deploy), runs against it, and drops it in the teardown —
-      # see test/integration-global-setup.ts.
+      # see test/integration-global-setup.ts. Failures are echoed as
+      # workflow annotations so the error text is visible from the API
+      # even when full logs are inconvenient to fetch.
       - name: Integration tests (jest)
-        run: npm run test:integration
+        run: |
+          set -o pipefail
+          status=0
+          npm run test:integration 2>&1 | tee /tmp/integration.log || status=1
+          if [ "$status" -ne 0 ]; then
+            grep -aE "●|✕|Expected|Received|Error:|FAIL |Tests:" /tmp/integration.log \
+              | head -60 | sed 's/^/::error::/' || true
+          fi
+          exit $status
         env:
           INTEGRATION_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/prinzex_ci
 
