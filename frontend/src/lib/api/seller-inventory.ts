@@ -1,0 +1,69 @@
+import { get, getList, patch } from './client';
+import { normalizeServiceName } from './mappers';
+
+export const fetchInventory = async (params: any = {}): Promise<any[]> => get('/seller/inventory', params);
+
+export const fetchPayouts = async (params: any = {}): Promise<any[]> => getList('/seller/payouts', params);
+
+export interface PricingInfo {
+  services: any[];
+  bulkDiscountTiers: any[];
+}
+
+export const fetchSellerPricing = async (): Promise<PricingInfo> => {
+  const res = await get<PricingInfo>('/seller/pricing');
+  // Older DB rows may still carry the pre-rename service label; show the
+  // canonical name (e.g. "Hard Binding / Thesis Binding").
+  return {
+    ...res,
+    services: (res.services ?? []).map((service) => ({
+      ...service,
+      serviceName: normalizeServiceName(service.serviceId, service.serviceName),
+    })),
+  };
+};
+
+export const updateBulkPrices = async (prices: Array<{ serviceId: string; basePrice: number; unit: string; minQuantity?: number; minPages?: number | null }>): Promise<any> => patch('/seller/pricing/bulk', prices);
+
+export const updateBulkDiscounts = async (tiers: Array<{ minQty: number; discountPct: number }>): Promise<any> => patch('/seller/pricing/bulk-discounts', { tiers });
+
+export const updatePricingOverrides = async (overrides: {
+  pageRate?: { bw: number; color: number };
+  documentColorModes?: { bw: boolean; color: boolean };
+  staplingOptions?: Record<string, number>;
+  filmThicknessOptions?: Record<string, number>;
+  /** Photo Print checklist: type → photos-per-sheet → ₹ per sheet.
+   *  Omitted key = platform defaults. */
+  photoTypeOptions?: Record<string, Record<string, number>>;
+  coverType?: Record<string, number>;
+  coilType?: Record<string, number>;
+  coverColor?: Record<string, number>;
+  hardCoverColors?: string[];
+  hardFoilColors?: string[];
+  tapeColors?: string[];
+  servicePaperOptions?: Record<
+    string,
+    {
+      paperTypes?: Record<string, number>;
+      paperSizes?: Record<string, number>;
+    }
+  >;
+  twinLoopOptions?: {
+    wireColors?: Record<string, number>;
+    frontCovers?: Record<string, number>;
+    backCovers?: Record<string, number>;
+    hangerPrice?: number;
+    concealedPrice?: number;
+  };
+  quantitySlabs?: Record<string, { qty: number; rate: number }[]>;
+}): Promise<any> => patch('/seller/settings/pricing-overrides', { overrides });
+
+export const fetchSellerReviews = async (): Promise<any[]> => {
+  // Reviews are currently under admin or public, but let's check if there's a seller specific one.
+  // Actually, we don't have a seller-specific review list endpoint yet.
+  return [];
+};
+
+export const fetchTeam = async (): Promise<any[]> => {
+  return get<any[]>('/seller/team');
+};

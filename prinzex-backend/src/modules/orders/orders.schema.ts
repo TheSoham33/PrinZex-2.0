@@ -1,0 +1,214 @@
+import { z } from 'zod';
+import { MAX_FILES_PER_ORDER } from '../catalog/catalog.schemas';
+import { ORDER_STATUSES } from '../../types';
+
+/**
+ * Order module request schemas — customer order flow + admin order ops.
+ *
+ * Prices are NEVER accepted from the client: every money field is computed
+ * server-side from the quote calculator in orders.helpers.
+ */
+
+const DELIVERY_SPEEDS = ['STANDARD', 'EXPRESS', 'SAME_DAY', 'PICKUP'] as const;
+
+export const specificationsSchema = z.object({
+  paperType: z.string().trim().min(1),
+  size: z.string().trim().min(1),
+  colorOption: z.enum(['color', 'bw', 'mixed']),
+  // Document printing: duplex choice for the print operator (pricing stays
+  // per-page; a page is one side).
+  printSides: z.enum(['single', 'double']).optional(),
+  // Document printing: mandatory stapling choice ('loose' = free default).
+  // String (not enum) — the option list is admin-catalogue managed.
+  stapling: z.string().optional(),
+  // Lamination: mandatory film thickness ('micron-80' = free default).
+  // String (not enum) — the option list is admin-catalogue managed.
+  filmThickness: z.string().optional(),
+  // Photo Print: mandatory photo type + photos-per-sheet layout. String for
+  // the same catalogue reason; the exact count set lives in the
+  // 'photo-layouts' catalogue (admin-managed) and is validated per store in
+  // orders.service (never trusted blindly) — here just block absurd payloads.
+  photoType: z.string().optional(),
+  photosPerSheet: z.number().int().min(2).max(60).optional(),
+  // Page count auto-detected from the uploaded PDF. Drives per-page pricing
+  // and must flow through so removing/replacing the file updates the quote.
+  totalPages: z.number().int().min(0).optional(),
+  // "1, 5, 10-15" — pages printed in colour when colorOption === 'mixed'.
+  colorPages: z.string().optional(),
+  // Binding-specific attributes — drive the split page/binding pricing.
+  coverType: z.string().optional(),
+  spiralType: z.string().optional(),
+  coverColor: z.string().optional(),
+  coverTextColor: z.enum(['gold', 'silver', 'white']).optional(),
+  coverDesignType: z.string().optional(),
+  hardCoverFrontSource: z.enum(['first-page', 'upload']).optional(),
+  frontCoverFileUrl: z.string().max(2048).optional(),
+  backCoverFileUrl: z.string().max(2048).optional(),
+  printSpineText: z.boolean().optional(),
+  spineText: z.string().trim().max(50).optional(),
+  paperGsm: z.union([z.literal(75), z.literal(100)]).optional(),
+  hardBindingProofApproved: z.boolean().optional(),
+  // Tape Binding customization (colour is availability-only, no surcharge).
+  tapeColor: z.string().optional(),
+  tapeCoverSource: z.enum(['first-page', 'upload']).optional(),
+  tapeFrontCoverFileUrl: z.string().max(2048).optional(),
+  tapeBackCoverFileUrl: z.string().max(2048).optional(),
+  // Glue Binding customization (renamed Perfect Binding service).
+  glueCoverSource: z.enum(['first-page', 'upload']).optional(),
+  glueFrontCoverFileUrl: z.string().max(2048).optional(),
+  glueBackCoverFileUrl: z.string().max(2048).optional(),
+  twinLoopWireColor: z.string().optional(),
+  twinLoopFrontCover: z.string().optional(),
+  twinLoopBackCover: z.string().optional(),
+  twinLoopBindingEdge: z.enum(['left', 'top']).optional(),
+  twinLoopPrintSides: z.enum(['single', 'double']).optional(),
+  twinLoopCalendarHanger: z.boolean().optional(),
+  twinLoopConcealed: z.boolean().optional(),
+  twinLoopSafeZoneAcknowledged: z.boolean().optional(),
+  twinLoopCoverSubmission: z.enum(['embedded', 'split', 'mirror']).optional(),
+  twinLoopFrontPrintSides: z.enum(['outside', 'both']).optional(),
+  twinLoopBackPrintSides: z.enum(['outside', 'both']).optional(),
+  twinLoopFrontFileUrl: z.string().max(2048).optional(),
+  twinLoopBackFileUrl: z.string().max(2048).optional(),
+  twinLoopMirrorBack: z.enum(['wire-color', 'blank-white']).optional(),
+  twinLoopCoverMaterial: z.enum(['gloss-300', 'matte-350']).optional(),
+  twinLoopBleedAcknowledged: z.boolean().optional(),
+  twinLoopFlipAcknowledged: z.boolean().optional(),
+  // Business Cards customization — shapes/papers/sizes/corners validated
+  // against the catalogue card-* groups; slabs price the quantity.
+  cardShape: z.string().trim().min(1).optional(),
+  cardPaper: z.string().trim().min(1).optional(),
+  cardSize: z.string().trim().min(1).optional(),
+  cardCorners: z.string().trim().min(1).optional(),
+  cardPrintSides: z.enum(['single', 'double']).optional(),
+  cardBackSameAsFront: z.boolean().optional(),
+  cardDesignSource: z.enum(['template', 'upload']).optional(),
+  cardTemplate: z.string().trim().max(80).optional(),
+  cardFrontFileUrl: z.string().max(2048).optional(),
+  cardFrontFileName: z.string().trim().max(255).optional(),
+  cardBackFileUrl: z.string().max(2048).optional(),
+  cardBackFileName: z.string().trim().max(255).optional(),
+  // Serialized design-studio docs for re-editing later. They embed uploaded
+  // images as data URLs (studio caps uploads at 2 MB → ≈2.7M base64 chars),
+  // hence the generous but finite size cap.
+  cardStudioFront: z.string().max(3_000_000).optional(),
+  cardStudioBack: z.string().max(3_000_000).optional(),
+  cardProofApproved: z.boolean().optional(),
+});
+
+// ── POST /api/orders/quote ────────────────────────────────────────────────
+
+export const quoteBody = z.object({
+  sellerId: z.string().min(1),
+  sellerServiceId: z.string().min(1),
+  quantity: z.number().int().positive(),
+  specifications: specificationsSchema,
+  deliverySpeed: z.enum(DELIVERY_SPEEDS),
+  couponCode: z.string().trim().min(1).optional(),
+});
+
+// ── POST /api/orders ──────────────────────────────────────────────────────
+
+export const createOrderBody = z.object({
+  sellerId: z.string(),
+  sellerServiceId: z.string(),
+  quantity: z.number().int().positive(),
+  // Same schema as the quote endpoint — zod strips unknown keys, so a
+  // divergent copy here would silently drop customization (as it already had
+  // for card-*) before the server-side re-quote.
+  specifications: specificationsSchema,
+  fileUrl: z.string().optional(),
+  /** Multi-file orders: every design file attached (same specifications).
+   *  The service's catalogue entry sets the real cap (<= this hard ceiling);
+   *  orders.service enforces it. Legacy single-file clients may still send
+   *  only fileUrl. */
+  fileUrls: z.array(z.string().min(1)).max(MAX_FILES_PER_ORDER).optional(),
+  specialInstructions: z.string().max(500).optional(),
+  deliveryAddressId: z.string(),
+  deliverySpeed: z.enum(DELIVERY_SPEEDS),
+  paymentMethod: z.enum(['card', 'upi', 'wallet', 'cod']),
+  // Partial wallet: when true, the customer's wallet settles as much of the
+  // total as its balance covers; the remainder (if any) goes through the
+  // selected gateway method. Ignored for 'wallet' (full wallet) and 'cod'.
+  useWallet: z.boolean().optional(),
+  couponCode: z.string().optional(),
+});
+
+// ── GET /api/orders ───────────────────────────────────────────────────────
+
+export const listOrdersQuery = z.object({
+  status: z.enum(ORDER_STATUSES).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+// ── POST /api/orders/:orderId/cancel ──────────────────────────────────────
+
+export const orderParams = z.object({ orderId: z.string().min(1) });
+
+export const cancelOrderBody = z.object({
+  reason: z.string().trim().min(3, 'Give a short cancellation reason').max(500),
+});
+
+// ── POST /api/orders/:orderId/reviews ─────────────────────────────────────
+
+const ratingField = z.number().int().min(1).max(5);
+
+export const createReviewBody = z.object({
+  overallRating: ratingField,
+  qualityRating: ratingField.optional(),
+  deliveryRating: ratingField.optional(),
+  communicationRating: ratingField.optional(),
+  valueRating: ratingField.optional(),
+  comment: z.string().max(1000).optional(),
+});
+
+// ── Admin order ops ───────────────────────────────────────────────────────
+
+export const adminOrdersQuery = z.object({
+  status: z.enum(ORDER_STATUSES).optional(),
+  sellerId: z.string().optional(),
+  customerId: z.string().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+  isRush: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const adminUpdateStatusBody = z.object({
+  // Constrained to the platform's status vocabulary; unlike other actors the
+  // admin may jump between ANY of these (no state-machine restriction).
+  status: z.enum(ORDER_STATUSES),
+  note: z.string().trim().max(500).optional(),
+});
+
+export const adminRefundBody = z.object({
+  amount: z
+    .number()
+    .positive('Refund amount must be greater than 0')
+    .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-9, {
+      message: 'Amount must have at most 2 decimal places',
+    }),
+  reason: z.string().trim().min(3).max(500),
+});
+
+export const adminDisputeBody = z.object({
+  resolution: z.enum(['customer', 'seller']),
+  note: z.string().trim().min(3).max(1000),
+});
+
+// ── Inferred DTO types ─────────────────────────────────────────────────────
+
+export type QuoteBody = z.infer<typeof quoteBody>;
+export type CreateOrderInput = z.infer<typeof createOrderBody>;
+export type ListOrdersQuery = z.infer<typeof listOrdersQuery>;
+export type CancelOrderInput = z.infer<typeof cancelOrderBody>;
+export type CreateReviewInput = z.infer<typeof createReviewBody>;
+export type AdminOrdersQuery = z.infer<typeof adminOrdersQuery>;
+export type AdminUpdateStatusInput = z.infer<typeof adminUpdateStatusBody>;
+export type AdminRefundInput = z.infer<typeof adminRefundBody>;
+export type AdminDisputeInput = z.infer<typeof adminDisputeBody>;

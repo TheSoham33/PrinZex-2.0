@@ -1,0 +1,330 @@
+/**
+ * Default catalogue content — mirrors the previously hard-coded frontend
+ * constants. Inserted lazily for any missing group key so an upgraded
+ * database starts out behaving exactly like the static build; admins then
+ * edit rows from the dashboard and every surface follows the database.
+ */
+
+export interface CatalogGroupDefault {
+  label: string;
+  data: unknown[];
+}
+
+export const DEFAULT_CATALOG: Record<string, CatalogGroupDefault> = {
+  'service-categories': {
+    label: 'Service categories',
+    data: [
+      {
+        id: 'documents',
+        name: 'Documents',
+        description: 'Everyday printing and photocopying',
+        services: [
+          { id: 'doc-print', name: 'Document Printing', tags: ['printout', 'pdf print'] },
+          { id: 'doc-xerox', name: 'Photocopy / Xerox', tags: ['copy', 'duplicate'] },
+        ],
+      },
+      {
+        id: 'bulk',
+        name: 'Bulk printing',
+        description: 'High-volume jobs at wholesale rates',
+        services: [
+          { id: 'bulk-booklets', name: 'Booklets & Manuals', tags: ['booklet', 'manual'] },
+          { id: 'bulk-brochures', name: 'Brouchers', tags: ['brochure', 'brochures'] },
+          { id: 'bulk-flyers', name: 'Flyers & Pamphlets', tags: ['leaflet', 'handbill'] },
+        ],
+      },
+      {
+        id: 'cards',
+        name: 'Cards',
+        description: 'Business cards and card printing',
+        services: [{ id: 'cards-business', name: 'Business Cards', tags: ['visiting card', 'visiting cards'] }],
+      },
+      {
+        id: 'packaging',
+        name: 'Packaging & labels',
+        description: 'Product labels, stickers and boxes',
+        services: [
+          { id: 'pack-stickers', name: 'Custom Stickers' },
+          { id: 'pack-labels', name: 'Product Labels' },
+          { id: 'pack-boxes', name: 'Printed Boxes' },
+          { id: 'pack-tags', name: 'Hang Tangs', tags: ['hang tag', 'hang tags'] },
+        ],
+      },
+      {
+        id: 'binding',
+        name: 'Book binding & finishing',
+        description: 'Post-print finishing services',
+        services: [
+          { id: 'bind-spiral', name: 'Spiral Binding', tags: ['spiral bind', 'coil binding'] },
+          { id: 'bind-twin-loop', name: 'Twin Loop Binding', tags: ['wiro binding', 'wire binding'] },
+          { id: 'bind-hard', name: 'Hard Binding / Thesis Binding', tags: ['thesis', 'hardcover'] },
+          { id: 'bind-perfect', name: 'Glue Binding', tags: ['perfect binding', 'book binding'] },
+          { id: 'bind-tape', name: 'Tape Binding', tags: ['file binding', 'record binding'] },
+        ],
+      },
+      {
+        id: 'large-format',
+        name: 'Large format printing',
+        description: 'Banners, standees and signage',
+        services: [
+          { id: 'lf-flex-banner', name: 'Flex Banners', tags: ['banner', 'flex printing', 'hoarding'] },
+          { id: 'lf-vinyl', name: 'Vinyl Printing', tags: ['sunboard', 'vinyl sticker'] },
+          { id: 'lf-standee', name: 'Standees & Roll-ups', tags: ['standee', 'rollup banner'] },
+        ],
+      },
+      {
+        id: 'specialty',
+        name: 'Specialty printing',
+        description: 'Premium finishes and personalised gifts',
+        services: [
+          { id: 'spec-canvas', name: 'Canvas Print', tags: ['canvas', 'photo canvas', 'wall art'] },
+          { id: 'spec-mugs', name: 'Mug Print', tags: ['mug printing', 'custom mug', 'photo mug'] },
+          { id: 'spec-photo-prints', name: 'Photo Print', tags: ['passport photo', 'photos', 'photo printing'] },
+          { id: 'spec-tshirts', name: 'T shirt Print', tags: ['tshirt', 't-shirt printing', 'custom tshirt'] },
+        ],
+      },
+      // Appended last so upgraded databases (migration appends the same row)
+      // show categories in the same order as fresh seeds.
+      {
+        id: 'lamination',
+        name: 'Lamination',
+        description: 'Protective film lamination for documents & certificates',
+        services: [{ id: 'lam-film', name: 'Lamination', tags: ['laminating', 'film lamination'] }],
+      },
+    ],
+  },
+  'paper-types': {
+    label: 'Paper types',
+    data: [
+      { value: 'standard', label: 'Standard', hint: '70 GSM everyday paper', multiplier: 1 },
+      {
+        value: 'digital',
+        label: 'Digital Paper',
+        hint: '90 GSM smooth digital print paper',
+        multiplier: 1.2,
+      },
+      { value: 'premium', label: 'Premium', hint: '100 GSM thick paper', multiplier: 1.4 },
+      { value: 'glossy', label: 'Glossy', hint: 'Shiny photo finish', multiplier: 1.8 },
+      { value: 'matte', label: 'Matte', hint: 'Non-reflective finish', multiplier: 1.6 },
+    ],
+  },
+  'paper-sizes': {
+    label: 'Paper sizes',
+    data: [
+      { value: 'A4', label: 'A4', hint: '210 × 297 mm', multiplier: 1 },
+      { value: 'A5', label: 'A5', hint: '148 × 210 mm', multiplier: 0.8 },
+      { value: 'A3', label: 'A3', hint: '297 × 420 mm', multiplier: 1.9 },
+    ],
+  },
+  // Document Printing's mandatory stapling choice — a dedicated option group
+  // (radio on the order page). Sellers override the
+  // per-option prices from their Pricing page; 'loose' is the free default.
+  'stapling-options': {
+    label: 'Stapling options (Document Printing)',
+    data: [
+      { value: 'loose', label: 'Loose Sheet', hint: 'No binding — sheets stay as-is', price: 0 },
+      { value: 'corner-stapling', label: 'Corner Stapling', hint: 'Single staple at the top-left corner', price: 5 },
+      { value: 'side-stapling', label: 'Side Stapling', hint: 'Staples along the left edge', price: 10 },
+    ],
+  },
+  // Lamination's mandatory film-thickness choice — same mandatory-radio model
+  // as stapling, but the price is charged per sheet (added to the per-page
+  // rate), not per set. 'micron-80' is the free default and stays free.
+  'film-thickness': {
+    label: 'Film thickness (Lamination)',
+    data: [
+      { value: 'micron-80', label: '80 micron', hint: 'Standard everyday film', price: 0 },
+      { value: 'micron-125', label: '125 micron', hint: 'Sturdy — certificates, ID cards', price: 2 },
+      { value: 'micron-250', label: '250 micron', hint: 'Rigid — menus, outdoor use', price: 4 },
+    ],
+  },
+  // Photo Print's mandatory photo-type choice: each row's `price` is the
+  // platform default RATE PER PHOTO — the default per-sheet price for a
+  // layout is rate × photos-per-sheet until the seller overrides that
+  // (type × count) combo from their Pricing page.
+  'photo-types': {
+    label: 'Photo types (Photo Print)',
+    data: [
+      { value: 'passport-photo', label: 'Passport Photo', hint: '35 × 45 mm', price: 12 },
+      { value: 'postcard-size', label: 'Postcard Size', hint: '10 × 15 cm', price: 20 },
+      { value: 'photo-4x6', label: '4×6″ Photo', hint: '10.2 × 15.2 cm', price: 25 },
+      { value: 'photo-5x7', label: '5×7″ Photo', hint: '12.7 × 17.8 cm', price: 35 },
+    ],
+  },
+  // Photo Print's photos-per-sheet choices — the `value` IS the count
+  // ('8' = 8 photos per printed sheet). Admin-managed: add/delete rows and
+  // stores/sellers follow. Sellers checklist the counts they print and set
+  // a per-sheet price per (photo type × count) combo.
+  'photo-layouts': {
+    label: 'Photos per sheet (Photo Print)',
+    data: [
+      { value: '8', label: '8 photos', hint: '8 prints on one sheet' },
+      { value: '12', label: '12 photos', hint: '12 prints on one sheet' },
+    ],
+  },
+  // Tape Binding tape colours — availability-only customization (no
+  // surcharge), the same model as Hard Binding cover fabrics.
+  'tape-colors': {
+    label: 'Tape Binding tape colours',
+    data: [
+      { value: 'black', label: 'Black', class: 'bg-[#111827]', hex: '#111827' },
+      { value: 'white', label: 'White', class: 'bg-[#f8fafc]', hex: '#f8fafc' },
+      { value: 'blue', label: 'Blue', class: 'bg-[#1d4ed8]', hex: '#1d4ed8' },
+      { value: 'red', label: 'Red', class: 'bg-[#b91c1c]', hex: '#b91c1c' },
+      { value: 'green', label: 'Green', class: 'bg-[#166534]', hex: '#166534' },
+    ],
+  },
+  'cover-types': {
+    label: 'Cover types',
+    data: [
+      { value: 'leather', label: 'Leatherette', hint: 'Premium textured finish' },
+      { value: 'matte', label: 'Matte Laminated', hint: 'Smooth non-reflective' },
+      { value: 'rexine', label: 'Rexine', hint: 'Durable classic finish' },
+    ],
+  },
+  'spiral-coil-types': {
+    label: 'Spiral coil types',
+    data: [
+      { value: 'plastic', label: 'Plastic Coil', hint: 'Flexible & durable' },
+      { value: 'wire-o', label: 'Wire-O (Metal)', hint: 'Professional, lays flat' },
+    ],
+  },
+  'spiral-cover-types': {
+    label: 'Spiral cover types',
+    data: [
+      { value: 'clear', label: 'Clear Plastic', hint: 'Transparent front' },
+      { value: 'frosted', label: 'Frosted Plastic', hint: 'Semi-transparent matte' },
+      { value: 'printed', label: 'Printed Cardstock', hint: 'Full color printed cover' },
+      { value: 'opaque', label: 'Opaque Cardstock', hint: 'Solid color heavy paper' },
+    ],
+  },
+  'cover-colors': {
+    label: 'Hard cover fabrics',
+    data: [
+      { value: 'navy', label: 'Navy Blue', class: 'bg-[#000080]', hex: '#000080' },
+      { value: 'maroon', label: 'Maroon / Crimson', class: 'bg-[#800000]', hex: '#800000' },
+      { value: 'black', label: 'Royal Black', class: 'bg-black', hex: '#111111' },
+      { value: 'green', label: 'Dark Emerald Green', class: 'bg-[#006400]', hex: '#006400' },
+    ],
+  },
+  'cover-text-colors': {
+    label: 'Foil text colours',
+    data: [
+      { value: 'gold', label: 'Metallic Gold', class: 'bg-[#D4AF37]', hex: '#D4AF37' },
+      { value: 'silver', label: 'Metallic Silver', class: 'bg-[#C0C0C0]', hex: '#C0C0C0' },
+      { value: 'white', label: 'White', class: 'bg-white', hex: '#FFFFFF' },
+    ],
+  },
+  'twin-loop-wire-colors': {
+    label: 'Twin Loop wire colours',
+    data: [
+      { value: 'black', label: 'Pitch Black', class: 'bg-black', premium: false },
+      { value: 'white', label: 'Bright White', class: 'bg-white', premium: false },
+      { value: 'silver', label: 'Metallic Silver', class: 'bg-[#C0C0C0]', premium: false },
+      { value: 'gold', label: 'Metallic Gold', class: 'bg-[#D4AF37]', premium: true },
+      { value: 'rose-gold', label: 'Rose Gold', class: 'bg-[#B76E79]', premium: true },
+      { value: 'royal-blue', label: 'Royal Blue', class: 'bg-[#4169E1]', premium: true },
+      { value: 'forest-green', label: 'Forest Green', class: 'bg-[#228B22]', premium: true },
+      { value: 'bronze', label: 'Bronze', class: 'bg-[#CD7F32]', premium: true },
+    ],
+  },
+  'twin-loop-front-covers': {
+    label: 'Twin Loop front covers',
+    data: [
+      {
+        value: 'clear-gloss',
+        label: 'Clear Gloss Acetate / PVC',
+        hint: 'Transparent; first printed page remains visible',
+      },
+      {
+        value: 'frosted-matte',
+        label: 'Frosted / Matte Polypropylene',
+        hint: 'Semi-opaque and scratch resistant',
+      },
+      {
+        value: 'heavy-cardstock',
+        label: 'Heavy Cardstock (300+ GSM)',
+        hint: 'Printable artwork with matte or gloss lamination',
+      },
+    ],
+  },
+  'twin-loop-back-covers': {
+    label: 'Twin Loop back covers',
+    data: [
+      {
+        value: 'matching-front',
+        label: 'Matching Front',
+        hint: 'Use the same style as the selected front cover',
+      },
+      {
+        value: 'vinyl-black',
+        label: 'Heavy Vinyl / Leatherette — Black',
+        hint: 'Rigid textured backing sheet',
+      },
+      {
+        value: 'vinyl-navy',
+        label: 'Heavy Vinyl / Leatherette — Navy',
+        hint: 'Rigid textured backing sheet',
+      },
+    ],
+  },
+  'card-shapes': {
+    label: 'Card shapes',
+    data: [
+      { value: 'rectangle', label: 'Standard (Rectangle)', hint: 'Classic business card outline' },
+      { value: 'classic', label: 'Classic', hint: 'Softly rounded silhouette' },
+      { value: 'square', label: 'Square', hint: 'Modern square format' },
+      { value: 'leaf', label: 'Leaf', hint: 'Two opposite rounded corners' },
+      { value: 'oval', label: 'Oval', hint: 'Fully curved edges' },
+      { value: 'circle', label: 'Circle', hint: 'Round die-cut card' },
+    ],
+  },
+  'card-papers': {
+    label: 'Card paper & texture',
+    data: [
+      { value: 'glossy', label: 'Glossy', hint: 'Shiny coated stock' },
+      { value: 'matte', label: 'Matte', hint: 'Smooth non-reflective stock' },
+      { value: 'velvet', label: 'Velvet Touch', hint: 'Soft-touch lamination' },
+      {
+        value: 'premium-plus-glossy',
+        label: 'Premium Plus Glossy',
+        hint: 'Thick high-shine stock',
+      },
+      { value: 'non-tearable', label: 'Non-Tearable', hint: 'Waterproof synthetic stock' },
+      { value: 'spot-uv', label: 'Spot UV', hint: 'Raised gloss highlights' },
+      { value: 'pearl', label: 'Pearl', hint: 'Shimmer metallic stock' },
+      { value: 'kraft', label: 'Kraft', hint: 'Natural brown recycled stock' },
+      { value: 'diamond', label: 'Diamond', hint: 'Glitter finish stock' },
+      { value: 'raised-foil', label: 'Raised Foil', hint: 'Embossed metallic accents' },
+      { value: 'magnetic', label: 'Magnetic', hint: 'Fridge-magnet backing' },
+      { value: 'transparent', label: 'Transparent', hint: 'Frosted plastic stock' },
+    ],
+  },
+  'card-sizes': {
+    label: 'Card sizes',
+    data: [
+      { value: 'standard', label: 'Standard', hint: '89 × 51 mm' },
+      { value: 'square', label: 'Square', hint: '65 × 65 mm' },
+      { value: 'mini', label: 'Mini', hint: '85 × 45 mm' },
+    ],
+  },
+  'card-corners': {
+    label: 'Card corners',
+    data: [
+      { value: 'standard', label: 'Standard', hint: 'Square-cut corners' },
+      {
+        value: 'rounded',
+        label: 'Rounded',
+        hint: 'Cut for a smooth finish',
+        incompatibleWith: ['circle', 'oval', 'leaf'],
+      },
+    ],
+  },
+  'card-print-sides': {
+    label: 'Card print sides',
+    data: [
+      { value: 'single', label: 'Single-sided', hint: 'Design on the front only' },
+      { value: 'double', label: 'Double-sided', hint: 'Design on front and back' },
+    ],
+  },
+};

@@ -1,0 +1,88 @@
+name: prinzex-backend
+
+# Local dev infrastructure for PrinZex backend: PostgreSQL + MongoDB + Redis.
+# Usage: docker compose up -d   (then: npm run db:migrate && npm run db:seed && npm run db:seed:mongo)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prinzex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: prinzex
+    ports:
+      - '5432:5432'
+    volumes:
+      - prinzex-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d prinzex']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:7
+    container_name: prinzex-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - prinzex-mongodata:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: prinzex-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - prinzex-redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Office → PDF conversion sidecar for order uploads. Only the backend API
+  # (upload.service.ts) talks to it; browsers never see it.
+  #
+  # Security posture (mirrors the threat model for conversion sidecars):
+  # - loopback-only publish on host port 3200 — never reachable from LAN/
+  #   public internet. (NOT 3000: the Next.js dev server owns that port on a
+  #   dev machine, and nothing must ever proxy to it by accident.) On a
+  #   multi-host deployment, drop the ports block and put the app and this
+  #   service on a private compose network instead.
+  # - --chromium-disable-routes: only /forms/libreoffice/convert is served —
+  #   the URL/HTML-to-PDF routes (the SSRF surface) are OFF entirely.
+  # - --api-body-limit slightly above the app upload cap --api-timeout caps
+  #   a single malicious/oversized job; --libreoffice-max-queue-size rejects
+  #   bursts with 503 instead of piling up conversions.
+  # - cpus/mem_limit: a crash in a crafted document can't starve the host.
+  # - pinned image digest-less version (never :latest): upgrade deliberately.
+  gotenberg:
+    image: gotenberg/gotenberg:8.36.0
+    container_name: prinzex-gotenberg
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --api-timeout=120s
+      - --api-body-limit=128MB
+      - --libreoffice-max-queue-size=10
+      - --chromium-disable-routes=true
+    ports:
+      - '127.0.0.1:3200:3000'
+    cpus: 2
+    mem_limit: 2g
+
+volumes:
+  prinzex-pgdata:
+  prinzex-mongodata:
+  prinzex-redisdata:

@@ -1,0 +1,1411 @@
+import type { Order } from '@prisma/client';
+// Value import: Prisma.Decimal is used for exact NUMERIC arithmetic in the
+// wallet's guarded debit (see createOrder).
+import { Prisma } from '@prisma/client';
+import { logger } from '../../config/logger';
+import { prisma } from '../../config/database';
+import { REDIS_KEYS, REDIS_TTL } from '../../config/redis';
+import { NotificationModel } from '../../models/mongo/Notification.model';
+import { OrderTimelineModel } from '../../models/mongo/Order.model';
+import { ActivityLogModel } from '../../models/mongo/ActivityLog.model';
+import type { DeliveryAddressSnapshot, OrderStatus } from '../../types';
+import { ApiError } from '../../utils/ApiError';
+import { setCache } from '../../utils/cache';
+import { isValidTransition } from '../../utils/stateMachine';
+import { getCatalogEntry } from '../catalog/catalog.service';
+import { serviceIsActive, serviceMaxFilesPerOrder } from '../catalog/catalog.schemas';
+import {
+  buildPaginatedResponse,
+  toSkipTake,
+  type PaginatedResponse,
+} from '../../utils/pagination';
+import {
+  invalidateSellerAnalytics,
+  invalidateStoreCaches,
+  readSellerMetadata,
+} from '../seller/seller.service';
+import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service';
+import { autoAssignDelivery } from '../delivery/delivery.assignment';
+import { refundOrderToSource } from '../payments/payments.service';
+import { roundMoney, splitWalletGateway } from '../../utils/financial';
+import { getPlatformFeeConfig, walletCoverableMax } from '../../utils/platformFee';
+import { getPlatformSettingsValues } from '../../utils/platformSettings';
+import {
+  emitAdminGlobalEvent,
+  emitNewOrder,
+  emitNotificationNew,
+  emitOrderStatusChanged,
+} from '../../realtime/realtime.emitters';
+import {
+  FILM_THICKNESS_PRICES,
+  PHOTO_SHEET_COUNTS,
+  STAPLING_OPTION_PRICES,
+  preferredPhotoCount,
+  computeQuote,
+  estimatedDeliveryFor,
+  validateCoupon,
+  type QuoteResult,
+} from './orders.helpers';
+import type {
+  AdminDisputeInput,
+  AdminOrdersQuery,
+  AdminRefundInput,
+  AdminUpdateStatusInput,
+  CancelOrderInput,
+  CreateOrderInput,
+  CreateReviewInput,
+  ListOrdersQuery,
+  QuoteBody,
+} from './orders.schema';
+
+/**
+ * Order lifecycle — the core transaction flow.
+ *
+ * Money math is ALWAYS recomputed server-side (orders.helpers). Every
+ * multi-write mutation runs inside a Prisma $transaction; cross-database
+ * side effects (MongoDB timeline/audit/activity, Redis cache invalidation)
+ * run after the SQL commit so a document-store hiccup can never roll back
+ * committed money.
+ */
+
+// ── Shared side-effect helpers ─────────────────────────────────────────────
+
+function humanize(status: string): string {
+  return status.replace(/_/g, ' ');
+}
+
+export async function appendTimelineEvent(
+  orderId: string,
+  status: string,
+  updatedBy: string,
+  note?: string,
+): Promise<void> {
+  await OrderTimelineModel.updateOne(
+    { orderId },
+    {
+      $push: {
+        timeline: {
+          status,
+          label: humanize(status),
+          timestamp: new Date(),
+          ...(note ? { note } : {}),
+          updatedBy,
+        },
+      },
+    },
+    { upsert: true },
+  );
+}
+
+async function notifySeller(
+  sellerId: string,
+  type: string,
+  title: string,
+  body: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  await NotificationModel.create({
+    recipientId: sellerId,
+    recipientType: 'seller',
+    type,
+    title,
+    body,
+    data,
+    channel: ['push'],
+  });
+  emitNotificationNew('seller', sellerId, { type, title, body, data }); // step 9 realtime
+}
+
+/**
+ * Post-commit side effects. The order already exists — log loudly instead
+ * of masking a successful mutation behind a 500.
+ */
+async function runPostCommitSideEffects(label: string, effects: Array<() => Promise<unknown>>): Promise<void> {
+  for (const effect of effects) {
+    try {
+      await effect();
+    } catch (error) {
+      logger.error('order_side_effect_failed', {
+        label,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+}
+
+// ── Service + seller validation (shared quote/order path) ──────────────────
+
+async function loadOrderableService(sellerId: string, sellerServiceId: string) {
+  const service = await prisma.sellerService.findFirst({
+    where: {
+      sellerId,
+      OR: [{ id: sellerServiceId }, { serviceId: sellerServiceId }],
+    },
+  });
+  if (!service) {
+    throw ApiError.notFound('Service not found for this store');
+  }
+  if (!service.isActive) {
+    throw ApiError.badRequest('This service is currently not available at the store');
+  }
+
+  const [seller, pageService] = await Promise.all([
+    prisma.seller.findUnique({ where: { id: sellerId } }),
+    prisma.sellerService.findFirst({
+      where: { sellerId, unit: { contains: 'page' } },
+      orderBy: { basePrice: 'asc' },
+    }),
+  ]);
+  if (!seller) {
+    throw ApiError.notFound('Store not found');
+  }
+  if (seller.status !== 'APPROVED') {
+    throw ApiError.badRequest('This store is not accepting orders right now');
+  }
+  return {
+    service,
+    seller,
+    pageRateFallback: pageService ? Number(pageService.basePrice) : undefined,
+  };
+}
+
+/**
+ * Enforce the seller-configured minimum order quantity for the service. When
+ * the service has quantity slabs (Business Cards), the smallest slab
+ * threshold is the real minimum — a crafted custom quantity below it must be
+ * rejected, not just priced at the smallest tier's rate.
+ */
+function assertMinimumOrderQuantity(
+  service: { serviceName: string; minQuantity: number },
+  quantity: number,
+  sellerMetadata?: Prisma.JsonValue | null,
+  serviceId?: string,
+): void {
+  const slabs = serviceId
+    ? (readSellerMetadata(sellerMetadata ?? null).pricingOverrides?.quantitySlabs?.[serviceId] ??
+      [])
+    : [];
+  const slabMin = slabs.length ? Math.min(...slabs.map((s) => s.qty)) : undefined;
+  const minQuantity = slabMin ?? service.minQuantity;
+  if (quantity < minQuantity) {
+    throw ApiError.badRequest(
+      `Minimum order quantity for ${service.serviceName} is ${minQuantity}`,
+    );
+  }
+}
+
+/** Enforce the seller-configured minimum PDF page count for the service. */
+function assertMinimumPageCount(
+  service: { serviceName: string; minPages: number | null },
+  totalPages: number,
+): void {
+  if (service.minPages && totalPages < service.minPages) {
+    throw ApiError.badRequest(
+      `Minimum page count for ${service.serviceName} is ${service.minPages} pages`,
+    );
+  }
+}
+
+function assertDocumentColorModeAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  colorOption: 'bw' | 'color' | 'mixed',
+): void {
+  if (serviceId !== 'doc-print') return;
+  const modes = readSellerMetadata(sellerMetadata).pricingOverrides?.documentColorModes;
+  if (!modes) return;
+
+  if ((colorOption === 'bw' || colorOption === 'mixed') && !modes.bw) {
+    throw ApiError.badRequest('B&W printing is not offered by the selected store');
+  }
+  if ((colorOption === 'color' || colorOption === 'mixed') && !modes.color) {
+    throw ApiError.badRequest('Color printing is not offered by the selected store');
+  }
+}
+
+function assertTwinLoopOptionsAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  specifications: {
+    twinLoopWireColor?: string;
+    twinLoopFrontCover?: string;
+    twinLoopBackCover?: string;
+    twinLoopCalendarHanger?: boolean;
+    twinLoopConcealed?: boolean;
+  },
+): void {
+  if (serviceId !== 'bind-twin-loop') return;
+  const options = readSellerMetadata(sellerMetadata).pricingOverrides?.twinLoopOptions;
+  if (!options) return;
+
+  if (
+    specifications.twinLoopWireColor &&
+    options.wireColors &&
+    !(specifications.twinLoopWireColor in options.wireColors)
+  ) {
+    throw ApiError.badRequest('This Twin Loop wire colour is not offered');
+  }
+  if (
+    specifications.twinLoopFrontCover &&
+    options.frontCovers &&
+    !(specifications.twinLoopFrontCover in options.frontCovers)
+  ) {
+    throw ApiError.badRequest('This Twin Loop front cover is not offered');
+  }
+  if (
+    specifications.twinLoopBackCover &&
+    options.backCovers &&
+    !(specifications.twinLoopBackCover in options.backCovers)
+  ) {
+    throw ApiError.badRequest('This Twin Loop back cover is not offered');
+  }
+  if (specifications.twinLoopCalendarHanger && options.hangerPrice === undefined) {
+    throw ApiError.badRequest('Calendar hangers are not offered by this store');
+  }
+  if (specifications.twinLoopConcealed && options.concealedPrice === undefined) {
+    throw ApiError.badRequest('Concealed Twin Loop binding is not offered by this store');
+  }
+}
+
+/**
+ * Document Printing requires a stapling choice the store actually offers —
+ * 'loose' is always available; priced choices must come from the seller's
+ * saved staplingOptions, or (when the seller never saved any) the platform
+ * default list. Unknown keys would otherwise slip through unpriced.
+ */
+function assertStaplingAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  stapling?: string,
+): void {
+  if (serviceId !== 'doc-print') return;
+  if (!stapling || stapling === 'loose') return;
+  const offered = readSellerMetadata(sellerMetadata).pricingOverrides?.staplingOptions;
+  if (offered ? !(stapling in offered) : !(stapling in STAPLING_OPTION_PRICES)) {
+    throw ApiError.badRequest('This stapling option is not offered by this store');
+  }
+}
+
+function assertFilmAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  filmThickness?: string,
+): void {
+  if (serviceId !== 'lam-film') return;
+  if (!filmThickness || filmThickness === 'micron-80') return;
+  const offered = readSellerMetadata(sellerMetadata).pricingOverrides?.filmThicknessOptions;
+  if (offered ? !(filmThickness in offered) : !(filmThickness in FILM_THICKNESS_PRICES)) {
+    throw ApiError.badRequest('This film thickness is not offered by this store');
+  }
+}
+
+/** Admin kill switch: an admin-deactivated platform service rejects both
+ *  quotes and orders, at every store. Fail-OPEN when the catalogue itself
+ *  is unreadable — a Mongo/Postgres hiccup must not take ordering offline. */
+async function assertPlatformServiceActive(
+  serviceId: string,
+  serviceName: string,
+): Promise<void> {
+  let active = true;
+  try {
+    const categories = await getCatalogEntry('service-categories');
+    active = serviceIsActive(categories.data, serviceId);
+  } catch {
+    active = true;
+  }
+  if (!active) {
+    throw ApiError.badRequest(`${serviceName} is not available right now`);
+  }
+}
+
+/** 'photo-layouts' catalogue values as ints; falls back to the shipped
+ *  8/12 when the catalogue is unreadable — fail-closed so a crafted count
+ *  never slips through during a Mongo hiccup. */
+async function photoLayoutCounts(): Promise<number[]> {
+  try {
+    const entry = await getCatalogEntry('photo-layouts');
+    const counts = (Array.isArray(entry.data) ? entry.data : [])
+      .map((row: unknown) => Number((row as { value?: unknown })?.value))
+      .filter((n: number) => Number.isInteger(n) && n >= 2 && n <= 60);
+    return counts.length ? counts : [...PHOTO_SHEET_COUNTS];
+  } catch {
+    return [...PHOTO_SHEET_COUNTS];
+  }
+}
+
+/** Photo Print: the chosen photo type must be offered (seller checklist
+ *  wins, else platform defaults) and the photos-per-sheet count must be one
+ *  the seller prices for that type (else the platform 'photo-layouts'
+ *  catalogue) — a crafted payload never picks an unpriced combo.
+ *  Legacy flat ₹-per-photo seller maps (pre-combo pricing) degrade to the
+ *  platform counts/defaults instead of soft-locking the store. */
+async function assertPhotoSpecValid(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  specifications: { photoType?: string; photosPerSheet?: number },
+): Promise<void> {
+  if (serviceId !== 'spec-photo-prints') return;
+  const photoType = specifications.photoType;
+  if (!photoType) {
+    throw ApiError.badRequest('Choose a photo type');
+  }
+  const offered = readSellerMetadata(sellerMetadata).pricingOverrides?.photoTypeOptions;
+  // Never configured → nothing is offered (the storefront mirrors this by
+  // hiding the photo types) — platform defaults no longer leak onto orders.
+  if (!offered) {
+    throw ApiError.badRequest('This store has not set up Photo Print yet');
+  }
+  if (!(photoType in offered)) {
+    throw ApiError.badRequest('This photo type is not offered by this store');
+  }
+  let counts: number[];
+  if (offered) {
+    const perType = offered[photoType];
+    const keys =
+      typeof perType === 'object' && perType !== null
+        ? Object.keys(perType)
+            .map(Number)
+            .filter((n) => Number.isInteger(n) && n >= 2 && n <= 60)
+        : [];
+    counts = keys.length ? keys : await photoLayoutCounts();
+  } else {
+    counts = await photoLayoutCounts();
+  }
+  const photosPerSheet = specifications.photosPerSheet ?? preferredPhotoCount(counts);
+  if (!counts.includes(photosPerSheet)) {
+    throw ApiError.badRequest(
+      `That photos-per-sheet option is not offered here — choose ${counts.join(' or ')} photos per sheet`,
+    );
+  }
+}
+
+function assertPaperOptionAvailable(
+  sellerMetadata: Prisma.JsonValue | null,
+  serviceId: string,
+  specifications: { paperType: string; size: string },
+): void {
+  const options =
+    readSellerMetadata(sellerMetadata).pricingOverrides?.servicePaperOptions?.[serviceId];
+  if (options?.paperTypes && !(specifications.paperType in options.paperTypes)) {
+    throw ApiError.badRequest('This paper type is not offered for the selected service');
+  }
+  if (options?.paperSizes && !(specifications.size in options.paperSizes)) {
+    throw ApiError.badRequest('This paper size is not offered for the selected service');
+  }
+}
+
+// ── POST /api/orders/quote ─────────────────────────────────────────────────
+
+export interface QuoteResponse extends QuoteResult {
+  estimatedDeliveryDate: Date;
+  quoteKey: string;
+  coupon: { code: string; valid: boolean; error?: string } | null;
+}
+
+export async function createQuote(customerId: string, input: QuoteBody): Promise<QuoteResponse> {
+  const { service, seller, pageRateFallback } = await loadOrderableService(
+    input.sellerId,
+    input.sellerServiceId,
+  );
+  assertMinimumOrderQuantity(service, input.quantity, seller.metadata, service.serviceId);
+  assertMinimumPageCount(service, input.specifications.totalPages ?? 0);
+  assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
+  assertDocumentColorModeAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.colorOption,
+  );
+  assertTwinLoopOptionsAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications,
+  );
+  await assertPlatformServiceActive(service.serviceId, service.serviceName);
+  assertStaplingAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.stapling,
+  );
+  assertFilmAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.filmThickness,
+  );
+  await assertPhotoSpecValid(
+    seller.metadata,
+    service.serviceId,
+    input.specifications,
+  );
+
+  // NOTE: the quote flow carries no address, so the SAME_DAY pincode rule is
+  // enforced for real at POST /orders (which has deliveryAddressId).
+
+  let discount = 0;
+  let coupon: QuoteResponse['coupon'] = null;
+  if (input.couponCode) {
+    // Validate and price the coupon now — usage is NOT incremented here.
+    const base = Number(service.basePrice) * input.quantity;
+    const validation = await validateCoupon(input.couponCode, customerId, base);
+    if (!validation.valid) {
+      coupon = { code: input.couponCode, valid: false, error: validation.error };
+    } else {
+      discount = validation.discountAmount;
+      coupon = { code: validation.coupon!.code, valid: true };
+    }
+  }
+
+  // Platform fee (admin-configured) is part of every quote total.
+  const [feeConfig, platformValues] = await Promise.all([getPlatformFeeConfig(), getPlatformSettingsValues()]);
+
+  const quote = computeQuote({
+    basePrice: Number(service.basePrice), unit: service.unit,
+    categoryId: service.categoryId,
+    serviceId: service.serviceId,
+    quantity: input.quantity,
+    specifications: input.specifications,
+    deliverySpeed: input.deliverySpeed,
+    commissionRate: Number(seller.commissionRate),
+    discount,
+    platformFee: feeConfig.fee,
+    gstRate: platformValues.gstRatePercent / 100,
+    deliveryFees: platformValues.deliveryFees,
+    sellerMetadata: seller.metadata,
+    pageRateFallback,
+  });
+
+  const timestamp = Date.now();
+  const response: QuoteResponse = {
+    ...quote,
+    estimatedDeliveryDate: estimatedDeliveryFor(input.deliverySpeed, new Date(), platformValues.deliveryEtaHours),
+    quoteKey: REDIS_KEYS.QUOTE(customerId, input.sellerServiceId, timestamp),
+    coupon,
+  };
+
+  // Cache the exact quote shown to the customer for 15 minutes.
+  await setCache(
+    response.quoteKey,
+    { input, response },
+    REDIS_TTL.CACHE_QUOTE,
+  );
+
+  return response;
+}
+
+// ── POST /api/orders ───────────────────────────────────────────────────────
+
+export interface CreatedOrder {
+  order: Order & { items: Prisma.OrderItemGetPayload<object>[] };
+  estimatedDelivery: Date;
+}
+
+export async function createOrder(customerId: string, input: CreateOrderInput): Promise<CreatedOrder> {
+
+  // 1. Address must belong to THIS customer (JWT-derived id, never the body).
+  const address = await prisma.address.findFirst({
+    where: { id: input.deliveryAddressId, userId: customerId },
+  });
+  if (!address) {
+    throw ApiError.notFound('Delivery address not found');
+  }
+
+  // 3. Server-side quote — client-sent prices are ignored entirely.
+  const { service, seller, pageRateFallback } = await loadOrderableService(
+    input.sellerId,
+    input.sellerServiceId,
+  );
+  assertMinimumOrderQuantity(service, input.quantity, seller.metadata, service.serviceId);
+  assertMinimumPageCount(service, input.specifications.totalPages ?? 0);
+  assertPaperOptionAvailable(seller.metadata, service.serviceId, input.specifications);
+  assertDocumentColorModeAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.colorOption,
+  );
+  assertTwinLoopOptionsAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications,
+  );
+  await assertPlatformServiceActive(service.serviceId, service.serviceName);
+  assertStaplingAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.stapling,
+  );
+  assertFilmAvailable(
+    seller.metadata,
+    service.serviceId,
+    input.specifications.filmThickness,
+  );
+  await assertPhotoSpecValid(
+    seller.metadata,
+    service.serviceId,
+    input.specifications,
+  );
+
+  if (service.serviceId === 'bind-hard') {
+    const specs = input.specifications;
+    if (!specs.coverColor || !specs.coverTextColor) {
+      throw ApiError.badRequest('Choose the hard cover and foil font colours');
+    }
+    if (!specs.hardCoverFrontSource) {
+      throw ApiError.badRequest('Choose the hard binding front cover source');
+    }
+    if (specs.hardCoverFrontSource === 'upload' && !specs.frontCoverFileUrl) {
+      throw ApiError.badRequest('Upload the separate front cover PDF');
+    }
+    if (specs.printSpineText && !specs.spineText?.trim()) {
+      throw ApiError.badRequest('Spine text is required when spine printing is enabled');
+    }
+    if (specs.hardBindingProofApproved !== true) {
+      throw ApiError.badRequest('Approve the hard binding cover proof before placing the order');
+    }
+  }
+
+  if (service.serviceId === 'bind-twin-loop') {
+    const specs = input.specifications;
+    if (!specs.twinLoopWireColor || !specs.twinLoopFrontCover || !specs.twinLoopBackCover) {
+      throw ApiError.badRequest('Choose the Twin Loop wire and cover options');
+    }
+    if (!specs.twinLoopBindingEdge || !specs.twinLoopPrintSides) {
+      throw ApiError.badRequest('Choose the Twin Loop binding edge and print style');
+    }
+    if (specs.twinLoopCalendarHanger && specs.twinLoopBindingEdge !== 'top') {
+      throw ApiError.badRequest('A calendar hanger requires top-edge binding');
+    }
+    if (specs.twinLoopSafeZoneAcknowledged !== true) {
+      throw ApiError.badRequest('Acknowledge the 10 mm Twin Loop punch safe zone');
+    }
+    if (!specs.twinLoopCoverSubmission) {
+      throw ApiError.badRequest('Choose how the Twin Loop cover designs are submitted');
+    }
+    if (specs.twinLoopCoverSubmission === 'embedded' && (specs.totalPages ?? 0) < 3) {
+      throw ApiError.badRequest('The master PDF must include front cover, inner pages, and back cover');
+    }
+    if (specs.twinLoopCoverSubmission === 'split') {
+      if (!specs.twinLoopFrontFileUrl || !specs.twinLoopBackFileUrl) {
+        throw ApiError.badRequest('Upload separate front and back cover artwork');
+      }
+      if (!specs.twinLoopFrontPrintSides || !specs.twinLoopBackPrintSides) {
+        throw ApiError.badRequest('Choose single- or double-sided printing for both covers');
+      }
+    }
+    if (specs.twinLoopCoverSubmission === 'mirror' && !specs.twinLoopMirrorBack) {
+      throw ApiError.badRequest('Choose the Twin Loop quick back-cover style');
+    }
+    if (!specs.twinLoopCoverMaterial) {
+      throw ApiError.badRequest('Choose a printable Twin Loop cover material');
+    }
+    if (specs.twinLoopBleedAcknowledged !== true) {
+      throw ApiError.badRequest('Acknowledge the 3 mm cover bleed requirement');
+    }
+    if (specs.twinLoopFlipAcknowledged !== true) {
+      throw ApiError.badRequest('Acknowledge the back-cover flip orientation rule');
+    }
+  }
+
+  // Multi-file orders: the service's catalogue entry caps how many design
+  // files one item may carry (absent = 1, the original single-file flow; all
+  // files share the order's specifications). Fail CLOSED to that
+  // conservative default when the catalogue is unreadable — order placement
+  // must never drop a file-count check because Mongo/Postgres hiccuped.
+  const fileUrls = input.fileUrls ?? (input.fileUrl ? [input.fileUrl] : []);
+  let maxFiles = 1;
+  try {
+    const categories = await getCatalogEntry('service-categories');
+    maxFiles = serviceMaxFilesPerOrder(categories.data, service.serviceId);
+  } catch {
+    maxFiles = 1;
+  }
+  if (fileUrls.length > maxFiles) {
+    throw ApiError.badRequest(
+      `${service.serviceName} accepts at most ${maxFiles} file${maxFiles === 1 ? '' : 's'} per order — this order has ${fileUrls.length}`,
+    );
+  }
+
+  // SAME_DAY only when the store actually delivers to the address pincode.
+  if (input.deliverySpeed === 'SAME_DAY') {
+    const pincodes = await prisma.sellerPincode.findMany({
+      where: { sellerId: seller.id },
+    });
+    if (pincodes.length > 0) {
+      const entry = pincodes.find((p) => p.pincode === address.pincode);
+      if (!entry || entry.isExcluded) {
+        throw ApiError.badRequest('Same-day delivery is not available for this pincode');
+      }
+    }
+    // No pincode rows = store hasn't restricted its coverage area; allow.
+  }
+
+  let appliedCoupon: string | null = null;
+  let discount = 0;
+  if (input.couponCode) {
+    const validation = await validateCoupon(
+      input.couponCode,
+      customerId,
+      Number(service.basePrice) * input.quantity,
+    );
+    if (!validation.valid) {
+      throw ApiError.badRequest(validation.error ?? 'Coupon is not valid');
+    }
+    discount = validation.discountAmount;
+    appliedCoupon = validation.coupon!.code;
+  }
+
+  const [feeConfig, platformValues] = await Promise.all([getPlatformFeeConfig(), getPlatformSettingsValues()]);
+
+  const quote = computeQuote({
+    basePrice: Number(service.basePrice), unit: service.unit,
+    categoryId: service.categoryId,
+    serviceId: service.serviceId,
+    quantity: input.quantity,
+    specifications: input.specifications,
+    deliverySpeed: input.deliverySpeed,
+    commissionRate: Number(seller.commissionRate),
+    discount,
+    platformFee: feeConfig.fee,
+    gstRate: platformValues.gstRatePercent / 100,
+    deliveryFees: platformValues.deliveryFees,
+    sellerMetadata: seller.metadata,
+    pageRateFallback,
+  });
+
+  const paysByWallet = input.paymentMethod === 'wallet';
+  // Platform fee money rule (Settings → Platform): unless the admin checkbox
+  // allows it, the wallet may settle everything EXCEPT the fee — the fee is
+  // always paid online from real money. A pure 'wallet' payment is then
+  // impossible whenever a fee exists.
+  const coverableMax = walletCoverableMax(quote.total, quote.platformFee, feeConfig.fromWallet);
+  if (paysByWallet && coverableMax < quote.total) {
+    throw ApiError.badRequest(
+      `The platform fee of ₹${quote.platformFee} must be paid online — choose UPI/Card and let your wallet cover the rest.`,
+    );
+  }
+  // Partial wallet: with useWallet=true on an online method (card/upi) the
+  // wallet settles as much of the total as its balance covers; the gateway
+  // collects the remainder. If the wallet covers everything the gateway is
+  // skipped entirely — the order behaves like a 'wallet' payment. COD keeps
+  // its money-flow unchanged (cash on delivery can't mix wallet credit).
+  const useWalletPart =
+    input.useWallet === true && !paysByWallet && input.paymentMethod !== 'cod';
+  // Final values depend on the live wallet balance, so they're decided inside
+  // the transaction below (effectivePaymentMethod / effectivePaymentStatus /
+  // walletContribution). These defaults cover the non-wallet paths.
+  let paymentStatus = paysByWallet ? 'paid' : 'pending';
+  // TODO(payments step): for card/upi create a Razorpay order here and flip
+  // paymentStatus to 'paid' from the webhook after signature verification.
+
+  const estimatedDelivery = estimatedDeliveryFor(input.deliverySpeed, new Date(), platformValues.deliveryEtaHours);
+
+  // 2. Address snapshot — the order keeps the original even if the address
+  //    is edited/deleted later.
+  const addressSnapshot: DeliveryAddressSnapshot = {
+    label: address.label,
+    fullAddress: address.fullAddress,
+    city: address.city,
+    state: address.state,
+    pincode: address.pincode,
+    phone: address.phone,
+    lat: address.lat,
+    lng: address.lng,
+  };
+
+  // 5. One atomic transaction: order + item + coupon usage + wallet debit.
+  const order = await prisma.$transaction(async (tx) => {
+    let walletId: string | null = null;
+    let walletContribution = 0;
+    if (paysByWallet || useWalletPart) {
+      const wallet = await tx.wallet.findUnique({ where: { userId: customerId } });
+      if (wallet) {
+        const desired = paysByWallet
+          ? quote.total
+          : roundMoney(Math.min(Number(wallet.balance), coverableMax));
+        if (desired > 0) {
+          // Exact Decimal arithmetic: the query engine compares a JS double
+          // against the NUMERIC balance via its binary expansion, so at EXACT
+          // equality (balance == amount) the double's epsilon makes `gte`
+          // false and the guarded debit matches zero rows — a wallet balance
+          // of exactly ₹76.40 failed against a desired debit of ₹76.4
+          // (found by the order integration suite). Compare and decrement in
+          // Decimal space; toFixed(2) keeps every paisa unambiguous.
+          const desiredDecimal = new Prisma.Decimal(desired.toFixed(2));
+          // Guarded debit: the "balance >= amount" condition holds ATOMICALLY
+          // at write time, so a concurrent spend (e.g. two cart orders placed
+          // together) can never push the wallet negative.
+          let debit = await tx.wallet.updateMany({
+            where: { id: wallet.id, balance: { gte: desiredDecimal } },
+            data: { balance: { decrement: desiredDecimal } },
+          });
+          let contribution = desired;
+          if (debit.count === 0) {
+            if (paysByWallet) {
+              throw ApiError.badRequest(
+                `Insufficient wallet balance — need ₹${quote.total}, have ₹${Number(wallet.balance)}`,
+              );
+            }
+            // Partial only: a concurrent debit landed first — take what
+            // ACTUALLY remains; the rest simply stays for the gateway.
+            const fresh = await tx.wallet.findUniqueOrThrow({ where: { id: wallet.id } });
+            contribution = roundMoney(Math.min(Number(fresh.balance), coverableMax));
+            if (contribution > 0) {
+              const contributionDecimal = new Prisma.Decimal(contribution.toFixed(2));
+              debit = await tx.wallet.updateMany({
+                where: { id: wallet.id, balance: { gte: contributionDecimal } },
+                data: { balance: { decrement: contributionDecimal } },
+              });
+              if (debit.count === 0) contribution = 0; // raced twice — gateway pays all
+            }
+          }
+          if (contribution > 0) {
+            walletContribution = contribution;
+            walletId = wallet.id;
+          }
+        }
+      }
+      if (paysByWallet && walletContribution !== quote.total) {
+        // Full-wallet payment without a wallet row (or impossibly, a partial
+        // debit) — nothing to charge online for this method.
+        throw ApiError.badRequest('Wallet not found — top up first');
+      }
+    }
+    // What still has to come from the bank/gateway after the wallet's share.
+    const gatewayDue = roundMoney(quote.total - walletContribution);
+    const settledByWallet = gatewayDue <= 0 && (paysByWallet || useWalletPart);
+    paymentStatus = settledByWallet ? 'paid' : paymentStatus;
+
+    const created = await tx.order.create({
+      data: {
+        customerId,
+        sellerId: seller.id,
+        status: 'placed',
+        total: quote.total,
+        subtotal: quote.subtotal,
+        deliveryFee: quote.deliveryFee,
+        rushFee: quote.rushFee,
+        tax: quote.tax,
+        discount: quote.discount,
+        commissionAmount: quote.commissionAmount,
+        deliverySpeed: input.deliverySpeed,
+        deliveryAddress: addressSnapshot as unknown as Prisma.InputJsonValue,
+        estimatedDelivery,
+        specialInstructions: input.specialInstructions ?? null,
+        couponCode: appliedCoupon,
+        // Settled entirely from the wallet → record as a wallet payment, even
+        // when the customer picked card/upi but the balance covered it all.
+        paymentMethod: settledByWallet ? 'wallet' : input.paymentMethod,
+        paymentStatus,
+        walletAmount: walletContribution,
+        platformFee: quote.platformFee,
+        // Rush-eligible speeds flag the order for the seller queue.
+        isRush: input.deliverySpeed === 'EXPRESS' || input.deliverySpeed === 'SAME_DAY',
+        items: {
+          create: [
+            {
+              sellerServiceId: service.id,
+              serviceName: service.serviceName,
+              quantity: input.quantity,
+              unitPrice: Number(service.basePrice),
+              total: quote.subtotal,
+              specifications: input.specifications as unknown as Prisma.InputJsonValue,
+              // Legacy single-file readers keep working: fileUrl mirrors the
+              // first attachment; the full set lives in fileUrls.
+              fileUrl: fileUrls[0] ?? null,
+              fileUrls,
+            },
+          ],
+        },
+      },
+      include: { items: true },
+    });
+
+    // 5c. Coupon usage increments ONLY at creation; the order row itself
+    //     (customerId + couponCode) is the per-user usage record consulted
+    //     by validateCoupon.
+    if (appliedCoupon) {
+      await tx.coupon.update({
+        where: { code: appliedCoupon },
+        data: { usageCount: { increment: 1 } },
+      });
+    }
+
+    // 5d. Ledger row for the wallet debit that already landed above,
+    //     atomically with the order — full wallet orders take the whole
+    //     total, partial ones just their share.
+    if (walletId && walletContribution > 0) {
+      await tx.transaction.create({
+        data: {
+          walletId,
+          type: 'DEBIT',
+          reason: 'ORDER_PAYMENT',
+          amount: walletContribution,
+          description:
+            walletContribution < quote.total
+              ? `Wallet part-payment for order ${created.id}`
+              : `Payment for order ${created.id}`,
+          referenceId: created.id,
+        },
+      });
+    }
+
+    return created;
+  });
+
+  // 6–7. Mongo timeline + seller notification (post-commit, never masked).
+  await runPostCommitSideEffects('order.created', [
+    () =>
+      OrderTimelineModel.create({
+        orderId: order.id,
+        timeline: [
+          { status: 'placed', label: 'placed', timestamp: new Date(), updatedBy: customerId },
+        ],
+        adminNotes: [],
+        disputeDetails: { isDisputed: false },
+      }),
+    // Wallet/COD orders are already settled → seller hears about the new
+    // order NOW. Gateway (card/upi) orders notify at payment capture instead
+    // (payments module: "Payment received — new order").
+    ...(order.paymentStatus !== 'pending'
+      ? [
+          () =>
+            notifySeller(
+              seller.id,
+              'new_order',
+              'New order received',
+              `New order #${order.id.slice(-6).toUpperCase()} — ${service.serviceName} ×${input.quantity} (₹${quote.total}).`,
+              { orderId: order.id, total: quote.total, isRush: order.isRush },
+            ),
+        ]
+      : []),
+    () => invalidateSellerAnalytics(seller.id),
+    // KPI cache (orders today/this month) — significant event, step 8.
+    () => invalidateAdminStats(),
+    // Real-time (step 9): order:new to the seller's room — same placement-vs-
+    // capture split as the notification above (gateway orders fire at capture).
+    ...(order.paymentStatus !== 'pending'
+      ? [
+          async () => {
+            emitNewOrder(seller.id, {
+              orderId: order.id,
+              total: quote.total,
+              paymentMethod: order.paymentMethod,
+              timestamp: new Date(),
+            });
+          },
+        ]
+      : []),
+    // Admin global: high-value order alert (> ₹5000).
+    ...(quote.total > 5000
+      ? [
+          async () => {
+            emitAdminGlobalEvent('order.high_value', { orderId: order.id, total: quote.total, sellerId: seller.id });
+          },
+        ]
+      : []),
+  ]);
+
+  return { order, estimatedDelivery };
+}
+
+// ── GET /api/orders (customer) ─────────────────────────────────────────────
+
+export interface CustomerOrderListItem {
+  id: string;
+  status: string;
+  storeName: string;
+  services: string[];
+  total: number;
+  estimatedDelivery: Date;
+  isRush: boolean;
+  paymentStatus: string;
+  createdAt: Date;
+}
+
+export async function listCustomerOrders(
+  customerId: string,
+  query: ListOrdersQuery,
+): Promise<PaginatedResponse<CustomerOrderListItem>> {
+  const where: Prisma.OrderWhereInput = {
+    customerId,
+    ...(query.status ? { status: query.status } : {}),
+  };
+  const { skip, take } = toSkipTake({ page: query.page, limit: query.limit });
+  const [total, orders] = await prisma.$transaction([
+    prisma.order.count({ where }),
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: {
+        seller: { select: { storeName: true } },
+        items: { select: { serviceName: true, quantity: true } },
+      },
+    }),
+  ]);
+
+  return buildPaginatedResponse(
+    orders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      storeName: order.seller.storeName,
+      services: order.items.map((item) => `${item.serviceName} ×${item.quantity}`),
+      total: Number(order.total),
+      estimatedDelivery: order.estimatedDelivery,
+      isRush: order.isRush,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+    })),
+    total,
+    { page: query.page, limit: query.limit },
+  );
+}
+
+// ── GET /api/orders/:orderId (customer) ────────────────────────────────────
+
+type TimelineEvent = {
+  status: string;
+  label?: string;
+  timestamp: Date;
+  note?: string;
+  updatedBy: string;
+};
+
+async function loadTimeline(orderId: string): Promise<TimelineEvent[]> {
+  const doc = await OrderTimelineModel.findOne({ orderId });
+  return (doc?.timeline ?? []).map((event) => ({
+    status: event.status,
+    ...(event.label !== undefined ? { label: event.label } : {}),
+    timestamp: event.timestamp,
+    ...(event.note !== undefined ? { note: event.note } : {}),
+    updatedBy: event.updatedBy,
+  }));
+}
+
+export async function getCustomerOrderDetail(customerId: string, orderId: string) {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, customerId },
+    include: {
+      seller: { select: { id: true, storeName: true, phone: true, city: true } },
+      items: true,
+      delivery: { select: { status: true, deliveredAt: true, pickedUpAt: true } },
+    },
+  });
+  if (!order) {
+    throw ApiError.notFound('Order not found');
+  }
+
+  const timeline = await loadTimeline(order.id);
+  // Only true internals are withheld from the customer payload (payout
+  // plumbing); everything else about their own order is returned as-is.
+  const { payoutId: _payoutId, ...safe } = order;
+  return { ...safe, timeline };
+}
+
+// ── POST /api/orders/:orderId/cancel ───────────────────────────────────────
+
+export async function cancelOrder(
+  customerId: string,
+  orderId: string,
+  input: CancelOrderInput,
+): Promise<{ orderId: string; status: string; refund: string }> {
+  const order = await prisma.order.findFirst({ where: { id: orderId, customerId } });
+  if (!order) {
+    throw ApiError.notFound('Order not found');
+  }
+
+  // State machine gate: only placed/confirmed may be cancelled by customer.
+  if (!isValidTransition(order.status, 'cancelled')) {
+    throw ApiError.badRequest('Order cannot be cancelled at this stage. Contact support.');
+  }
+
+  const wasPaid = order.paymentStatus === 'paid';
+  let refundNote = 'No refund needed (cash on delivery)';
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: 'cancelled',
+      cancelReason: input.reason,
+      cancelledAt: new Date(),
+    },
+  });
+
+  // Money already collected goes back to its original source (wallet
+  // balance instantly, or a real gateway refund); nothing moves for COD.
+  if (wasPaid && order.paymentMethod !== 'cod') {
+    const refund = await refundOrderToSource(order.id, `Customer cancelled order ${order.id}`);
+    refundNote = !refund.refunded
+      ? 'Refund could not be processed automatically — our team will resolve it shortly'
+      : refund.channel === 'wallet'
+        ? `₹${Number(order.total)} credited back to your wallet`
+        : refund.channel === 'split'
+          ? `₹${Number(order.walletAmount)} credited back to your wallet; the rest returns to your bank (5–7 business days)`
+          : 'Refund initiated to your original payment method (5–7 business days)';
+  }
+
+  await runPostCommitSideEffects('order.cancelled', [
+    () => appendTimelineEvent(order.id, 'cancelled', customerId, `Cancelled by customer: ${input.reason}`),
+    async () => emitOrderStatusChanged(order, 'cancelled'), // step 9 realtime
+    () =>
+      notifySeller(
+        order.sellerId,
+        'order_cancelled',
+        'Order cancelled',
+        `Order #${order.id.slice(-6).toUpperCase()} was cancelled by the customer: ${input.reason}`,
+        { orderId: order.id, reason: input.reason },
+      ),
+    () => invalidateSellerAnalytics(order.sellerId),
+  ]);
+
+  return { orderId: order.id, status: 'cancelled', refund: refundNote };
+}
+
+// ── POST /api/orders/:orderId/reviews ──────────────────────────────────────
+
+export async function createReview(customerId: string, orderId: string, input: CreateReviewInput) {
+  const order = await prisma.order.findFirst({ where: { id: orderId, customerId } });
+  if (!order) {
+    throw ApiError.notFound('Order not found');
+  }
+  
+  // Allow reviews after order is placed/uploaded, not just after delivery
+  const allowReviewStatuses = ['placed', 'confirmed', 'processing', 'ready_for_pickup', 'picked_up', 'out_for_delivery', 'delivered'];
+  if (!allowReviewStatuses.includes(order.status)) {
+    throw ApiError.badRequest('You can review an order once it has been placed');
+  }
+  const existing = await prisma.review.findUnique({ where: { orderId: order.id } });
+  if (existing) {
+    throw ApiError.conflict('You have already reviewed this order');
+  }
+
+  const review = await prisma.$transaction(async (tx) => {
+    const created = await tx.review.create({
+      data: {
+        orderId: order.id,
+        customerId,
+        entityType: 'STORE',
+        entityId: order.sellerId,
+        overallRating: input.overallRating,
+        qualityRating: input.qualityRating ?? null,
+        deliveryRating: input.deliveryRating ?? null,
+        communicationRating: input.communicationRating ?? null,
+        valueRating: input.valueRating ?? null,
+        comment: input.comment ?? null,
+        photoUrls: [],
+      },
+    });
+
+    // Recalculate the store rating inside the same transaction.
+    const aggregate = await tx.review.aggregate({
+      where: { entityType: 'STORE', entityId: order.sellerId },
+      _avg: { overallRating: true },
+    });
+    await tx.seller.update({
+      where: { id: order.sellerId },
+      data: { averageRating: aggregate._avg.overallRating ?? 0 },
+    });
+
+    return created;
+  });
+
+  await runPostCommitSideEffects('review.created', [
+    () =>
+      notifySeller(
+        order.sellerId,
+        'new_review',
+        'New review received',
+        `A customer rated your store ${input.overallRating}★ on order #${order.id.slice(-6).toUpperCase()}.`,
+        { orderId: order.id, reviewId: review.id, rating: input.overallRating },
+      ),
+    () => invalidateStoreCaches(order.sellerId),
+  ]);
+
+  return review;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ADMIN — full-access order operations
+// ══════════════════════════════════════════════════════════════════════════
+
+export interface AdminOrderListItem {
+  id: string;
+  status: string;
+  customerName: string;
+  sellerName: string;
+  serviceName: string; // Added this
+  deliveryBoyName: string | null;
+  total: number;
+  isRush: boolean;
+  paymentStatus: string;
+  paymentMethod: string;
+  estimatedDelivery: Date;
+  createdAt: Date;
+}
+
+export async function adminListOrders(
+  query: AdminOrdersQuery,
+): Promise<PaginatedResponse<AdminOrderListItem>> {
+  const createdAt: { gte?: Date; lte?: Date } = {};
+  if (query.startDate) createdAt.gte = query.startDate;
+  if (query.endDate) createdAt.lte = query.endDate;
+
+  const where: Prisma.OrderWhereInput = {
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.sellerId ? { sellerId: query.sellerId } : {}),
+    ...(query.customerId ? { customerId: query.customerId } : {}),
+    ...(query.isRush !== undefined ? { isRush: query.isRush } : {}),
+    ...(Object.keys(createdAt).length > 0 ? { createdAt } : {}),
+  };
+
+  const { skip, take } = toSkipTake({ page: query.page, limit: query.limit });
+  const [total, orders] = await prisma.$transaction([
+    prisma.order.count({ where }),
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: {
+        customer: { select: { name: true } },
+        seller: { select: { storeName: true } },
+        items: { select: { serviceName: true }, take: 1 }, // Added this
+        delivery: { include: { deliveryBoy: { select: { name: true } } } },
+      },
+    }),
+  ]);
+
+  return buildPaginatedResponse(
+    orders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      customerName: order.customer.name,
+      sellerName: order.seller.storeName,
+      serviceName: order.items[0]?.serviceName ?? '—', // Added this
+      deliveryBoyName: order.delivery?.deliveryBoy?.name ?? null,
+      total: Number(order.total),
+      isRush: order.isRush,
+      paymentStatus: order.paymentStatus,
+      paymentMethod: order.paymentMethod,
+      estimatedDelivery: order.estimatedDelivery,
+      createdAt: order.createdAt,
+    })),
+    total,
+    { page: query.page, limit: query.limit },
+  );
+}
+
+export async function adminGetOrderDetail(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      customer: { select: { id: true, name: true, email: true, phone: true } },
+      seller: { select: { id: true, storeName: true, ownerName: true, email: true, phone: true } },
+      items: true,
+      delivery: {
+        include: {
+          deliveryBoy: { select: { id: true, name: true, phone: true } },
+        },
+      },
+    },
+  });
+  if (!order) {
+    throw ApiError.notFound('Order not found');
+  }
+
+  // FULL internal detail for admins — commission, payout linkage included.
+  const timeline = await loadTimeline(order.id);
+  return { ...order, timeline };
+}
+
+export interface AdminActionMeta {
+  adminId: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+async function logActivity(
+  meta: AdminActionMeta,
+  action: string,
+  entityId: string,
+  metadata: Record<string, unknown>,
+): Promise<void> {
+  await ActivityLogModel.create({
+    adminId: meta.adminId,
+    action,
+    entityType: 'order',
+    entityId,
+    metadata,
+    ...(meta.ipAddress ? { ipAddress: meta.ipAddress } : {}),
+    ...(meta.userAgent ? { userAgent: meta.userAgent } : {}),
+  });
+}
+
+/** Admin force-status: bypasses the state machine (intervention path). */
+export async function adminUpdateOrderStatus(
+  meta: AdminActionMeta,
+  orderId: string,
+  input: AdminUpdateStatusInput,
+): Promise<{ orderId: string; status: OrderStatus }> {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) {
+    throw ApiError.notFound('Order not found');
+  }
+
+  const previousStatus = order.status;
+  await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      status: input.status,
+      ...(input.status === 'cancelled' ? { cancelledAt: new Date() } : {}),
+    },
+  });
+
+  // Timeline + audit still happen — admin overrides are MORE visible, never less.
+  await runPostCommitSideEffects('order.admin_status', [
+    () =>
+      appendTimelineEvent(
+        orderId,
+        input.status,
+        meta.adminId,
+        input.note ?? `Admin override: ${previousStatus} → ${input.status}`,
+      ),
+    () =>
+      logActivity(meta, 'order.status_forced', orderId, {
+        from: previousStatus,
+        to: input.status,
+        note: input.note ?? null,
+      }),
+    () => invalidateSellerAnalytics(order.sellerId),
+    async () => emitOrderStatusChanged(order, input.status), // step 9 realtime
+    async () => {
+      // An admin forcing ready_for_pickup must kick off assignment too.
+      if (input.status === 'ready_for_pickup') {
+        await autoAssignDelivery(orderId);
+      }
+    },
+  ]);
+
+  return { orderId, status: input.status };
+}
+
+export async function adminRefundOrder(
+  meta: AdminActionMeta,
+  orderId: string,
+  input: AdminRefundInput,
+): Promise<{ orderId: string; refunded: number; channel: string }> {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) {
+    throw ApiError.notFound('Order not found');
+  }
+  if (input.amount > Number(order.total)) {
+    throw ApiError.badRequest(`Refund amount cannot exceed the order total of ₹${Number(order.total)}`);
+  }
+  if (order.paymentStatus === 'refunded') {
+    throw ApiError.conflict('This order has already been refunded');
+  }
+
+  // Split on walletAmount: the part that came from the wallet returns to the
+  // wallet instantly; the remainder's channel mirrors the payment method.
+  const { walletPart, gatewayPart } = splitWalletGateway(
+    input.amount,
+    Number(order.walletAmount ?? 0),
+  );
+
+  let channel = 'none';
+  await prisma.$transaction(async (tx) => {
+    if (walletPart > 0) {
+      // Wallet: credit the customer immediately (create the wallet if odd legacy data).
+      const wallet =
+        (await tx.wallet.findUnique({ where: { userId: order.customerId } })) ??
+        (await tx.wallet.create({ data: { userId: order.customerId } }));
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { increment: walletPart } },
+      });
+      await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'CREDIT',
+          reason: 'REFUND',
+          amount: walletPart,
+          description: `Admin refund for order ${order.id}: ${input.reason}`,
+          referenceId: order.id,
+        },
+      });
+      channel = 'wallet';
+    }
+
+    if (gatewayPart > 0) {
+      if (order.paymentMethod === 'cod') {
+        // COD was never collected electronically — nothing to send back.
+        channel = walletPart > 0 ? 'split' : 'none';
+      } else {
+        // card / upi / razorpay — the REAL gateway refund lives in
+        // payments.service.processAdminRefund (POST /api/payments/refund);
+        // this endpoint only records the intention.
+        channel = walletPart > 0 ? 'split' : 'gateway';
+      }
+    }
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: { paymentStatus: 'refunded' },
+    });
+  });
+
+  await runPostCommitSideEffects('order.admin_refund', [
+    () =>
+      appendTimelineEvent(
+        orderId,
+        order.status,
+        meta.adminId,
+        `Refund of ₹${input.amount} issued by admin (${channel}): ${input.reason}`,
+      ),
+    () =>
+      logActivity(meta, 'order.refunded', orderId, {
+        amount: input.amount,
+        reason: input.reason,
+        channel,
+        paymentMethod: order.paymentMethod,
+      }),
+  ]);
+
+  return { orderId, refunded: input.amount, channel };
+}
+
+export async function adminResolveDispute(
+  meta: AdminActionMeta,
+  orderId: string,
+  input: AdminDisputeInput,
+): Promise<{ orderId: string; resolution: 'customer' | 'seller' }> {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { id: true } });
+  if (!order) {
+    throw ApiError.notFound('Order not found');
+  }
+
+  await OrderTimelineModel.updateOne(
+    { orderId },
+    {
+      $set: {
+        disputeDetails: {
+          isDisputed: true,
+          reason: input.note,
+          resolution: input.resolution,
+          resolvedAt: new Date(),
+          resolvedBy: meta.adminId,
+        },
+      },
+    },
+    { upsert: true },
+  );
+
+  await runPostCommitSideEffects('order.admin_dispute', [
+    () =>
+      logActivity(meta, 'order.dispute_resolved', orderId, {
+        resolution: input.resolution,
+        note: input.note,
+      }),
+  ]);
+
+  return { orderId, resolution: input.resolution };
+}
