@@ -47,8 +47,8 @@ async function main() {
     fs.writeFileSync(path.join(dir, 'three-pages.pdf'), pdfBytes);
     assert.equal(await countPdfPages(path.join(dir, 'three-pages.pdf')), 3);
 
-    /* Only the four Office extensions convert. */
-    assert.deepEqual([...OFFICE_CONVERTIBLE].sort(), ['.doc', '.docx', '.ppt', '.pptx']);
+    /* Only the six Office extensions convert. */
+    assert.deepEqual([...OFFICE_CONVERTIBLE].sort(), ['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx']);
 
     /* The default sidecar port is 3200, NOT 3000 — 3000 is the Next.js dev
      * server, and hitting it used to surface as a mysterious 422 on upload. */

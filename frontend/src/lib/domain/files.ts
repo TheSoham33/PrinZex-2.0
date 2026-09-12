@@ -4,7 +4,7 @@
  *
  *   PDF        → pages counted exactly with pdf-lib in the browser
  *   JPG/PNG    → one sheet per image (count = 1)
- *   Word/PPT   → uploaded at attach time; the backend converts them to a
+ *   Word/PPT/Excel → uploaded at attach time; the backend converts them to a
  *                print-ready PDF with LibreOffice (exact, final pagination)
  *                and returns that page count — browser-side Office rendering
  *                can be trusted for neither.
@@ -14,12 +14,12 @@
  */
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
-const OFFICE_EXTENSIONS = new Set(['doc', 'docx', 'ppt', 'pptx']);
+const OFFICE_EXTENSIONS = new Set(['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx']);
 
 /** Value for the <input accept> attribute and the error copy. */
-export const ACCEPTED_DOCUMENT_TYPES = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx';
+export const ACCEPTED_DOCUMENT_TYPES = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx,.xls,.xlsx';
 /** Human list used in validation/error messages (keep in sync!). */
-export const ACCEPTED_DOCUMENT_DESCRIPTION = 'PDF, JPG/JPEG, PNG, DOC, DOCX, PPT or PPTX';
+export const ACCEPTED_DOCUMENT_DESCRIPTION = 'PDF, JPG/JPEG, PNG, DOC, DOCX, PPT, PPTX, XLS or XLSX';
 
 export const fileExtension = (fileName: string): string => {
   const dot = fileName.lastIndexOf('.');

@@ -25,7 +25,8 @@ const CASES: Array<[string, ReturnType<typeof pageCountStrategy>]> = [
   ['notes.docx', 'office'],
   ['deck.ppt', 'office'],
   ['deck.PPTX', 'office'],
-  ['sheet.xlsx', null], // not accepted
+  ['sheet.xlsx', 'office'],
+  ['budget.XLS', 'office'], // case-insensitive
   ['archive.zip', null], // renamed containers don't sneak in client-side
   ['no-extension', null],
   ['.pdf', null], // dotfile, not a real name
@@ -41,7 +42,7 @@ assert.equal(fileExtension('DOC'), '');
 
 /* accept-attribute + error copy cover every accepted type (and nothing else). */
 const accepted = ACCEPTED_DOCUMENT_TYPES.split(',').map((t) => t.slice(1));
-assert.deepEqual(accepted.sort(), ['doc', 'docx', 'jpeg', 'jpg', 'pdf', 'png', 'ppt', 'pptx']);
+assert.deepEqual(accepted.sort(), ['doc', 'docx', 'jpeg', 'jpg', 'pdf', 'png', 'ppt', 'pptx', 'xls', 'xlsx']);
 for (const ext of accepted) {
   assert.ok(pageCountStrategy(`f.${ext}`) !== null, `${ext} classified`);
   assert.ok(
