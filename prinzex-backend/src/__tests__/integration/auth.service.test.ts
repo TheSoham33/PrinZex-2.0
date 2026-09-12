@@ -40,10 +40,11 @@ describe('auth.service (integration — disposable Postgres schema)', () => {
     expect(result.user.role).toBe('CUSTOMER');
     expect(result.user.referralCode).toBeTruthy();
 
-    // The wallet rides in the same transaction.
+    // The wallet rides in the same transaction. (balance is a Prisma
+    // Decimal @db.Decimal(10,2) — compare numerically, not by identity.)
     const wallet = await prisma.wallet.findUnique({ where: { userId: result.user.id } });
     expect(wallet).not.toBeNull();
-    expect(wallet?.balance).toBe(0);
+    expect(Number(wallet?.balance)).toBe(0);
     expect(wallet?.loyaltyPoints).toBe(0);
 
     // Token pair issued and the refresh token persisted for rotation.
