@@ -7,6 +7,7 @@
  * login-attempt counters go through the real Redis in CI.
  */
 import { prisma } from '../../config/database';
+import { redis } from '../../config/redis';
 import * as authService from '../../modules/auth/auth.service';
 
 const EMAIL = 'asha.dey@prinzex.test';
@@ -15,6 +16,13 @@ const PASSWORD = 'Passw0rd!print';
 
 /** ApiError-shaped rejection matcher — statusCode is an own property. */
 const rejectsApiError = (statusCode: number) => ({ statusCode });
+
+// The shared Prisma pool and the lazy-connect Redis client are open handles
+// that keep the jest worker alive after the suite — close them explicitly.
+afterAll(async () => {
+  await prisma.$disconnect();
+  redis.disconnect();
+});
 
 describe('auth.service (integration — disposable Postgres schema)', () => {
   test('register creates the user + wallet atomically and returns safe tokens', async () => {

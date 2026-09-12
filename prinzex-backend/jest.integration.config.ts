@@ -24,6 +24,10 @@ const config: Config = {
   globalTeardown: '<rootDir>/test/integration-global-teardown.ts',
   testTimeout: 30000,
   maxWorkers: 1,
+  // Belt-and-braces: even with the explicit afterAll teardown, shared infra
+  // clients (Prisma pool, ioredis) can hold the worker open; forceExit ends
+  // the process once tests finish. It never rescues a mid-test hang.
+  forceExit: true,
   clearMocks: true,
   verbose: true,
 };
