@@ -336,7 +336,12 @@ Base URL `/api`. JWT per actor in `Authorization: Bearer`.
 
 ## 13. Verification & Quality Gates
 
-There is no Jest suite (jest is configured but has zero test files); the safety net is **runnable check scripts** plus compiler/lint gates. Run any of them with `npx tsx scripts/<name>.ts` from the package root.
+**Jest suites** (bootstrapped 2026-09-12, both run in CI):
+
+- *Unit* (`prinzex-backend` → `npm test`, 88 tests): the pure cores — `computeQuote` (every pricing branch: per-page, duplex sheet math, binding incl. spiral/twin-loop customizations and spine estimates, slabs, per-piece, photo prints, override precedence, scoped add-ons), the order `stateMachine`, the `platformSettings` parsers + defaults-mirror guard, and `pickSlabRate`. No databases needed (`src/__tests__/setup-unit-env.ts` satisfies envalid with placeholders).
+- *Integration* (`npm run test:integration`, disposable Postgres schema): the jest global setup creates `prinzex_test_<run>` via `prisma db execute`, runs `prisma migrate deploy` into it, hands the URL to workers via a tmp file, and the teardown drops it `CASCADE`. Current suite: auth service (register/login/duplicate conflicts, wallet + refresh-token persistence, bcrypt hashing). Redis is required (OTP storage, login lockout) — locally `docker compose up -d postgres redis` and the compose defaults apply; CI provides service containers.
+
+The rest of the safety net is **runnable check scripts** plus compiler/lint gates. Run any of them with `npx tsx scripts/<name>.ts` from the package root.
 
 Backend (`prinzex-backend/scripts/`):
 
@@ -372,6 +377,14 @@ npm run dev                               # http://localhost:5000
 cd ../frontend && npm install && npm run dev   # http://localhost:3000
 ```
 
+Tests (backend, from `prinzex-backend/`):
+
+```bash
+npm test                                  # unit tests — no services needed
+docker compose up -d postgres redis       # integration tests need these two
+npm run test:integration                  # builds + drops its own schema
+```
+
 Demo accounts (after seeding):
 
 | Role | Login |
@@ -398,7 +411,7 @@ Priority: **P0** = launch blocker · **P1** = strong product/ops need · **P2** 
 | 2 | **SMS is a logger stub.** Rider OTP and customer OTPs only log (`sms_stub`); `devOtp` in the response is dev-only. | Nobody can actually log in via OTP in production. | Integrate an Indian DLT-compliant gateway (MSG91 / Twilio / Fast2SMS) behind the existing `sendOtpSms`/`sendSms` wrappers; keep the stub for dev. Rate-limit and alert on failure. |
 | 3 | **Production payment credentials & webhook hardening.** Razorpay TEST keys are in use. | Money can’t move without live keys; webhook spoofing risk. | Move keys to env-only secrets, enforce signature verification on every webhook path, add an allow-list + retry monitoring; run a staging end-to-end payment + refund rehearsal. |
 | 4 | **No CI pipeline.** No `.github/workflows`; all gates are manual. | Regressions can merge unnoticed. | GitHub Actions: install, `tsc --noEmit` both packages, lint, run all 24 check scripts on every PR. |
-| 5 | **Zero unit/integration tests** (jest configured, unused). | Only check scripts stand between a refactor and production. | Start with the pure cores: computeQuote, stateMachine, platformSettings parsers (they already have check scripts — port them 1:1 to jest), then service-level integration tests with a disposable Postgres schema. |
+| 5 | **Zero unit/integration tests** (jest configured, unused). ~~Only check scripts stand between a refactor and production.~~ **Bootstrapped 2026-09-12** — jest suites now run in CI: unit tests for the pure cores (computeQuote — all pricing branches, stateMachine, platformSettings parsers, pickSlabRate) and a service-level auth integration test against a disposable Postgres schema (per-run schema, migrate deploy, CASCADE drop). | Only check scripts stand between a refactor and production. | Start with the pure cores: computeQuote, stateMachine, platformSettings parsers (they already have check scripts — port them 1:1 to jest), then service-level integration tests with a disposable Postgres schema. *(Unit + auth integration done — next: order placement + payout integration tests, more services.)* |
 
 ### 15.2 P1 — product & operations
 

@@ -17,6 +17,6 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "prisma/seed.ts", "mongo-seed/**/*.ts", "jest.config.ts"],
+  "include": ["src/**/*.ts", "prisma/seed.ts", "mongo-seed/**/*.ts", "jest.config.ts", "jest.integration.config.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }
