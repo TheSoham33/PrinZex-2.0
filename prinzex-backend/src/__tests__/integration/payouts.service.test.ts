@@ -7,7 +7,7 @@
  * so the balance becomes requestable again.
  *
  * Fixture: APPROVED seller (₹2/page, 10% commission, bank on file) + a
- * customer buying 50-page B&W jobs (₹118 each → ₹106.20 net earnings per
+ * customer buying 50-page B&W jobs (₹118 each → ₹108 net earnings per
  * delivered order, platform numbers at code defaults).
  */
 import mongoose from 'mongoose';
@@ -195,10 +195,10 @@ describe('seller payouts (integration — disposable Postgres schema)', () => {
 
     await deliveredOrder();
     const after = await sellerService.getPendingBalance(sellerId);
-    expect(after.balance).toBe(NET_PER_ORDER); // 118 − 11.8 commission
+    expect(after.balance).toBe(NET_PER_ORDER); // 118 − 10 commission (10% of the subtotal)
     expect(after.ordersIncluded).toBe(1);
     expect(after.minThreshold).toBe(env.MIN_PAYOUT_THRESHOLD);
-    expect(after.canRequest).toBe(false); // 106.2 < 500
+    expect(after.canRequest).toBe(false); // 108 < 500
   });
 
   test('requestPayout requires bank details first', async () => {
