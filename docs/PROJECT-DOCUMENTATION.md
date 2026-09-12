@@ -289,6 +289,7 @@ Single MongoDB `settings` document; public read endpoint `GET /api/content/setti
 - Seeds: 3 approved + 1 pending seller in Kolkata, 3 riders, 5 customers, coupons, settings — all wiped & recreated idempotently (`check-seed-wipe.ts`).
 - 24 runnable check scripts guard pricing, geo coverage, settings parity, phone canonicalisation, uploads.
 - **JWT `jti` (2026-09-12)**: every access/refresh token now carries a random `jti` — before, two token pairs issued for the same user within one second were byte-identical and the second `refreshToken.create` failed the UNIQUE constraint (P2002). Found by the new auth integration test; previously live in register→login-immediately and concurrent-device logins.
+- **Exact-equality wallet debit (2026-09-12)**: the guarded wallet debit passed the amount as a JS double; the query engine compares it against the NUMERIC balance via the double's binary expansion, so at exact equality (`balance == amount`) the epsilon made `gte` false and the debit matched zero rows. Full-wallet payment with balance exactly equal to the total was rejected ("need ₹X, have ₹X"); partial-wallet orders silently skipped the wallet debit and charged the gateway everything. Both debit sites now compare/decrement in exact `Prisma.Decimal` space. Found by the order integration suite.
 
 ---
 
@@ -382,7 +383,7 @@ Tests (backend, from `prinzex-backend/`):
 
 ```bash
 npm test                                  # unit tests — no services needed
-docker compose up -d postgres redis       # integration tests need these two
+docker compose up -d postgres redis mongodb   # integration tests need these
 npm run test:integration                  # builds + drops its own schema
 ```
 

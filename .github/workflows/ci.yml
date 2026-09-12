@@ -106,6 +106,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' localhost:27017/test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Check out repository
@@ -135,7 +144,7 @@ jobs:
           status=0
           npm run test:integration 2>&1 | tee /tmp/integration.log || status=1
           if [ "$status" -ne 0 ]; then
-            grep -aE "●|✕|Expected|Received|Error:|FAIL |Tests:" /tmp/integration.log \
+            grep -aE "●|✕|Expected|Received|Error:|FAIL |Tests:|DIAG" /tmp/integration.log \
               | head -60 | sed 's/^/::error::/' || true
           fi
           exit $status

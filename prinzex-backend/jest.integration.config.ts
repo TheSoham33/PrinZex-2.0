@@ -2,8 +2,9 @@ import type { Config } from 'jest';
 
 /**
  * Integration suite — service-level tests against a DISPOSABLE Postgres
- * schema (see test/integration-global-setup.ts) plus Redis for the OTP /
- * login-attempt paths. No MongoDB is needed by the current suite.
+ * schema (see test/integration-global-setup.ts), Redis for the OTP /
+ * login-attempt paths, and MongoDB for post-commit side effects (order
+ * timeline, notifications).
  *
  *   npm run test:integration
  *

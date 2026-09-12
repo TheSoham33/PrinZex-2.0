@@ -4,9 +4,10 @@
  * constructed). Reads the disposable-schema URL written by the global setup;
  * sets safe defaults for everything else envalid requires.
  *
- * Redis is real for the integration suite (OTP storage and login-attempt
- * tracking go through it) — point REDIS_HOST/REDIS_PORT at the compose
- * service locally; CI maps a service container onto localhost:6379.
+ * Redis and MongoDB are real for the integration suite (OTP storage,
+ * login-attempt tracking, order timeline + notifications) — point
+ * REDIS_HOST/REDIS_PORT and MONGODB_URI at the compose services locally;
+ * CI maps service containers onto localhost.
  */
 import fs from 'node:fs';
 import os from 'node:os';
