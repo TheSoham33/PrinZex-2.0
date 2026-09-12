@@ -224,6 +224,33 @@ describe('createOrder (integration — wallet money path)', () => {
     expect(Number(after.balance)).toBe(Number(before.balance)); // untouched
   });
 
+  test('DIAG: guarded debit when balance exactly equals the amount', async () => {
+    const wallet = await prisma.wallet.findUniqueOrThrow({ where: { id: walletId } });
+    const desired = Number(wallet.balance); // exactly the current balance
+    const debit = await prisma.wallet.updateMany({
+      where: { id: wallet.id, balance: { gte: desired } },
+      data: { balance: { decrement: desired } },
+    });
+    console.error(`DIAG equal-debit: balance=${wallet.balance} desired=${desired} count=${debit.count}`);
+    if (debit.count > 0) {
+      await prisma.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { increment: desired } },
+      });
+    }
+    const below = await prisma.wallet.updateMany({
+      where: { id: wallet.id, balance: { gte: desired - 0.01 } },
+      data: { balance: { decrement: desired - 0.01 } },
+    });
+    console.error(`DIAG below-debit: gte=${desired - 0.01} count=${below.count}`);
+    if (below.count > 0) {
+      await prisma.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { increment: desired - 0.01 } },
+      });
+    }
+  });
+
   test('partial wallet on upi: wallet settles its balance, gateway owes the rest, seller not notified yet', async () => {
     const notificationsBefore = await NotificationModel.countDocuments({
       recipientId: sellerId,
