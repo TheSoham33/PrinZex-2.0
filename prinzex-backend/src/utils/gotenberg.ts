@@ -23,6 +23,8 @@ export const OFFICE_CONVERTIBLE: ReadonlySet<string> = new Set([
   '.docx',
   '.ppt',
   '.pptx',
+  '.xls',
+  '.xlsx',
 ]);
 
 /** Client-side abort; keeps headroom below the service's --api-timeout. */

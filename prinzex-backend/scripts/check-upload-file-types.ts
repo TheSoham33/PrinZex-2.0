@@ -21,8 +21,10 @@ const HEADERS: Record<string, Buffer> = {
   '.psd': Buffer.from([0x38, 0x42, 0x50, 0x53]),
   '.doc': Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
   '.ppt': Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
+  '.xls': Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
   '.docx': Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]),
   '.pptx': Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]),
+  '.xlsx': Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]),
 };
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prinzex-upload-check-'));
@@ -40,7 +42,7 @@ async function main() {
   }
 
   /* Wrong content for the claimed extension → 415 and the file is deleted. */
-  for (const name of ['fake.docx', 'fake.doc', 'fake.pdf']) {
+  for (const name of ['fake.docx', 'fake.doc', 'fake.xlsx', 'fake.pdf']) {
     const p = write(name, Buffer.from('MZ-not-a-real-header'));
     await assert.rejects(
       verifyMagicBytes(p),

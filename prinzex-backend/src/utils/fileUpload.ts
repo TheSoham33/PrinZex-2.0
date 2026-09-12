@@ -31,6 +31,8 @@ const ALLOWED_EXTENSIONS = [
   '.docx',
   '.ppt',
   '.pptx',
+  '.xls',
+  '.xlsx',
 ] as const;
 export type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number];
 
@@ -43,8 +45,8 @@ export const MAX_DESIGN_SIZE_BYTES = MAX_CONFIGURABLE_UPLOAD_MB * 1024 * 1024;
 /**
  * Magic-byte signatures per extension. Offsets are byte positions in the
  * file header. `.ai` files are PDF containers; `.psd` starts with "8BPS".
- * `.docx`/`.pptx` are ZIP containers ("PK\x03\x04"); legacy `.doc`/`.ppt`
- * are OLE2/CFB containers (D0 CF 11 E0 A1 B1 1A E1).
+ * `.docx`/`.pptx`/`.xlsx` are ZIP containers ("PK\x03\x04"); legacy
+ * `.doc`/`.ppt`/`.xls` are OLE2/CFB containers (D0 CF 11 E0 A1 B1 1A E1).
  */
 const MAGIC_SIGNATURES: Record<AllowedExtension, Buffer[]> = {
   '.pdf': [Buffer.from([0x25, 0x50, 0x44, 0x46])], // %PDF
@@ -55,8 +57,10 @@ const MAGIC_SIGNATURES: Record<AllowedExtension, Buffer[]> = {
   '.psd': [Buffer.from([0x38, 0x42, 0x50, 0x53])], // 8BPS
   '.docx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // PK\x03\x04
   '.pptx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])],
+  '.xlsx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])],
   '.doc': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
   '.ppt': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
+  '.xls': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
 };
 
 function ensureDir(dir: string, callback: (error: Error | null, resolved: string) => void): void {
