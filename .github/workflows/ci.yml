@@ -144,7 +144,7 @@ jobs:
           status=0
           npm run test:integration 2>&1 | tee /tmp/integration.log || status=1
           if [ "$status" -ne 0 ]; then
-            grep -aE "●|✕|Expected|Received|Error:|FAIL |Tests:" /tmp/integration.log \
+            grep -aE "●|✕|Expected|Received|Error:|FAIL |Tests:|DIAG" /tmp/integration.log \
               | head -60 | sed 's/^/::error::/' || true
           fi
           exit $status

@@ -231,13 +231,18 @@ describe('createOrder (integration — wallet money path)', () => {
     });
 
     // Balance 76.4 vs total 118 → wallet pays 76.4, gateway owes 41.6.
-    const { order } = await ordersService.createOrder(
-      customerId,
-      orderInput({
-        specifications: { ...baseSpecs, totalPages: 50 },
-        paymentMethod: 'upi',
-        useWallet: true,
-      }),
+    const walletBefore = await prisma.wallet.findUniqueOrThrow({ where: { id: walletId } });
+    const input = orderInput({
+      specifications: { ...baseSpecs, totalPages: 50 },
+      paymentMethod: 'upi',
+      useWallet: true,
+    });
+    console.error(
+      `DIAG before: balance=${walletBefore.balance} input.paymentMethod=${input.paymentMethod} input.useWallet=${input.useWallet}`,
+    );
+    const { order } = await ordersService.createOrder(customerId, input);
+    console.error(
+      `DIAG after: walletAmount=${order.walletAmount} total=${order.total} status=${order.paymentStatus} method=${order.paymentMethod}`,
     );
 
     expect(order.paymentStatus).toBe('pending'); // gateway capture still owed
