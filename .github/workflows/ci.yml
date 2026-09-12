@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend — typecheck, lint, check scripts
+    name: Backend — typecheck, lint, check scripts, unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -152,7 +152,7 @@ jobs:
           INTEGRATION_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/prinzex_ci
 
   frontend:
-    name: Frontend — typecheck, lint, check scripts
+    name: Frontend — typecheck, lint, check scripts, unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -191,3 +191,6 @@ jobs:
             echo "::endgroup::"
           done
           exit $status
+
+      - name: Unit tests (jest)
+        run: npm test
