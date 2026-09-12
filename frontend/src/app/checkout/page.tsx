@@ -71,6 +71,10 @@ export default function CheckoutPage() {
 
   const subtotal = items.reduce((sum, item) => sum + item.costBreakdown.subtotal, 0);
   const tax = items.reduce((sum, item) => sum + item.costBreakdown.tax, 0);
+  const taxableAmount = items.reduce(
+    (sum, item) => sum + (item.costBreakdown.taxableAmount ?? item.costBreakdown.subtotal),
+    0,
+  );
   // Admin-tuned delivery charges/promises overlay the static speed list.
   const speedOptions = applyDeliverySettings(DELIVERY_SPEEDS, platformSettings);
   const deliveryFee = speedOptions.find(s => s.key.toUpperCase() === deliverySpeed)?.cost || 0;
@@ -309,6 +313,12 @@ export default function CheckoutPage() {
                     <span>Items Subtotal</span>
                     <span>{formatCurrency(subtotal)}</span>
                   </div>
+                  {taxableAmount !== subtotal && (
+                    <div className="flex justify-between text-slate-500">
+                      <span>Taxable value</span>
+                      <span>{formatCurrency(taxableAmount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-slate-600">
                     <span>GST ({platformSettings?.gstRatePercent ?? 18}%)</span>
                     <span>{formatCurrency(tax)}</span>

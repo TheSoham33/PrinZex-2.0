@@ -1,4 +1,4 @@
-import { get, post } from './client';
+import { downloadFile, get, post } from './client';
 import type { DashboardOrder, OrderStatus } from '@/lib/domain/orders';
 
 /** Returns every order for the signed-in customer. */
@@ -56,3 +56,8 @@ export const placeOrder = async (orderData: any): Promise<any> => post('/orders'
 
 /** Get a quote for potential order. */
 export const getOrderQuote = async (quoteData: any): Promise<any> => post('/orders/quote', quoteData);
+
+/** Download the order's GST invoice PDF (gap #9). The backend streams it
+ *  straight back; the browser saves it under the server-suggested filename. */
+export const downloadOrderInvoice = async (orderId: string): Promise<void> =>
+  downloadFile(`/orders/${orderId}/invoice`, `invoice-${orderId}.pdf`);

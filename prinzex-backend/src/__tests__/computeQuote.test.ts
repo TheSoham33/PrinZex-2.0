@@ -392,9 +392,22 @@ describe('computeQuote — fees, GST, commission, platform fee, discount', () =>
       }),
     );
     expect(quote.deliveryFee).toBe(20);
-    expect(quote.tax).toBe(2.5); // 5% of 50
+    expect(quote.gstOnFees).toBe(true); // default policy: fees taxable
+    expect(quote.taxableAmount).toBe(70); // 50 + 20 delivery
+    expect(quote.tax).toBe(3.5); // 5% of the composite supply (50 + 20)
     expect(quote.commissionAmount).toBe(7.5);
-    expect(quote.total).toBe(72.5); // 50 + 20 + 2.5
+    expect(quote.total).toBe(73.5); // 50 + 20 + 3.5
+  });
+
+  test('gstOnFees:false keeps GST on the subtotal only (gap #9 toggle)', () => {
+    const quote = computeQuote(
+      docPrint({ deliverySpeed: 'EXPRESS', platformFee: 20, gstOnFees: false }),
+    );
+    expect(quote.deliveryFee).toBe(50); // default EXPRESS fee
+    expect(quote.gstOnFees).toBe(false);
+    expect(quote.taxableAmount).toBe(50); // fees excluded from the base
+    expect(quote.tax).toBe(9); // 18% of 50
+    expect(quote.total).toBe(129); // 50 + 50 + 9 + 20
   });
 
   test('platform fee rides on top after the discount; discount never exceeds the subtotal', () => {
@@ -404,7 +417,9 @@ describe('computeQuote — fees, GST, commission, platform fee, discount', () =>
     expect(quote.deliveryFee).toBe(50); // default EXPRESS fee
     expect(quote.discount).toBe(10);
     expect(quote.platformFee).toBe(20);
-    expect(quote.total).toBe(119); // 50 + 50 + 9 − 10 + 20
+    expect(quote.taxableAmount).toBe(120); // 50 + 50 delivery + 20 platform fee
+    expect(quote.tax).toBe(21.6); // 18% of 120
+    expect(quote.total).toBe(131.6); // 50 + 50 + 21.6 − 10 + 20
   });
 });
 

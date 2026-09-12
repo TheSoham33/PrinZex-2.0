@@ -242,6 +242,10 @@ export interface CostBreakdown {
   rushFee: number;
   deliveryFee: number;
   tax: number;
+  /** Server-computed GST base (₹): subtotal, plus fees when gstOnFees. */
+  taxableAmount?: number;
+  /** Server-side flag: whether fees join the GST base (gap #9). */
+  gstOnFees?: boolean;
   discount: number;
   /** Flat admin-configured platform fee (0 or absent = none). */
   platformFee?: number;

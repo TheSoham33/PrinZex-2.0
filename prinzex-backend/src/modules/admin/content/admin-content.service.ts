@@ -375,8 +375,12 @@ export interface PlatformSettingsDto {
   platformFeeFromWallet: boolean;
   /** Validation ceiling for the platformFee input itself (₹). */
   platformFeeMax: number;
-  /** GST charged on the order subtotal, in percent. */
+  /** GST charged on the order, in percent. */
   gstRatePercent: number;
+  /** Gap #9 tax decision: when true (default), GST applies to the composite
+   *  supply — subtotal + rush/delivery/platform fees; when false, to the
+   *  subtotal only. Flagged as pending CA sign-off in orders/taxation.ts. */
+  gstOnFees: boolean;
   /** Customer-facing delivery charge per speed (₹). */
   deliveryFees: Record<'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP', number>;
   /** Promised delivery time per speed, in whole hours. */
@@ -405,6 +409,7 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
       platformFeeFromWallet: false,
       platformFeeMax: defaults.platformFeeMax,
       gstRatePercent: defaults.gstRatePercent,
+      gstOnFees: defaults.gstOnFees,
       deliveryFees: defaults.deliveryFees,
       deliveryEtaHours: defaults.deliveryEtaHours,
       assignRadiusKm: defaults.assignRadiusKm,
@@ -429,6 +434,7 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
     platformFeeFromWallet: doc.metadata?.platformFeeFromWallet === true,
     platformFeeMax: values.platformFeeMax,
     gstRatePercent: values.gstRatePercent,
+    gstOnFees: values.gstOnFees,
     deliveryFees: values.deliveryFees,
     deliveryEtaHours: values.deliveryEtaHours,
     assignRadiusKm: values.assignRadiusKm,
@@ -483,6 +489,7 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
           platformFeeFromWallet: input.platformFeeFromWallet === true,
           platformFeeMax,
           gstRatePercent,
+          gstOnFees: input.gstOnFees === true,
           deliveryFees,
           deliveryEtaHours,
           assignRadiusKm,
