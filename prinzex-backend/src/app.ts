@@ -39,6 +39,7 @@ import { adminAdminsRouter } from './modules/admin/admins/admin-admins.routes';
 import { adminReviewsRouter } from './modules/admin/reviews/admin-reviews.routes';
 import { adminLogsRouter } from './modules/admin/logs/admin-logs.routes';
 import { chatRouter } from './modules/chat/chat.routes';
+import { devicesRouter } from './modules/devices/devices.routes';
 import { authenticate } from './middlewares/authenticate';
 import { authorizeRoles } from './middlewares/authorizeRoles';
 import { ApiResponse } from './utils/ApiResponse';
@@ -129,6 +130,10 @@ export function createApp(): Express {
 
   // Customer order flow (quote, place, track, cancel, review) — CUSTOMER role.
   app.use('/api/orders', ordersRouter);
+
+  // Device push-token registry (gap #10 FCM) — any signed-in device owner
+  // (customer / seller / delivery boy) registers its FCM token here.
+  app.use('/api/devices', devicesRouter);
 
   // Admin order operations (list, detail, force-status, refund, dispute).
   app.use('/api/admin/orders', adminOrdersRouter);

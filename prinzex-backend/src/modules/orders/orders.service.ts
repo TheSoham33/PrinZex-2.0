@@ -28,6 +28,7 @@ import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import { refundOrderToSource } from '../payments/payments.service';
 import { roundMoney, splitWalletGateway } from '../../utils/financial';
+import { enqueuePush } from '../../utils/fcm';
 import { getPlatformFeeConfig, walletCoverableMax } from '../../utils/platformFee';
 import { getPlatformSettingsValues } from '../../utils/platformSettings';
 import {
@@ -114,6 +115,7 @@ async function notifySeller(
     channel: ['push'],
   });
   emitNotificationNew('seller', sellerId, { type, title, body, data }); // step 9 realtime
+  enqueuePush('seller', sellerId, { type, title, body, data }); // gap #10 FCM
 }
 
 /**

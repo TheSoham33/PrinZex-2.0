@@ -41,7 +41,9 @@ function resolveToken(endpoint: string): string | null {
       ? ''
       : state.deliveryAuth.accessToken || '';
   } else {
-    token = state.auth.accessToken || state.sellerAuth.accessToken || state.adminAuth.accessToken;
+    // Generic endpoints (e.g. /devices push-token registry) are shared by all
+    // four lanes; the lane-implied-by-JWT endpoints pick their token above.
+    token = state.auth.accessToken || state.sellerAuth.accessToken || state.deliveryAuth.accessToken || state.adminAuth.accessToken;
   }
 
   return token || null;

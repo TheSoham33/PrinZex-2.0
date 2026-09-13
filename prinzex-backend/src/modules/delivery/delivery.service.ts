@@ -9,6 +9,7 @@ import { TrackingModel, type ILocationPoint } from '../../models/mongo/Tracking.
 import type { DeliveryAddressSnapshot } from '../../types';
 import { ApiError } from '../../utils/ApiError';
 import { getCache, invalidateCache } from '../../utils/cache';
+import { enqueuePush } from '../../utils/fcm';
 import { sendSms } from '../../utils/email';
 import { estimateEtaMinutes, haversineDistanceKm } from '../../utils/geo';
 import { isValidTransition } from '../../utils/stateMachine';
@@ -81,6 +82,9 @@ async function notify(
     channel: ['push'],
   });
   emitNotificationNew(recipientType, recipientId, { type, title, body, data }); // step 9 realtime
+  if (recipientType !== 'admin') {
+    enqueuePush(recipientType, recipientId, { type, title, body, data }); // gap #10 FCM
+  }
 }
 
 export interface CachedRiderLocation {

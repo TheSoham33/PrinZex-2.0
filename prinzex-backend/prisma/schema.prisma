@@ -671,3 +671,25 @@ model AdminRefreshToken {
 
   admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 }
+
+// ─── FCM PUSH (gap #10) ─────────────────────────────────
+
+/// A registered FCM registration token for one device of one recipient
+/// (customer / seller / delivery boy). Tokens are the raw Firebase Cloud
+/// Messaging strings the browser/mobile SDK hands out; the push sender fans a
+/// notification out to every token for (recipientType, recipientId). A token
+/// is globally unique — re-registering the same token (e.g. a browser that
+/// was handed to a new account) reassigns it to the new recipient.
+model DeviceToken {
+  id            String   @id @default(cuid())
+  recipientId   String // userId / sellerId / deliveryBoyId (matches Notification.recipientId)
+  recipientType String // "customer" | "seller" | "delivery_boy"
+  token         String   @unique
+  platform      String   @default("web") // "web" | "android" | "ios"
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([recipientType, recipientId])
+  @@index([createdAt])
+}
