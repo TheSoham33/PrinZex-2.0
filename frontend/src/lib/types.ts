@@ -225,8 +225,8 @@ export interface UploadedFile {
   /** Set when the file already reached the server at attach time — order
    *  placement uses it instead of re-uploading. */
   serverFileUrl?: string;
-  /** Pages counted at attach time (PDF exact, image = 1; PPT = 0 until the
-   *  shop confirms). Summed across files into specs.totalPages. */
+  /** Pages counted at attach time (PDF exact, image = 1). Summed across
+   *  files into specs.totalPages. */
   pages?: number;
 }
 

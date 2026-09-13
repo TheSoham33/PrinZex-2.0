@@ -149,7 +149,7 @@ export default function SpecificationsStep({
   const maxFiles = maxFilesForService(serviceCategories, specs.serviceId);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [processing, setProcessing] = useState<'pdf' | 'ppt' | null>(null);
+  const [processing, setProcessing] = useState<'pdf' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const customerToken = useAppSelector((state) => state.auth.accessToken);
 
@@ -194,12 +194,12 @@ export default function SpecificationsStep({
       return;
     }
 
-    // PPT decks are uploaded as-is (no server conversion — Gotenberg was
-    // removed); their page count is confirmed by the shop after upload. At
-    // this point the customer is always signed in (attach gate above), so
-    // the upload can proceed.
+    // PDF and images are the only accepted types; both are parked on the
+    // server best-effort so the order-page draft survives refresh. At this
+    // point the customer is always signed in (attach gate above), so the
+    // upload can proceed.
     setLocalError(null);
-    setProcessing(strategy === 'ppt' ? 'ppt' : 'pdf');
+    setProcessing('pdf');
 
     try {
       let totalPages: number;
@@ -220,21 +220,15 @@ export default function SpecificationsStep({
         } catch {
           /* keep the browser-only file — current pre-upload flow works */
         }
-      } else if (strategy === 'image') {
-        totalPages = 1; // one sheet per image
+      } else {
+        // Image: one sheet per file.
+        totalPages = 1;
         previewUrl = URL.createObjectURL(selected);
         try {
           serverFileUrl = (await uploadDesign(selected)).fileUrl;
         } catch {
           /* keep the browser-only file — current pre-upload flow works */
         }
-      } else {
-        // PPT is stored as-is and the slide count isn't measurable in the
-        // browser — pages stay 0 (unknown) until the shop confirms them.
-        const uploaded = await uploadDesign(selected);
-        totalPages = 0;
-        serverFileUrl = uploaded.fileUrl;
-        previewUrl = ''; // no in-browser preview for PowerPoint decks
       }
 
       // Seller page minimum: reject the file instead of attaching it (every
@@ -269,13 +263,7 @@ export default function SpecificationsStep({
       });
     } catch (e) {
       console.error('File processing failed:', e);
-      setLocalError(
-        strategy === 'ppt'
-          ? (e instanceof Error && e.message
-              ? e.message
-              : 'Upload failed — please try again.')
-          : 'Failed to process PDF. Please ensure it is not password protected.',
-      );
+      setLocalError('Failed to process PDF. Please ensure it is not password protected.');
     } finally {
       setProcessing(null);
     }
@@ -758,12 +746,10 @@ export default function SpecificationsStep({
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 py-6 text-center">
             <span className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
             <p className="mt-3 font-semibold text-slate-900">
-              {processing === 'ppt' ? 'Uploading your file…' : 'Analyzing document…'}
+              Analyzing document…
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {processing === 'ppt'
-                ? 'Stored as-is — the shop confirms the final page count'
-                : 'Calculating final page count for pricing'}
+              Calculating final page count for pricing
             </p>
           </div>
         ) : files.length > 0 ? (
@@ -840,11 +826,9 @@ export default function SpecificationsStep({
                   <p className="text-xs text-slate-500">
                     {files.length > 1
                       ? `Sum across ${files.length} files — all share these specifications`
-                      : attachedStrategy === 'ppt'
-                        ? 'Page count confirmed by the shop after upload'
-                        : attachedStrategy === 'image'
-                          ? 'Each image prints as one sheet'
-                          : 'Automatically calculated from PDF'}
+                      : attachedStrategy === 'image'
+                        ? 'Each image prints as one sheet'
+                        : 'Automatically calculated from PDF'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

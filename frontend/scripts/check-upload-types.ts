@@ -1,9 +1,9 @@
 /**
  * Runnable check for the printable-document classifier: extension → page-
- * count strategy ('pdf' exact in-browser, 'image' one sheet, 'ppt' stored
- * as-is with the shop confirming pages), plus the accept-attribute string
- * staying in sync with the classifier. Word/Excel are NOT accepted since
- * Office→PDF conversion was removed.
+ * count strategy ('pdf' exact in-browser, 'image' one sheet), plus the
+ * accept-attribute string staying in sync with the classifier. Only PDF and
+ * images are accepted — Word/Excel/PowerPoint are NOT, since Office→PDF
+ * conversion was removed.
  *
  *   npx tsx scripts/check-upload-types.ts
  */
@@ -22,9 +22,9 @@ const CASES: Array<[string, ReturnType<typeof pageCountStrategy>]> = [
   ['photo.jpg', 'image'],
   ['photo.jpeg', 'image'],
   ['photo.PNG', 'image'],
-  ['deck.ppt', 'ppt'],
-  ['deck.PPTX', 'ppt'],
-  ['notes.doc', null], // no server conversion anymore — convert to PDF first
+  ['deck.ppt', null], // not accepted — convert to PDF first
+  ['deck.PPTX', null],
+  ['notes.doc', null],
   ['notes.docx', null],
   ['sheet.xlsx', null],
   ['budget.XLS', null],
@@ -38,12 +38,12 @@ for (const [name, expected] of CASES) {
 }
 
 /* fileExtension keeps its promise about edge names. */
-assert.equal(fileExtension('a.b.pptx'), 'pptx');
+assert.equal(fileExtension('a.b.jpeg'), 'jpeg');
 assert.equal(fileExtension('DOC'), '');
 
 /* accept-attribute + error copy cover every accepted type (and nothing else). */
 const accepted = ACCEPTED_DOCUMENT_TYPES.split(',').map((t) => t.slice(1));
-assert.deepEqual(accepted.sort(), ['jpeg', 'jpg', 'pdf', 'png', 'ppt', 'pptx']);
+assert.deepEqual(accepted.sort(), ['jpeg', 'jpg', 'pdf', 'png']);
 for (const ext of accepted) {
   assert.ok(pageCountStrategy(`f.${ext}`) !== null, `${ext} classified`);
   assert.ok(

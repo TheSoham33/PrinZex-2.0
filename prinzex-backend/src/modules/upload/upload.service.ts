@@ -45,7 +45,7 @@ export async function registerDesignUpload(
   await verifyMagicBytes(file.path);
 
   // The file is stored as-is. Office→PDF conversion (Gotenberg) was removed
-  // for now: the upload lane only accepts PDF, images and PPT, so there is
+  // for now: the upload lane only accepts PDF and images, so there is
   // nothing left to convert — the shop receives exactly what was uploaded.
   const metadata: UploadMetadata = {
     userId,

@@ -591,7 +591,7 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         useWallet: methodIsOnline && useWallet && walletBalance > 0 ? true : undefined,
         specialInstructions: state.order.specialInstructions,
         couponCode: couponCode || undefined,
-        // Files uploaded at attach time (PDF/images/PPT) already live on the
+        // Files uploaded at attach time (PDF/images) already live on the
         // server; anything left browser-side keeps the pre-existing stub.
         fileUrls: fileUrlsForOrder(state.order.files ?? []),
       });
