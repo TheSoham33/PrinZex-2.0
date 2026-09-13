@@ -30,7 +30,7 @@ state.step = 3;
 state.order.files = [
   { name: 'notes.pdf', size: 100, type: 'application/pdf', pages: 12, previewUrl: 'blob:x' },
   { name: 'chart.png', size: 50, type: 'image/png', pages: 1, previewUrl: 'blob:y' },
-  { name: 'doc.docx', size: 80, type: 'application/msword', pages: 5, serverFileUrl: '/uploads/designs/d.pdf', previewUrl: '/media/d.pdf' },
+  { name: 'deck.pdf', size: 80, type: 'application/pdf', pages: 5, serverFileUrl: '/uploads/designs/d.pdf', previewUrl: '/media/d.pdf' },
 ];
 (state.order.specifications as unknown as Record<string, unknown>).totalPages = 18;
 (state.order.specifications as unknown as Record<string, unknown>).colorPages = '1-3';
@@ -41,7 +41,7 @@ assert.equal(draft.step, 3);
 assert.equal(draft.droppedFiles, 2, 'blob files counted as dropped');
 const kept = (draft.order.files ?? []) as { name: string; serverFileUrl?: string; pages?: number; previewUrl?: string }[];
 assert.equal(kept.length, 1, 'only the server-backed file survives');
-assert.equal(kept[0].name, 'doc.docx');
+assert.equal(kept[0].name, 'deck.pdf');
 assert.equal(kept[0].serverFileUrl, '/uploads/designs/d.pdf');
 assert.ok(!('previewUrl' in kept[0]), 'blob/guest preview urls never persist');
 assert.equal(

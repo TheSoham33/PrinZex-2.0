@@ -121,8 +121,8 @@ export default function CheckoutPage() {
         // with a guarded atomic decrement until the balance runs out.
         useWallet: methodIsOnline && useWallet && walletBalance > 0 ? true : undefined,
         specialInstructions: item.specialInstructions,
-        // Office files were converted to PDF and stored at attach time;
-        // other types keep the pre-existing client-side stub for now.
+        // Files uploaded at attach time (PDF/images/PPT) already live on the
+        // server; anything left browser-side keeps the pre-existing stub.
         fileUrls: fileUrlsForOrder(item.files)
       }));
 

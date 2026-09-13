@@ -33,9 +33,9 @@ describe('serializeDraft', () => {
     { name: 'notes.pdf', size: 100, type: 'application/pdf', pages: 12, previewUrl: 'blob:x' },
     { name: 'chart.png', size: 50, type: 'image/png', pages: 1, previewUrl: 'blob:y' },
     {
-      name: 'doc.docx',
+      name: 'deck.pdf',
       size: 80,
-      type: 'application/msword',
+      type: 'application/pdf',
       pages: 5,
       serverFileUrl: '/uploads/designs/d.pdf',
       previewUrl: '/media/d.pdf',
@@ -59,7 +59,7 @@ describe('serializeDraft', () => {
       previewUrl?: string;
     }[];
     expect(kept.length).toBe(1);
-    expect(kept[0].name).toBe('doc.docx');
+    expect(kept[0].name).toBe('deck.pdf');
     expect(kept[0].serverFileUrl).toBe('/uploads/designs/d.pdf');
     expect('previewUrl' in kept[0]).toBe(false);
   });

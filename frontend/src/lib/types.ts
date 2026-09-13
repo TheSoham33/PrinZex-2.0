@@ -222,11 +222,11 @@ export interface UploadedFile {
   size: number;
   type: string;
   previewUrl?: string;
-  /** Set when the file already reached the server (Office uploads convert to
-   *  PDF at attach time) — order placement uses it instead of re-uploading. */
+  /** Set when the file already reached the server at attach time — order
+   *  placement uses it instead of re-uploading. */
   serverFileUrl?: string;
-  /** Pages counted at attach time (PDF exact, image = 1, Office = converted
-   *  server's count). Summed across files into specs.totalPages. */
+  /** Pages counted at attach time (PDF exact, image = 1; PPT = 0 until the
+   *  shop confirms). Summed across files into specs.totalPages. */
   pages?: number;
 }
 

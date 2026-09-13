@@ -4,22 +4,25 @@
  *
  *   PDF        → pages counted exactly with pdf-lib in the browser
  *   JPG/PNG    → one sheet per image (count = 1)
- *   Word/PPT/Excel → uploaded at attach time; the backend converts them to a
- *                print-ready PDF with LibreOffice (exact, final pagination)
- *                and returns that page count — browser-side Office rendering
- *                can be trusted for neither.
+ *   PPT/PPTX   → stored as-is (no server conversion — Gotenberg was removed);
+ *                page count is unknown at attach time and confirmed by the
+ *                shop after upload
+ *
+ * Word (doc/docx) and Excel are intentionally NOT accepted for now — the
+ * upload UI asks customers to convert them to PDF first, with a "doc/docx
+ * direct upload coming soon" note.
  *
  * The backend independently re-verifies the extension and sniffs magic bytes
  * (utils/fileUpload.ts), so client-side checks only guide the UX.
  */
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
-const OFFICE_EXTENSIONS = new Set(['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx']);
+const PPT_EXTENSIONS = new Set(['ppt', 'pptx']);
 
 /** Value for the <input accept> attribute and the error copy. */
-export const ACCEPTED_DOCUMENT_TYPES = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx,.xls,.xlsx';
+export const ACCEPTED_DOCUMENT_TYPES = '.pdf,.jpg,.jpeg,.png,.ppt,.pptx';
 /** Human list used in validation/error messages (keep in sync!). */
-export const ACCEPTED_DOCUMENT_DESCRIPTION = 'PDF, JPG/JPEG, PNG, DOC, DOCX, PPT, PPTX, XLS or XLSX';
+export const ACCEPTED_DOCUMENT_DESCRIPTION = 'PDF, JPG/JPEG, PNG, PPT or PPTX';
 
 export const fileExtension = (fileName: string): string => {
   const dot = fileName.lastIndexOf('.');
@@ -28,13 +31,13 @@ export const fileExtension = (fileName: string): string => {
 };
 
 /** How an uploaded document's page count is determined. */
-export type PageCountStrategy = 'pdf' | 'image' | 'office' | null;
+export type PageCountStrategy = 'pdf' | 'image' | 'ppt' | null;
 
 export const pageCountStrategy = (fileName: string): PageCountStrategy => {
   const extension = fileExtension(fileName);
   if (extension === 'pdf') return 'pdf';
   if (IMAGE_EXTENSIONS.has(extension)) return 'image';
-  if (OFFICE_EXTENSIONS.has(extension)) return 'office';
+  if (PPT_EXTENSIONS.has(extension)) return 'ppt';
   return null;
 };
 
@@ -89,8 +92,9 @@ export function totalPagesOf(files: ReadonlyArray<{ pages?: number }>): number {
   return files.reduce((sum, file) => sum + (file.pages ?? 0), 0);
 }
 
-/** URLs sent at order placement: files already uploaded (Office conversions)
- *  carry their real URL; browser-side files keep the pre-existing stub. */
+/** URLs sent at order placement: files already uploaded at attach time
+ *  (PDF, images and PPT alike) carry their real URL; browser-side files keep
+ *  the pre-existing stub. */
 export function fileUrlsForOrder(
   files: ReadonlyArray<{ serverFileUrl?: string }>,
 ): string[] {

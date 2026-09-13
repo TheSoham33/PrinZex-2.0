@@ -12,7 +12,7 @@ Multi-vendor printing marketplace API — Node.js 20 + Express + TypeScript (str
 
 ```bash
 cp .env.example .env          # then fill in secrets
-docker compose up -d          # PostgreSQL + MongoDB + Redis + Gotenberg (Office→PDF)
+docker compose up -d          # PostgreSQL + MongoDB + Redis
 npm install
 npm run db:migrate            # apply Prisma migrations
 npm run db:seed               # seed PostgreSQL
@@ -22,10 +22,7 @@ npm run dev                   # http://localhost:5000 (GET /health for liveness)
 
 `docker compose up -d` uses the credentials already present in `.env.example`
 (`postgres:password@localhost:5432/prinzex`, `mongodb://localhost:27017/prinzex`, `localhost:6379`),
-so a fresh clone boots without editing anything. The `gotenberg` service is the
-Office→PDF converter for order uploads; it binds `127.0.0.1:3200` only (never
-expose it publicly; 3000 stays free for the Next.js dev server) and matches
-`GOTENBERG_URL` in `.env.example`.
+so a fresh clone boots without editing anything.
 
 ### Seed credentials
 
@@ -85,7 +82,7 @@ curl -s localhost:5000/api/delivery/auth/login -H 'content-type: application/jso
 
 **`/api/stores`** — PUBLIC: `GET /` (filters: `city`, `q`, `services` (all-of, comma list), `minRating`, `sort=relevance|rating|distance|price_asc`, page/limit — Redis cached with `X-Cache: HIT|MISS`), `GET /:sellerId` (detail + latest 5 reviews, cached), `GET /:sellerId/services` (grouped by category), `GET /:sellerId/reviews` (paginated, masked names like "Rahul K."), `GET /search/suggestions?q=…` (top 5 stores + top 5 services, 60s cache). Only APPROVED sellers are ever exposed; bank details/documents/GST/commission never selected.
 
-**`/api/upload`** — `GET /limits` is public (admin-configured order-file cap, 60s cache); everything else needs `authenticate` (any role): `POST /design` (multer disk storage to `uploads/designs/`, `.pdf/.png/.jpg/.jpeg/.ai/.psd/.doc/.docx/.ppt/.pptx` (Office files become PDF via the Gotenberg sidecar before storage), size cap set in Admin → Settings → Platform — default 100MB, 128MB hard ceiling = the sidecar's `--api-body-limit`, magic-byte verification, ownership metadata in Redis 24h — TODO: S3), `DELETE /design/:filename` (owner-only). Served statically at `/uploads/…`.
+**`/api/upload`** — `GET /limits` is public (admin-configured order-file cap, 60s cache); everything else needs `authenticate` (any role): `POST /design` (multer disk storage to `uploads/designs/`, `.pdf/.png/.jpg/.jpeg/.ppt/.pptx` — stored as-is, no server conversion; Word/Excel are rejected and the UI asks customers to convert to PDF first, size cap set in Admin → Settings → Platform — default 100MB, 128MB hard ceiling, magic-byte verification, ownership metadata in Redis 24h — TODO: S3), `DELETE /design/:filename` (owner-only). Served statically at `/uploads/…`.
 
 Try the cache behavior: `curl -si localhost:5000/api/stores | grep -i x-cache` twice — second response shows `HIT`.
 

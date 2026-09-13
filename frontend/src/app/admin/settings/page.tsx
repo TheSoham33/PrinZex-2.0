@@ -348,8 +348,8 @@ export default function AdminSettingsPage() {
               aria-describedby="p-maxupload-hint"
             />
             <p id="p-maxupload-hint" className="mt-1 text-xs text-slate-500">
-              Applies to the file customers attach to an order (PDF, JPG/PNG, DOC/DOCX, PPT/PPTX).
-              Whole MB, 1–128 — 128 is the converter sidecar&apos;s hard ceiling.
+              Applies to the file customers attach to an order (PDF, JPG/PNG, PPT/PPTX).
+              Whole MB, 1–128 — 128 is the upload pipeline&apos;s hard ceiling.
             </p>
           </div>
 

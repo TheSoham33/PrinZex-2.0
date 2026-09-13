@@ -6,11 +6,9 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf
  * generated Prisma client. `invoice.ts` loads the order and feeds this module.
  *
  * Rendered in-process with pdf-lib (already a dependency — see utils/pdf.ts)
- * rather than Gotenberg: the sidecar's Chromium HTML/URL routes are DISABLED
- * on purpose (`--chromium-disable-routes=true` in docker-compose.yml) to keep
- * the SSRF surface closed, so the only Gotenberg route available is
- * LibreOffice conversion. An in-process renderer means the invoice works with
- * zero sidecars, offline, and is trivially reproducible.
+ * rather than a headless browser or LibreOffice sidecar: an in-process
+ * renderer means the invoice works with zero sidecars, offline, and is
+ * trivially reproducible.
  *
  * The document is rebuilt from the ORDER ROW each time (never cached to
  * disk), using the GST snapshot columns (taxableAmount / gstRatePercent)

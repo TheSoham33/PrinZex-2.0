@@ -152,10 +152,10 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // ── Draft persistence: refresh keeps the step + all entered details ──
   // Restore runs AFTER hydration (localStorage is client-only), then every
   // change writes back. Browser-side PDF/image files can't survive refresh
-  // — only Office files already on the server persist, and the customer is
-  // asked to re-attach the rest in step 1. NAVIGATING AWAY from the page
-  // resets the flow (unmount cleanup below) — the draft exists only to
-  // survive a refresh of THIS page.
+  // — only files already on the server persist, and the customer is asked
+  // to re-attach the rest in step 1. NAVIGATING AWAY from the page resets
+  // the flow (unmount cleanup below) — the draft exists only to survive a
+  // refresh of THIS page.
   //
   // NOTE the key includes the user id, and auth rehydrates ASYNC
   // (ClientWrapper#restoreSession runs after this page mounts): the first
@@ -591,8 +591,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         useWallet: methodIsOnline && useWallet && walletBalance > 0 ? true : undefined,
         specialInstructions: state.order.specialInstructions,
         couponCode: couponCode || undefined,
-        // Office files were converted to PDF and stored at attach time;
-        // other types keep the pre-existing client-side stub for now.
+        // Files uploaded at attach time (PDF/images/PPT) already live on the
+        // server; anything left browser-side keeps the pre-existing stub.
         fileUrls: fileUrlsForOrder(state.order.files ?? []),
       });
 

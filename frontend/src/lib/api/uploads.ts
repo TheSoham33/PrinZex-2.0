@@ -6,10 +6,6 @@ export interface DesignUploadResult {
   fileName: string;
   sizeKb: number;
   mimeType: string;
-  /** Office uploads only: exact pages of the converted PDF. */
-  totalPages?: number;
-  /** True when the stored file is a PDF converted from an Office original. */
-  convertedToPdf?: boolean;
 }
 
 /** POST /upload/design — multipart, one file. Stays a raw apiRequest:

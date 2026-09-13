@@ -20,47 +20,39 @@ export const UPLOAD_ROOT = path.join(process.cwd(), 'uploads');
 export const DESIGN_DIR = path.join(UPLOAD_ROOT, 'designs');
 export const AVATAR_DIR = path.join(UPLOAD_ROOT, 'avatars');
 
+// Office→PDF conversion (Gotenberg) was removed for now, so the design
+// upload lane accepts only formats that print shops consume directly:
+// PDF, raster images (PNG/JPG) and PowerPoint decks (PPT/PPTX, stored as-is).
+// Word (doc/docx) and Excel are intentionally absent — the UI asks the
+// customer to convert them to PDF first ("doc/docx direct upload coming
+// soon").
 const ALLOWED_EXTENSIONS = [
   '.pdf',
   '.png',
   '.jpg',
   '.jpeg',
-  '.ai',
-  '.psd',
-  '.doc',
-  '.docx',
   '.ppt',
   '.pptx',
-  '.xls',
-  '.xlsx',
 ] as const;
 export type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number];
 
 // Hard ceiling only — the effective customer-facing cap is the
 // admin-configured value from uploadLimits.ts (default 100MB), enforced in
-// upload.service. This must equal Gotenberg's --api-body-limit so any file
-// multer accepts is one the converter can accept.
+// upload.service.
 export const MAX_DESIGN_SIZE_BYTES = MAX_CONFIGURABLE_UPLOAD_MB * 1024 * 1024;
 
 /**
  * Magic-byte signatures per extension. Offsets are byte positions in the
- * file header. `.ai` files are PDF containers; `.psd` starts with "8BPS".
- * `.docx`/`.pptx`/`.xlsx` are ZIP containers ("PK\x03\x04"); legacy
- * `.doc`/`.ppt`/`.xls` are OLE2/CFB containers (D0 CF 11 E0 A1 B1 1A E1).
+ * file header. `.pptx` is a ZIP container ("PK\x03\x04"); legacy `.ppt` is
+ * an OLE2/CFB container (D0 CF 11 E0 A1 B1 1A E1).
  */
 const MAGIC_SIGNATURES: Record<AllowedExtension, Buffer[]> = {
   '.pdf': [Buffer.from([0x25, 0x50, 0x44, 0x46])], // %PDF
-  '.ai': [Buffer.from([0x25, 0x50, 0x44, 0x46])], // %PDF
   '.png': [Buffer.from([0x89, 0x50, 0x4e, 0x47])], // ‰PNG
   '.jpg': [Buffer.from([0xff, 0xd8, 0xff])],
   '.jpeg': [Buffer.from([0xff, 0xd8, 0xff])],
-  '.psd': [Buffer.from([0x38, 0x42, 0x50, 0x53])], // 8BPS
-  '.docx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // PK\x03\x04
-  '.pptx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])],
-  '.xlsx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])],
-  '.doc': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
+  '.pptx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // PK\x03\x04
   '.ppt': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
-  '.xls': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
 };
 
 function ensureDir(dir: string, callback: (error: Error | null, resolved: string) => void): void {

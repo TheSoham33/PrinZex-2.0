@@ -8,10 +8,10 @@ import { ContentModel } from '../models/mongo/Content.model';
  * cache keeps the hot upload path off Mongo; updateSettings() invalidates
  * the cache the moment the admin saves.
  *
- * Ceiling: 128MB equals Gotenberg's --api-body-limit — a larger online cap
- * would admit Office files the sidecar can never convert. Multer (see
- * fileUpload.ts) uses this same ceiling as its hard limit; the effective,
- * customer-facing cap is whatever this module returns.
+ * Ceiling: 128MB is the hard server ceiling (multer + this module) — a
+ * larger online cap would admit files no print pipeline can reasonably
+ * handle. Multer (see fileUpload.ts) uses this same ceiling as its hard
+ * limit; the effective, customer-facing cap is whatever this module returns.
  */
 
 export const DEFAULT_MAX_UPLOAD_MB = 100;
