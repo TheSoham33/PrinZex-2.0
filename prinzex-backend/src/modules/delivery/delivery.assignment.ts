@@ -4,6 +4,7 @@ import { redis, REDIS_KEYS } from '../../config/redis';
 import { NotificationModel } from '../../models/mongo/Notification.model';
 import { TrackingModel } from '../../models/mongo/Tracking.model';
 import { ApiError } from '../../utils/ApiError';
+import { enqueuePush } from '../../utils/fcm';
 import { emitDeliveryAssigned, emitNotificationNew } from '../../realtime/realtime.emitters';
 import { getCache } from '../../utils/cache';
 import { boundingBox, haversineDistanceKm } from '../../utils/geo';
@@ -69,6 +70,7 @@ async function notifyBoy(
     channel: ['push', 'sms'],
   });
   emitNotificationNew('delivery_boy', deliveryBoyId, { type: 'delivery_assigned', title, body, data }); // step 9
+  enqueuePush('delivery_boy', deliveryBoyId, { type: 'delivery_assigned', title, body, data }); // gap #10 FCM
 }
 
 async function createTrackingDoc(deliveryId: string, orderId: string, deliveryBoyId: string | null): Promise<void> {
@@ -100,7 +102,7 @@ interface AssignSocketOrder {
   customer: { phone: string | null } | null;
 }
 
-/** delivery:assigned → the rider's /orders room (safe no-op when sockets down). */
+/** delivery.assigned → the rider's /orders room (safe no-op when sockets down). */
 function emitAssignedSocket(deliveryBoyId: string, deliveryId: string, order: AssignSocketOrder): void {
   const snapshot = order.deliveryAddress as { fullAddress?: string; phone?: string } | null;
   emitDeliveryAssigned(deliveryBoyId, {

@@ -71,6 +71,10 @@ export default function CheckoutPage() {
 
   const subtotal = items.reduce((sum, item) => sum + item.costBreakdown.subtotal, 0);
   const tax = items.reduce((sum, item) => sum + item.costBreakdown.tax, 0);
+  const taxableAmount = items.reduce(
+    (sum, item) => sum + (item.costBreakdown.taxableAmount ?? item.costBreakdown.subtotal),
+    0,
+  );
   // Admin-tuned delivery charges/promises overlay the static speed list.
   const speedOptions = applyDeliverySettings(DELIVERY_SPEEDS, platformSettings);
   const deliveryFee = speedOptions.find(s => s.key.toUpperCase() === deliverySpeed)?.cost || 0;
@@ -117,8 +121,8 @@ export default function CheckoutPage() {
         // with a guarded atomic decrement until the balance runs out.
         useWallet: methodIsOnline && useWallet && walletBalance > 0 ? true : undefined,
         specialInstructions: item.specialInstructions,
-        // Office files were converted to PDF and stored at attach time;
-        // other types keep the pre-existing client-side stub for now.
+        // Files uploaded at attach time (PDF/images) already live on the
+        // server; anything left browser-side keeps the pre-existing stub.
         fileUrls: fileUrlsForOrder(item.files)
       }));
 
@@ -309,6 +313,12 @@ export default function CheckoutPage() {
                     <span>Items Subtotal</span>
                     <span>{formatCurrency(subtotal)}</span>
                   </div>
+                  {taxableAmount !== subtotal && (
+                    <div className="flex justify-between text-slate-500">
+                      <span>Taxable value</span>
+                      <span>{formatCurrency(taxableAmount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-slate-600">
                     <span>GST ({platformSettings?.gstRatePercent ?? 18}%)</span>
                     <span>{formatCurrency(tax)}</span>

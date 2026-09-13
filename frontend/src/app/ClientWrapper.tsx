@@ -12,6 +12,7 @@ import { restoreDeliverySession } from '@/store/slices/deliveryAuthSlice';
 import { clearCart, addToCart } from '@/store/slices/cartSlice';
 import { clearAllOrderDrafts } from '@/lib/domain/orderDraft';
 import CartDrawer from '@/components/cart/CartDrawer';
+import PushNotificationManager from '@/lib/fcm/PushNotificationManager';
 import { ToastProvider } from '@/components/seller-dashboard/Toast';
 
 setStore(store);
@@ -135,6 +136,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
           <SessionBridge>
             {children}
             <CartDrawer />
+            <PushNotificationManager />
           </SessionBridge>
         </ToastProvider>
       </QueryClientProvider>

@@ -9,7 +9,9 @@ import { TrackingModel, type ILocationPoint } from '../../models/mongo/Tracking.
 import type { DeliveryAddressSnapshot } from '../../types';
 import { ApiError } from '../../utils/ApiError';
 import { getCache, invalidateCache } from '../../utils/cache';
+import { enqueuePush } from '../../utils/fcm';
 import { sendSms } from '../../utils/email';
+import { refundOrderToSource } from '../payments/payments.service';
 import { estimateEtaMinutes, haversineDistanceKm } from '../../utils/geo';
 import { isValidTransition } from '../../utils/stateMachine';
 import { emitAdminGlobalEvent, emitNotificationNew, emitOrderStatusChanged } from '../../realtime/realtime.emitters';
@@ -81,6 +83,9 @@ async function notify(
     channel: ['push'],
   });
   emitNotificationNew(recipientType, recipientId, { type, title, body, data }); // step 9 realtime
+  if (recipientType !== 'admin') {
+    enqueuePush(recipientType, recipientId, { type, title, body, data }); // gap #10 FCM
+  }
 }
 
 export interface CachedRiderLocation {
@@ -689,11 +694,21 @@ export async function failDelivery(
     where: { id: delivery.id },
     data: { status: 'failed', failedAt: new Date(), failReason: input.reason },
   });
-  // The ORDER stays at out_for_delivery — ops retries/reassigns (TODO cron).
+  // Failed delivery ends the order: it moves to "returned" and a paid order
+  // refunds automatically to its original source (wallet instantly, gateway
+  // leg via Razorpay). COD/unpaid orders simply close with no money movement.
+  await prisma.order.update({
+    where: { id: delivery.orderId },
+    data: { status: 'returned' },
+  });
+  const refund = await refundOrderToSource(
+    delivery.orderId,
+    `Delivery failed (${input.reason}) — automatic refund`,
+  );
 
   const order = await prisma.order.findUniqueOrThrow({
     where: { id: delivery.orderId },
-    select: { sellerId: true, customerId: true },
+    select: { sellerId: true, customerId: true, paymentStatus: true },
   });
 
   await runSideEffects('delivery.failed', [
@@ -704,9 +719,25 @@ export async function failDelivery(
         order.customerId,
         'customer',
         'order_update',
-        `Order ${delivery.orderId.slice(-6).toUpperCase()} — delivery issue`,
-        'We could not complete your delivery — our team will reach out shortly.',
-        { orderId: delivery.orderId },
+        `Order ${delivery.orderId.slice(-6).toUpperCase()} — delivery failed`,
+        `We could not complete your delivery (${input.reason}).` +
+          (refund.refunded
+            ? refund.channel === 'wallet'
+              ? ' Your payment is already back in your PrinZex Wallet.'
+              : refund.channel === 'split'
+                ? ' The wallet part is back in your PrinZex Wallet; the rest is on its way to your bank.'
+                : ' Your refund is on its way to the original payment method.'
+            : order.paymentStatus === 'paid'
+              ? ' Refund processing hit an issue — our team will resolve it shortly.'
+              : ''),
+        { orderId: delivery.orderId, refunded: refund.refunded },
+      ),
+    () =>
+      appendTimelineEvent(
+        delivery.orderId,
+        'returned',
+        deliveryBoyId,
+        `Delivery failed (${input.reason}) — order returned${refund.refunded ? ', auto-refund issued' : ''}`,
       ),
     () =>
       notify(

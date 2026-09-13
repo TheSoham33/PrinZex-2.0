@@ -4,6 +4,7 @@ import { REDIS_KEYS, REDIS_TTL } from '../../config/redis';
 import { NotificationModel } from '../../models/mongo/Notification.model';
 import { ActivityLogModel } from '../../models/mongo/ActivityLog.model';
 import { ApiError } from '../../utils/ApiError';
+import { enqueuePush } from '../../utils/fcm';
 import { emitNotificationNew, emitPayoutProcessed } from '../../realtime/realtime.emitters';
 import { getCache, setCache } from '../../utils/cache';
 import { roundMoney } from '../../utils/financial';
@@ -64,6 +65,7 @@ async function notifyRecipient(
     channel: ['push'],
   });
   emitNotificationNew(recipientType, recipientId, { type, title, body, data }); // step 9 realtime
+  enqueuePush(recipientType, recipientId, { type, title, body, data }); // gap #10 FCM
 }
 
 // ── GET /api/admin/payouts ─────────────────────────────────────────────────

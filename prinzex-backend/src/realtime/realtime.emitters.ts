@@ -21,7 +21,9 @@ export const RT_NAMESPACES = {
 export const RT_EVENTS = {
   ORDER_NEW: 'order:new',
   ORDER_STATUS_CHANGED: 'order:status_changed',
-  DELIVERY_ASSIGNED: 'delivery:assigned',
+  // Spec name is `delivery.assigned` (dot, not the colon used by the other
+  // events) — the rider app listens for exactly this string.
+  DELIVERY_ASSIGNED: 'delivery.assigned',
   LOCATION_UPDATE: 'location:update', // /tracking order room (spec name)
   PAYOUT_PROCESSED: 'payout:processed',
   NOTIFICATION_NEW: 'notification:new',
@@ -179,7 +181,8 @@ export type AdminGlobalEventType =
   | 'delivery.failed'
   | 'order.high_value'
   | 'payment.failed'
-  | 'support.high_priority';
+  | 'support.high_priority'
+  | 'complaint.escalated';
 
 /** Significant platform events → every connected admin (admin:global room). */
 export function emitAdminGlobalEvent(type: AdminGlobalEventType, payload: Record<string, unknown>): void {

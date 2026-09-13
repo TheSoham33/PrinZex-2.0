@@ -28,6 +28,7 @@ import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import { refundOrderToSource } from '../payments/payments.service';
 import { roundMoney, splitWalletGateway } from '../../utils/financial';
+import { enqueuePush } from '../../utils/fcm';
 import { getPlatformFeeConfig, walletCoverableMax } from '../../utils/platformFee';
 import { getPlatformSettingsValues } from '../../utils/platformSettings';
 import {
@@ -114,6 +115,7 @@ async function notifySeller(
     channel: ['push'],
   });
   emitNotificationNew('seller', sellerId, { type, title, body, data }); // step 9 realtime
+  enqueuePush('seller', sellerId, { type, title, body, data }); // gap #10 FCM
 }
 
 /**
@@ -468,6 +470,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     discount,
     platformFee: feeConfig.fee,
     gstRate: platformValues.gstRatePercent / 100,
+    gstOnFees: platformValues.gstOnFees,
     deliveryFees: platformValues.deliveryFees,
     sellerMetadata: seller.metadata,
     pageRateFallback,
@@ -665,6 +668,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     discount,
     platformFee: feeConfig.fee,
     gstRate: platformValues.gstRatePercent / 100,
+    gstOnFees: platformValues.gstOnFees,
     deliveryFees: platformValues.deliveryFees,
     sellerMetadata: seller.metadata,
     pageRateFallback,
@@ -783,6 +787,11 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
         deliveryFee: quote.deliveryFee,
         rushFee: quote.rushFee,
         tax: quote.tax,
+        // GST snapshot (gap #9): the taxable base and the rate the tax was
+        // computed with, so the invoice stays reproducible even if the admin
+        // later retunes the GST rate or the fee-taxability toggle.
+        taxableAmount: quote.taxableAmount,
+        gstRatePercent: platformValues.gstRatePercent,
         discount: quote.discount,
         commissionAmount: quote.commissionAmount,
         deliverySpeed: input.deliverySpeed,

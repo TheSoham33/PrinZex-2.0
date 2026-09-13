@@ -13,6 +13,7 @@ import {
   type SellerOrder,
 } from '@/lib/domain/seller-orders';
 import OrderActionButtons from '@/components/seller-dashboard/OrderActionButtons';
+import SellerComplaintPanel from '@/components/seller-dashboard/SellerComplaintPanel';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, formatDateTime, maskPhone } from '@/lib/utils';
 import {
@@ -354,6 +355,8 @@ export default function SellerOrderDetailPage({
           <OrderActionButtons order={order} onAnnounce={setAnnouncement} />
         </div>
       </section>
+
+      <SellerComplaintPanel orderId={order.id} />
 
       <section className="card mt-4 p-5">
         <h2 className="mb-5 text-sm font-semibold text-slate-900">Progress</h2>

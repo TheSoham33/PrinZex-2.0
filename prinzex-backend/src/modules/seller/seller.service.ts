@@ -8,6 +8,7 @@ import { OrderTimelineModel } from '../../models/mongo/Order.model';
 import type { DeliveryAddressSnapshot, OrderItemSpecifications, OrderStatus } from '../../types';
 import { ApiError } from '../../utils/ApiError';
 import { emitNotificationNew, emitOrderStatusChanged } from '../../realtime/realtime.emitters';
+import { enqueuePush } from '../../utils/fcm';
 import { getCache, setCache, invalidateCache, invalidateCachePattern } from '../../utils/cache';
 import { sendTeamInviteEmail } from '../../utils/email';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
@@ -1285,6 +1286,7 @@ async function notifyCustomerOrderUpdate(
     body,
     data: { orderId, status },
   }); // step 9
+  enqueuePush('customer', customerId, { type: 'order_update', title, body, data: { orderId, status } }); // gap #10 FCM
 }
 
 export async function updateOrderStatus(

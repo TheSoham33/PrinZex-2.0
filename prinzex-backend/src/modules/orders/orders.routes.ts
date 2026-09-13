@@ -32,6 +32,11 @@ ordersRouter.use(authenticate, authorizeRoles('CUSTOMER'));
 ordersRouter.post('/quote', validate({ body: quoteBody }), ordersController.createQuote);
 ordersRouter.post('/', validate({ body: createOrderBody }), ordersController.createOrder);
 ordersRouter.get('/', validate({ query: listOrdersQuery }), ordersController.listOrders);
+ordersRouter.get(
+  '/:orderId/invoice',
+  validate({ params: orderParams }),
+  ordersController.downloadInvoice,
+);
 ordersRouter.get('/:orderId', validate({ params: orderParams }), ordersController.getOrderDetail);
 ordersRouter.post(
   '/:orderId/cancel',
