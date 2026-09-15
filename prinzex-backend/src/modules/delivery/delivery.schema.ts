@@ -122,3 +122,24 @@ export type PayoutsQuery = z.infer<typeof payoutsQuery>;
 export type AdminDeliveryBoysQuery = z.infer<typeof adminDeliveryBoysQuery>;
 export type AdminDeliveryBoyStatusInput = z.infer<typeof adminDeliveryBoyStatusBody>;
 export type AdminVerifyDocumentInput = z.infer<typeof adminVerifyDocumentBody>;
+
+// ── Pincode registry (structured delivery geography) ──────────────────────
+
+export const pincodeParams = z.object({ pincode: z.string().min(1) });
+
+export const createPincodeBody = z.object({
+  pincode: z.string().regex(/^\d{6}$/, 'Pincode must be exactly 6 digits'),
+  citySlug: z.string().min(1).max(80),
+  zoneLabel: z.string().min(1).max(80),
+  serviceable: z.boolean().optional(),
+});
+
+export const updatePincodeBody = z.object({
+  citySlug: z.string().min(1).max(80).optional(),
+  zoneLabel: z.string().min(1).max(80).optional(),
+  serviceable: z.boolean().optional(),
+});
+
+export const riderCoverageBody = z.object({
+  pincodes: z.array(z.string().min(1)).max(200),
+});

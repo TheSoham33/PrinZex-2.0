@@ -5,6 +5,7 @@ import { validate } from '../../middlewares/validate';
 import {
   uploadAvatarMiddleware,
   uploadDesignMiddleware,
+  uploadEvidenceMiddleware,
 } from '../../utils/fileUpload';
 import * as uploadController from './upload.controller';
 
@@ -27,6 +28,9 @@ uploadRouter.use(authenticate);
 uploadRouter.post('/design', uploadDesignMiddleware, uploadController.uploadDesign);
 
 uploadRouter.post('/avatar', uploadAvatarMiddleware, uploadController.uploadAvatar);
+
+// Complaint evidence (disputes): photos + missing-pages unboxing video.
+uploadRouter.post('/evidence', uploadEvidenceMiddleware, uploadController.uploadEvidence);
 
 uploadRouter.delete(
   '/design/:filename',

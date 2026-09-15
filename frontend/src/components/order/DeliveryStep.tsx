@@ -8,6 +8,7 @@ import {
   type DeliverySpeed,
 } from '@/lib/domain/stores';
 import { formatCurrency, scrollToField } from '@/lib/utils';
+import { useCity } from '@/lib/city-context';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconMapPin, IconPlus, IconStore, IconTruck, IconX } from '@/components/icons';
 import { ErrorNote, FieldError } from '@/components/ui';
@@ -45,15 +46,16 @@ export default function DeliveryStep({
   errorField,
   speeds = DELIVERY_SPEEDS,
 }: DeliveryStepProps) {
+  const selectedCity = useCity();
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ 
-    label: '', 
-    fullAddress: '', 
-    phone: '', 
-    city: 'Kolkata', 
-    state: 'West Bengal', 
-    pincode: '' 
+  const [form, setForm] = useState({
+    label: '',
+    fullAddress: '',
+    phone: '',
+    city: selectedCity.name,
+    state: 'West Bengal',
+    pincode: ''
   });
   const [formError, setFormError] = useState<string | null>(null);
   // Per-field modal validation — each message renders under its input.
@@ -106,7 +108,7 @@ export default function DeliveryStep({
           label: '',
           fullAddress: '',
           phone: '',
-          city: 'Kolkata',
+          city: selectedCity.name,
           state: 'West Bengal',
           pincode: '',
         });

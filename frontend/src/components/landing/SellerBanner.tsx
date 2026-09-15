@@ -25,7 +25,7 @@ export default function SellerBanner() {
                 Fill your press with online orders
               </h2>
               <p className="mt-4 max-w-lg text-blue-100">
-                Join hundreds of print shops across Kolkata already taking orders on PrinZex.
+                Join hundreds of print shops already taking orders on PrinZex.
                 Registration takes about five minutes.
               </p>
 

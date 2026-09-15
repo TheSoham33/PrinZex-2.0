@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { IconPrinter, IconShieldCheck, IconStore, IconTruck } from '@/components/icons';
 
 const HIGHLIGHTS = [
-  { icon: IconStore, text: '500+ verified print shops across Kolkata' },
+  { icon: IconStore, text: '500+ verified print shops in your city' },
   { icon: IconTruck, text: 'Same-day delivery or 2-hour store pickup' },
   { icon: IconShieldCheck, text: 'Secure payments, refunded if a shop cancels' },
 ];
@@ -47,7 +47,7 @@ export default function AuthBrandPanel() {
         </ul>
       </div>
 
-      <p className="relative text-xs text-blue-200">© {new Date().getFullYear()} PrinZex · Made in Kolkata</p>
+      <p className="relative text-xs text-blue-200">© {new Date().getFullYear()} PrinZex · Made in India</p>
     </div>
   );
 }

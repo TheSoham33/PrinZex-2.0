@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/utils';
 import {
   IconAlertCircle,
   IconArrowRight,
+  IconFlag,
   IconHeadphones,
   IconPackage,
   IconRefreshCw,
@@ -24,6 +25,7 @@ const QUICK_ACTIONS = [
   { label: 'Review pending sellers (3)', href: '/admin/sellers?status=pending', icon: IconStore, tint: 'bg-violet-50 text-violet-600' },
   { label: 'Process payouts', href: '/admin/payouts', icon: IconWallet, tint: 'bg-green-50 text-green-600' },
   { label: 'Resolve open tickets', href: '/admin/support?status=open', icon: IconHeadphones, tint: 'bg-amber-50 text-amber-600' },
+  { label: 'Review escalated disputes', href: '/admin/disputes?status=escalated', icon: IconFlag, tint: 'bg-rose-50 text-rose-600' },
   { label: 'Approve flagged reviews', href: '/admin/sellers', icon: IconAlertCircle, tint: 'bg-blue-50 text-blue-600' },
 ];
 

@@ -6,6 +6,7 @@ import { connectDatabase, disconnectDatabase } from './config/database';
 import { connectMongo, disconnectMongo } from './config/mongo';
 import { connectRedis, disconnectRedis } from './config/redis';
 import { closeSocketServer, initSocketServer } from './realtime/socket.server';
+import { startComplaintSweeper } from './modules/complaints/complaints.sweeper';
 
 /**
  * Process entrypoint.
@@ -25,6 +26,9 @@ async function bootstrap(): Promise<void> {
   // One HTTP server for BOTH the REST API and Socket.io (spec: no app.listen).
   const server: Server = http.createServer(app);
   initSocketServer(server);
+
+  // Disputes: escalate seller-window expiries to admin (60s sweep).
+  startComplaintSweeper();
 
   // Friendly diagnostics for the most common dev-machine failure: a stale
   // dev-server process (nodemon/tsx orphan) still holding the port.

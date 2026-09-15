@@ -172,7 +172,7 @@ export default function StoreInfoStep({ storeInfo, errors, onChange }: StoreInfo
               type="text"
               value={storeInfo.city}
               onChange={(event) => onChange({ city: event.target.value })}
-              placeholder="Kolkata"
+              placeholder="e.g. Salt Lake"
               className={`input ${errors.city ? 'input-error' : ''}`}
             />
           </Field>

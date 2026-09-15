@@ -230,16 +230,19 @@ export default function DeliveryProfilePage() {
         )}
       </section>
 
-      {profile.zones.length > 0 && (
+      {profile.coverage.length > 0 && (
         <section className="card p-5">
-          <h2 className="text-sm font-semibold text-slate-900">Delivery zones</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Delivery coverage (pincodes)</h2>
           <div className="mt-3 flex flex-wrap gap-2">
-            {profile.zones.map((zone) => (
-              <span key={zone} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                {zone}
+            {profile.coverage.map((row) => (
+              <span key={row.pincode} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                {row.zoneLabel} · {row.pincode}
               </span>
             ))}
           </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Coverage is assigned by admin from the platform pincode registry — orders are matched to you by exact pincode.
+          </p>
         </section>
       )}
     </div>

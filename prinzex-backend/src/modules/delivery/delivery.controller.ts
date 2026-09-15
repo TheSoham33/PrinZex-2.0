@@ -6,6 +6,7 @@ import { ActivityLogModel } from '../../models/mongo/ActivityLog.model';
 import type { AdminTokenPayload, DeliveryTokenPayload } from '../../utils/jwt';
 import type { DeliveryDocumentType } from '../../utils/fileUpload';
 import * as deliveryService from './delivery.service';
+import * as pincodesService from './pincodes.service';
 import * as assignment from './delivery.assignment';
 import type {
   AdminDeliveryBoysQuery,
@@ -189,4 +190,31 @@ export const adminAssignDelivery = asyncHandler(async (req, res) => {
     ...(meta.userAgent ? { userAgent: meta.userAgent } : {}),
   });
   res.status(200).json(new ApiResponse(200, result, 'Delivery assigned'));
+});
+
+// ── Pincode registry (admin) ───────────────────────────────────────────────
+
+export const listPincodes = asyncHandler(async (_req, res) => {
+  const rows = await pincodesService.listRegistry();
+  res.status(200).json(new ApiResponse(200, rows, 'Pincode registry fetched'));
+});
+
+export const listServiceablePincodes = asyncHandler(async (_req, res) => {
+  const rows = await pincodesService.listServiceablePincodes();
+  res.status(200).json(new ApiResponse(200, rows, 'Serviceable pincodes fetched'));
+});
+
+export const createPincode = asyncHandler(async (req, res) => {
+  const row = await pincodesService.createRegistryEntry(req.body);
+  res.status(201).json(new ApiResponse(201, row, 'Pincode added to the registry'));
+});
+
+export const updatePincode = asyncHandler(async (req, res) => {
+  const row = await pincodesService.updateRegistryEntry(req.params.pincode, req.body);
+  res.status(200).json(new ApiResponse(200, row, 'Pincode updated'));
+});
+
+export const setRiderCoverage = asyncHandler(async (req, res) => {
+  const coverage = await pincodesService.setRiderCoverage(req.params.id, req.body.pincodes);
+  res.status(200).json(new ApiResponse(200, coverage, 'Rider coverage updated'));
 });
