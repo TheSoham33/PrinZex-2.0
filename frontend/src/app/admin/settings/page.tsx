@@ -82,11 +82,13 @@ export default function AdminSettingsPage() {
     platformFeeMax: 10000,
     platformFeeFromWallet: false,
     gstRatePercent: 18,
+    gstOnFees: true,
     deliveryFees: { STANDARD: 0, EXPRESS: 50, SAME_DAY: 120, PICKUP: 0 },
     deliveryEtaHours: { STANDARD: 48, EXPRESS: 12, SAME_DAY: 6, PICKUP: 4 },
     assignRadiusKm: 10,
     walletMaxCredit: 100000,
     walletMaxBatchSize: 500,
+    complaintResponseWindowHours: 24,
   });
   /** Under-field messages keyed by input id (site-wide rule). */
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -347,8 +349,26 @@ export default function AdminSettingsPage() {
               aria-describedby="p-maxupload-hint"
             />
             <p id="p-maxupload-hint" className="mt-1 text-xs text-slate-500">
-              Applies to the file customers attach to an order (PDF, JPG/PNG, DOC/DOCX, PPT/PPTX).
-              Whole MB, 1–128 — 128 is the converter sidecar&apos;s hard ceiling.
+              Applies to the file customers attach to an order (PDF, JPG/PNG).
+              Whole MB, 1–128 — 128 is the upload pipeline&apos;s hard ceiling.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="p-complaint-window" className="label">Claim response window (hours)</label>
+            <input
+              id="p-complaint-window"
+              type="number"
+              min={1}
+              max={168}
+              value={platform.complaintResponseWindowHours}
+              onChange={(e) => setPlatform({ ...platform, complaintResponseWindowHours: Number(e.target.value) })}
+              className="input max-w-[12rem]"
+              aria-describedby="p-complaint-window-hint"
+            />
+            <p id="p-complaint-window-hint" className="mt-1 text-xs text-slate-500">
+              Hours the fulfilling store gets to accept/reject a customer claim before it
+              auto-escalates to admin (final tier). Whole hours, 1–168.
             </p>
           </div>
 
@@ -447,10 +467,26 @@ export default function AdminSettingsPage() {
               aria-describedby="p-gst-hint"
             />
             <p id="p-gst-hint" className="mt-1 text-xs text-slate-500">
-              Applied to the order subtotal in every quote and invoice — checkout renders
-              it in the &quot;GST&quot; line. India slabs cap at 28.
+              The rate used for the &quot;GST&quot; line in every quote and invoice.
+              India slabs cap at 28.
             </p>
             <FieldError message={fieldErrors['p-gst'] || null} />
+            <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                id="p-gst-onfees"
+                type="checkbox"
+                checked={platform.gstOnFees}
+                onChange={(e) => setPlatform({ ...platform, gstOnFees: e.target.checked })}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/30"
+              />
+              <span className="text-slate-700">
+                <span className="font-semibold text-slate-900">Charge GST on delivery, rush and platform fees too</span>
+                <br />
+                ON (default): GST applies to the whole composite supply — subtotal + delivery + rush +
+                platform fee. OFF: GST on the subtotal only. Defaults to the CA-informed position;
+                flip it here only after your CA signs off, no redeploy needed.
+              </span>
+            </label>
           </div>
 
           <fieldset className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">

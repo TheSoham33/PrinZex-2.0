@@ -14,6 +14,7 @@ import {
   type PaginatedResponse,
 } from '../../utils/pagination';
 import { computeCheckoutSignature, razorpayClient, razorpayConfigured } from './razorpay.client';
+import { enqueuePush } from '../../utils/fcm';
 import { emitAdminGlobalEvent, emitNewOrder, emitNotificationNew } from '../../realtime/realtime.emitters';
 import type {
   AdminRefundInput,
@@ -40,6 +41,9 @@ async function notify(
 ): Promise<void> {
   await NotificationModel.create({ recipientId, recipientType, type, title, body, data, channel: ['push'] });
   emitNotificationNew(recipientType, recipientId, { type, title, body, data }); // step 9 realtime
+  if (recipientType !== 'admin') {
+    enqueuePush(recipientType, recipientId, { type, title, body, data }); // gap #10 FCM
+  }
 }
 
 async function runSideEffects(label: string, effects: Array<() => Promise<unknown>>): Promise<void> {
