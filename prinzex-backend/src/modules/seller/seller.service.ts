@@ -8,6 +8,7 @@ import { OrderTimelineModel } from '../../models/mongo/Order.model';
 import type { DeliveryAddressSnapshot, OrderItemSpecifications, OrderStatus } from '../../types';
 import { ApiError } from '../../utils/ApiError';
 import { emitNotificationNew, emitOrderStatusChanged } from '../../realtime/realtime.emitters';
+import { enqueuePush } from '../../utils/fcm';
 import { getCache, setCache, invalidateCache, invalidateCachePattern } from '../../utils/cache';
 import { sendTeamInviteEmail } from '../../utils/email';
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
@@ -1285,6 +1286,7 @@ async function notifyCustomerOrderUpdate(
     body,
     data: { orderId, status },
   }); // step 9
+  enqueuePush('customer', customerId, { type: 'order_update', title, body, data: { orderId, status } }); // gap #10 FCM
 }
 
 export async function updateOrderStatus(
@@ -1517,6 +1519,26 @@ export async function updateDeliverySettings(
   sellerId: string,
   input: DeliverySettingsInput,
 ): Promise<{ deliveryRadius: number; pincodes: Array<{ pincode: string; isExcluded: boolean }> }> {
+  // Coverage must reference the platform pincode registry (the FK enforces
+  // existence; here we give a friendly 400 and block unserviceable rows).
+  if (input.pincodes !== undefined && input.pincodes.length > 0) {
+    const registryRows = await prisma.pincode.findMany({
+      where: { pincode: { in: input.pincodes.map((entry) => entry.pincode) } },
+    });
+    const byCode = new Map(registryRows.map((row) => [row.pincode, row]));
+    const problems: string[] = [];
+    for (const entry of input.pincodes) {
+      const row = byCode.get(entry.pincode);
+      if (!row) problems.push(`${entry.pincode} (not in the platform registry)`);
+      else if (!entry.isExcluded && !row.serviceable) {
+        problems.push(`${entry.pincode} (${row.zoneLabel} — marked unserviceable)`);
+      }
+    }
+    if (problems.length > 0) {
+      throw ApiError.badRequest(`Pincodes not serviceable on the platform registry: ${problems.join(', ')}`);
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
     if (input.deliveryRadius !== undefined) {
       await tx.seller.update({

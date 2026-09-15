@@ -9,7 +9,9 @@ import { TrackingModel, type ILocationPoint } from '../../models/mongo/Tracking.
 import type { DeliveryAddressSnapshot } from '../../types';
 import { ApiError } from '../../utils/ApiError';
 import { getCache, invalidateCache } from '../../utils/cache';
+import { enqueuePush } from '../../utils/fcm';
 import { sendSms } from '../../utils/email';
+import { refundOrderToSource } from '../payments/payments.service';
 import { estimateEtaMinutes, haversineDistanceKm } from '../../utils/geo';
 import { isValidTransition } from '../../utils/stateMachine';
 import { emitAdminGlobalEvent, emitNotificationNew, emitOrderStatusChanged } from '../../realtime/realtime.emitters';
@@ -81,6 +83,9 @@ async function notify(
     channel: ['push'],
   });
   emitNotificationNew(recipientType, recipientId, { type, title, body, data }); // step 9 realtime
+  if (recipientType !== 'admin') {
+    enqueuePush(recipientType, recipientId, { type, title, body, data }); // gap #10 FCM
+  }
 }
 
 export interface CachedRiderLocation {
@@ -225,7 +230,7 @@ export async function uploadDocuments(
 export async function getProfile(deliveryBoyId: string) {
   const boy = await prisma.deliveryBoy.findUnique({
     where: { id: deliveryBoyId },
-    include: { bankDetails: true, documents: true, zones: true },
+    include: { bankDetails: true, documents: true, pincodes: { include: { registry: true } } },
   });
   if (!boy) {
     throw ApiError.notFound('Delivery profile not found');
@@ -247,7 +252,12 @@ export async function getProfile(deliveryBoyId: string) {
     onTimeRate: Number(boy.onTimeRate),
     totalEarnings: Number(boy.totalEarnings),
     pendingEarnings: Number(boy.pendingEarnings),
-    zones: boy.zones.map((zone) => zone.zoneName),
+    coverage: boy.pincodes.map((row) => ({
+      pincode: row.pincode,
+      zoneLabel: row.registry.zoneLabel,
+      city: row.registry.city,
+      serviceable: row.registry.serviceable,
+    })),
     documents: boy.documents.map((doc) => ({
       id: doc.id,
       docType: doc.docType,
@@ -689,11 +699,21 @@ export async function failDelivery(
     where: { id: delivery.id },
     data: { status: 'failed', failedAt: new Date(), failReason: input.reason },
   });
-  // The ORDER stays at out_for_delivery — ops retries/reassigns (TODO cron).
+  // Failed delivery ends the order: it moves to "returned" and a paid order
+  // refunds automatically to its original source (wallet instantly, gateway
+  // leg via Razorpay). COD/unpaid orders simply close with no money movement.
+  await prisma.order.update({
+    where: { id: delivery.orderId },
+    data: { status: 'returned' },
+  });
+  const refund = await refundOrderToSource(
+    delivery.orderId,
+    `Delivery failed (${input.reason}) — automatic refund`,
+  );
 
   const order = await prisma.order.findUniqueOrThrow({
     where: { id: delivery.orderId },
-    select: { sellerId: true, customerId: true },
+    select: { sellerId: true, customerId: true, paymentStatus: true },
   });
 
   await runSideEffects('delivery.failed', [
@@ -704,9 +724,25 @@ export async function failDelivery(
         order.customerId,
         'customer',
         'order_update',
-        `Order ${delivery.orderId.slice(-6).toUpperCase()} — delivery issue`,
-        'We could not complete your delivery — our team will reach out shortly.',
-        { orderId: delivery.orderId },
+        `Order ${delivery.orderId.slice(-6).toUpperCase()} — delivery failed`,
+        `We could not complete your delivery (${input.reason}).` +
+          (refund.refunded
+            ? refund.channel === 'wallet'
+              ? ' Your payment is already back in your PrinZex Wallet.'
+              : refund.channel === 'split'
+                ? ' The wallet part is back in your PrinZex Wallet; the rest is on its way to your bank.'
+                : ' Your refund is on its way to the original payment method.'
+            : order.paymentStatus === 'paid'
+              ? ' Refund processing hit an issue — our team will resolve it shortly.'
+              : ''),
+        { orderId: delivery.orderId, refunded: refund.refunded },
+      ),
+    () =>
+      appendTimelineEvent(
+        delivery.orderId,
+        'returned',
+        deliveryBoyId,
+        `Delivery failed (${input.reason}) — order returned${refund.refunded ? ', auto-refund issued' : ''}`,
       ),
     () =>
       notify(
@@ -949,7 +985,7 @@ export async function adminGetDeliveryBoy(id: string) {
     include: {
       bankDetails: true,
       documents: true,
-      zones: true,
+      pincodes: { include: { registry: true } },
       deliveries: {
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -972,7 +1008,12 @@ export async function adminGetDeliveryBoy(id: string) {
     vehicleType: boy.vehicleType,
     vehicleRegNo: boy.vehicleRegNo,
     licenseNumber: boy.licenseNumber,
-    zones: boy.zones.map((zone) => zone.zoneName),
+    coverage: boy.pincodes.map((row) => ({
+      pincode: row.pincode,
+      zoneLabel: row.registry.zoneLabel,
+      city: row.registry.city,
+      serviceable: row.registry.serviceable,
+    })),
     performance: {
       averageRating: Number(boy.averageRating),
       totalDeliveries: boy.totalDeliveries,

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useUserLocation } from '@/hooks/useUserLocation';
 import StoreCard from '@/components/stores/StoreCard';
 import StoreCardSkeleton from '@/components/stores/StoreCardSkeleton';
 import StoreSearchBar from '@/components/stores/StoreSearchBar';
@@ -15,7 +16,7 @@ import StoreFilters, {
 } from '@/components/stores/StoreFilters';
 import { fetchStores } from '@/lib/api/stores';
 import { mapBackendStoreToFrontend } from '@/lib/api/mappers';
-import { IconSettings, IconX } from '@/components/icons';
+import { IconMapPin, IconRefreshCw, IconSettings, IconX } from '@/components/icons';
 
 export default function StoreListing() {
   const router = useRouter();
@@ -30,32 +31,31 @@ export default function StoreListing() {
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>({ lat: 22.5726, lng: 88.3639 }); // Default to Kolkata for demo
 
-  // Get user's current location for distance calculation
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        }
-      );
-    }
-  }, []);
+  // Gap #8: geolocate the shopper for real distances, fall back to Kolkata
+  // gracefully, and remember the last resolved location for the next visit.
+  const {
+    lat: userLat,
+    lng: userLng,
+    source: locationSource,
+    ready: locationReady,
+    refresh: refreshLocation,
+  } = useUserLocation();
 
   const page = Number(searchParams.get('page')) || 1;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['stores', location, query, filters, page],
+    // Coordinates are part of the key so resolving the real location refetches
+    // the distance-sorted list (the backend sorts by haversine server-side).
+    queryKey: ['stores', location, query, filters, page, userLat, userLng],
     queryFn: () => fetchStores({
       city: location || undefined,
       q: query || undefined,
       services: filters.services.join(','),
       minRating: filters.minRating || undefined,
       sort: filters.sortBy as any,
-      // Distance sorting (and per-card distance) needs the user's coordinates.
-      lat: userCoords?.lat,
-      lng: userCoords?.lng,
+      lat: userLat,
+      lng: userLng,
       page,
       limit: 12
     }),
@@ -124,6 +124,25 @@ export default function StoreListing() {
         <p className="mt-1 text-sm text-slate-600">
           {!mounted || isLoading ? 'Finding shops…' : `${totalCount} shops available`}
         </p>
+        {mounted && locationReady && (
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+            <IconMapPin className="h-3.5 w-3.5 shrink-0" />
+            {locationSource === 'geolocation'
+              ? 'Showing distances from your current location'
+              : locationSource === 'remembered'
+                ? 'Showing distances from your saved location'
+                : 'Showing distances from Kolkata — location unavailable'}
+            {locationSource === 'fallback' && (
+              <button
+                type="button"
+                onClick={refreshLocation}
+                className="ml-1 inline-flex items-center gap-1 font-semibold text-blue-600 hover:underline"
+              >
+                <IconRefreshCw className="h-3 w-3" /> Use my location
+              </button>
+            )}
+          </p>
+        )}
       </header>
 
       <StoreSearchBar
@@ -206,9 +225,9 @@ export default function StoreListing() {
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {results.map((store: any) => (
-                <StoreCard 
-                  key={store.id} 
-                  store={mapBackendStoreToFrontend(store, userCoords?.lat, userCoords?.lng)} 
+                <StoreCard
+                  key={store.id}
+                  store={mapBackendStoreToFrontend(store, userLat, userLng)}
                 />
               ))}
             </div>

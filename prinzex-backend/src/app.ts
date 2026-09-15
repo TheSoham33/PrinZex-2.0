@@ -22,6 +22,7 @@ import {
   adminDeliveryRouter,
   deliveryRegistrationRouter,
   deliveryRouter,
+  pincodesRouter,
 } from './modules/delivery/delivery.routes';
 import { trackingRouter } from './modules/tracking/tracking.routes';
 import {
@@ -39,6 +40,12 @@ import { adminAdminsRouter } from './modules/admin/admins/admin-admins.routes';
 import { adminReviewsRouter } from './modules/admin/reviews/admin-reviews.routes';
 import { adminLogsRouter } from './modules/admin/logs/admin-logs.routes';
 import { chatRouter } from './modules/chat/chat.routes';
+import { devicesRouter } from './modules/devices/devices.routes';
+import {
+  adminComplaintsRouter,
+  complaintsRouter,
+  sellerComplaintsRouter,
+} from './modules/complaints/complaints.routes';
 import { authenticate } from './middlewares/authenticate';
 import { authorizeRoles } from './middlewares/authorizeRoles';
 import { ApiResponse } from './utils/ApiResponse';
@@ -119,9 +126,15 @@ export function createApp(): Express {
   // Public store discovery/search — no auth.
   app.use('/api/stores', storesRouter);
 
+  // Public serviceable-pincode registry (coverage pickers, area checks).
+  app.use('/api/pincodes', pincodesRouter);
+
   // Seller onboarding (customer JWT) — MUST mount before /api/seller because
   // that router gates every sub-route with authorizeRoles('SELLER').
   app.use('/api/seller/register', sellerRegistrationRouter);
+
+  // Dispute lane for the fulfilling seller (claim queue, accept/reject).
+  app.use('/api/seller/complaints', sellerComplaintsRouter);
 
   // Seller store management (services, pricing, inventory, team, analytics,
   // orders, payouts, settings) — SELLER role required.
@@ -130,8 +143,15 @@ export function createApp(): Express {
   // Customer order flow (quote, place, track, cancel, review) — CUSTOMER role.
   app.use('/api/orders', ordersRouter);
 
+  // Device push-token registry (gap #10 FCM) — any signed-in device owner
+  // (customer / seller / delivery boy) registers its FCM token here.
+  app.use('/api/devices', devicesRouter);
+
   // Admin order operations (list, detail, force-status, refund, dispute).
   app.use('/api/admin/orders', adminOrdersRouter);
+
+  // Admin disputes — final escalation tier (refund / close are terminal).
+  app.use('/api/admin/complaints', adminComplaintsRouter);
 
   // Public delivery-boy registration — MUST mount before /api/delivery which
   // gates every sub-route with authorizeRoles('DELIVERY_BOY').
@@ -183,6 +203,9 @@ export function createApp(): Express {
 
   // Chat history — REST half of the /chat socket namespace (customers + sellers).
   app.use('/api/chat', chatRouter);
+
+  // Disputes: customer claim → seller decision window → admin final tier.
+  app.use('/api/complaints', complaintsRouter);
 
   // Design file uploads — authenticated (any role).
   app.use('/api/upload', uploadRouter);

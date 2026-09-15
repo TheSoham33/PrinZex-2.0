@@ -15,9 +15,13 @@ import {
   failDeliveryBody,
   locationPingBody,
   payoutsQuery,
+  createPincodeBody,
+  pincodeParams,
   registerDeliveryBody,
+  riderCoverageBody,
   updateBankBody,
   updateDeliveryProfileBody,
+  updatePincodeBody,
 } from './delivery.schema';
 
 /**
@@ -122,3 +126,34 @@ adminDeliveryRouter.post(
   validate({ params: adminDeliveryBoyParams, body: adminVerifyDocumentBody }),
   deliveryController.adminVerifyDocument,
 );
+
+// Pincode registry — the single source of truth for delivery geography.
+adminDeliveryRouter.get(
+  '/pincodes',
+  requirePermission('delivery.view'),
+  deliveryController.listPincodes,
+);
+adminDeliveryRouter.post(
+  '/pincodes',
+  requirePermission('delivery.manage'),
+  validate({ body: createPincodeBody }),
+  deliveryController.createPincode,
+);
+adminDeliveryRouter.patch(
+  '/pincodes/:pincode',
+  requirePermission('delivery.manage'),
+  validate({ params: pincodeParams, body: updatePincodeBody }),
+  deliveryController.updatePincode,
+);
+// Rider coverage: replace free-text zones with registry pincodes.
+adminDeliveryRouter.post(
+  '/boys/:id/coverage',
+  requirePermission('delivery.manage'),
+  validate({ params: adminDeliveryBoyParams, body: riderCoverageBody }),
+  deliveryController.setRiderCoverage,
+);
+
+/** Public picker source (seller coverage picker, area checks): only
+ *  serviceable registry rows. Mounted at /api/pincodes. */
+export const pincodesRouter = Router();
+pincodesRouter.get('/', deliveryController.listServiceablePincodes);

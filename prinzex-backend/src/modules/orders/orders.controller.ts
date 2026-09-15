@@ -2,6 +2,7 @@ import type { Request } from 'express';
 import { ApiError } from '../../utils/ApiError';
 import { ApiResponse } from '../../utils/ApiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { getOrderInvoice } from './invoice';
 import type { AdminTokenPayload, CustomerTokenPayload } from '../../utils/jwt';
 import * as ordersService from './orders.service';
 import type {
@@ -64,6 +65,19 @@ export const listOrders = asyncHandler(async (req, res) => {
 export const getOrderDetail = asyncHandler(async (req, res) => {
   const order = await ordersService.getCustomerOrderDetail(customerId(req), req.params.orderId);
   res.status(200).json(new ApiResponse(200, order, 'Order fetched'));
+});
+
+/**
+ * Download the order's GST invoice PDF (gap #9). Rendered server-side from
+ * the order row (never from client math) and streamed straight back — no
+ * file is written to disk or to public storage.
+ */
+export const downloadInvoice = asyncHandler(async (req, res) => {
+  const { pdf, filename } = await getOrderInvoice(customerId(req), req.params.orderId);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Length', pdf.byteLength);
+  res.send(Buffer.from(pdf));
 });
 
 export const cancelOrder = asyncHandler(async (req, res) => {

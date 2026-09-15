@@ -20,47 +20,27 @@ export const UPLOAD_ROOT = path.join(process.cwd(), 'uploads');
 export const DESIGN_DIR = path.join(UPLOAD_ROOT, 'designs');
 export const AVATAR_DIR = path.join(UPLOAD_ROOT, 'avatars');
 
-const ALLOWED_EXTENSIONS = [
-  '.pdf',
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.ai',
-  '.psd',
-  '.doc',
-  '.docx',
-  '.ppt',
-  '.pptx',
-  '.xls',
-  '.xlsx',
-] as const;
+// Office→PDF conversion (Gotenberg) was removed for now, and only PDF and
+// raster images (PNG/JPG) are accepted. Word (doc/docx), Excel and
+// PowerPoint are intentionally absent — the UI asks the customer to convert
+// them to PDF first ("doc/docx direct upload coming soon").
+const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg'] as const;
 export type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number];
 
 // Hard ceiling only — the effective customer-facing cap is the
 // admin-configured value from uploadLimits.ts (default 100MB), enforced in
-// upload.service. This must equal Gotenberg's --api-body-limit so any file
-// multer accepts is one the converter can accept.
+// upload.service.
 export const MAX_DESIGN_SIZE_BYTES = MAX_CONFIGURABLE_UPLOAD_MB * 1024 * 1024;
 
 /**
  * Magic-byte signatures per extension. Offsets are byte positions in the
- * file header. `.ai` files are PDF containers; `.psd` starts with "8BPS".
- * `.docx`/`.pptx`/`.xlsx` are ZIP containers ("PK\x03\x04"); legacy
- * `.doc`/`.ppt`/`.xls` are OLE2/CFB containers (D0 CF 11 E0 A1 B1 1A E1).
+ * file header.
  */
 const MAGIC_SIGNATURES: Record<AllowedExtension, Buffer[]> = {
   '.pdf': [Buffer.from([0x25, 0x50, 0x44, 0x46])], // %PDF
-  '.ai': [Buffer.from([0x25, 0x50, 0x44, 0x46])], // %PDF
   '.png': [Buffer.from([0x89, 0x50, 0x4e, 0x47])], // ‰PNG
   '.jpg': [Buffer.from([0xff, 0xd8, 0xff])],
   '.jpeg': [Buffer.from([0xff, 0xd8, 0xff])],
-  '.psd': [Buffer.from([0x38, 0x42, 0x50, 0x53])], // 8BPS
-  '.docx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // PK\x03\x04
-  '.pptx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])],
-  '.xlsx': [Buffer.from([0x50, 0x4b, 0x03, 0x04])],
-  '.doc': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
-  '.ppt': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
-  '.xls': [Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
 };
 
 function ensureDir(dir: string, callback: (error: Error | null, resolved: string) => void): void {
@@ -207,6 +187,102 @@ export async function verifyMagicBytes(filePath: string): Promise<AllowedExtensi
     const matches = signatures.some(
       (signature) => head.length >= signature.length && head.subarray(0, signature.length).equals(signature),
     );
+    if (!matches) {
+      await fs.promises.unlink(filePath).catch(() => undefined);
+      throw new ApiError(415, 'File content does not match its extension — upload rejected');
+    }
+  } finally {
+    await handle.close();
+  }
+  return ext;
+}
+
+// ── Complaint evidence (disputes) ──────────────────────────────────────────
+// Photos for wrong_item / print_quality / damaged_in_transit claims and the
+// MANDATORY unboxing video for missing_pages claims. Images are capped at
+// 10MB each; one video per request up to 100MB (below the 128MB server
+// ceiling). Files land in uploads/evidence/ and are served by the same
+// /uploads static mount as designs.
+
+export const EVIDENCE_DIR = path.join(UPLOAD_ROOT, 'evidence');
+
+const EVIDENCE_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg'] as const;
+const EVIDENCE_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov'] as const;
+export const EVIDENCE_ALLOWED_EXTENSIONS = [
+  ...EVIDENCE_IMAGE_EXTENSIONS,
+  ...EVIDENCE_VIDEO_EXTENSIONS,
+] as const;
+export type EvidenceExtension = (typeof EVIDENCE_ALLOWED_EXTENSIONS)[number];
+
+export const MAX_EVIDENCE_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB per photo
+export const MAX_EVIDENCE_VIDEO_BYTES = 100 * 1024 * 1024; // 100MB per video
+
+export function isEvidenceVideoExtension(ext: string): boolean {
+  return (EVIDENCE_VIDEO_EXTENSIONS as readonly string[]).includes(ext);
+}
+
+const evidenceStorage = multer.diskStorage({
+  destination: (_req, _file, callback) => {
+    ensureDir(EVIDENCE_DIR, callback);
+  },
+  filename: (_req, file, callback) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    callback(null, `${randomUUID()}${ext}`);
+  },
+});
+
+const evidenceFileFilter: multer.Options['fileFilter'] = (_req, file, callback) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!(EVIDENCE_ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
+    callback(
+      new ApiError(
+        415,
+        `Unsupported evidence type "${ext || '(none)'}" — allowed: ${EVIDENCE_ALLOWED_EXTENSIONS.join(', ')}`,
+      ),
+    );
+    return;
+  }
+  callback(null, true);
+};
+
+const evidenceUploader = multer({
+  storage: evidenceStorage,
+  fileFilter: evidenceFileFilter,
+  limits: { fileSize: MAX_EVIDENCE_VIDEO_BYTES, files: 1 },
+});
+
+/** Multer middleware for one evidence file (photo or video) as `file`. */
+export const uploadEvidenceMiddleware = evidenceUploader.single('file');
+
+// Magic-byte signatures with byte OFFSETS — mp4/mov carry `ftyp` at offset 4,
+// unlike the offset-0 signatures used for designs.
+const EVIDENCE_MAGIC: Record<EvidenceExtension, Array<{ offset: number; bytes: Buffer }>> = {
+  '.png': [{ offset: 0, bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47]) }],
+  '.jpg': [{ offset: 0, bytes: Buffer.from([0xff, 0xd8, 0xff]) }],
+  '.jpeg': [{ offset: 0, bytes: Buffer.from([0xff, 0xd8, 0xff]) }],
+  '.mp4': [{ offset: 4, bytes: Buffer.from('ftyp', 'ascii') }],
+  '.mov': [{ offset: 4, bytes: Buffer.from('ftyp', 'ascii') }],
+  '.webm': [{ offset: 0, bytes: Buffer.from([0x1a, 0x45, 0xdf, 0xa3]) }],
+};
+
+/** Same contract as verifyMagicBytes but for the evidence lane's formats. */
+export async function verifyEvidenceMagicBytes(filePath: string): Promise<EvidenceExtension> {
+  const ext = path.extname(filePath).toLowerCase() as EvidenceExtension;
+  const signatures = EVIDENCE_MAGIC[ext];
+  if (!signatures) {
+    await fs.promises.unlink(filePath).catch(() => undefined);
+    throw new ApiError(415, `Unsupported evidence type "${ext}"`);
+  }
+
+  const handle = await fs.promises.open(filePath, 'r');
+  try {
+    const buffer = Buffer.alloc(12);
+    const { bytesRead } = await handle.read(buffer, 0, 12, 0);
+
+    const matches = signatures.some(({ offset, bytes }) => {
+      const slice = buffer.subarray(offset, Math.min(bytesRead, offset + bytes.length));
+      return bytesRead >= offset + bytes.length && slice.equals(bytes);
+    });
     if (!matches) {
       await fs.promises.unlink(filePath).catch(() => undefined);
       throw new ApiError(415, 'File content does not match its extension — upload rejected');

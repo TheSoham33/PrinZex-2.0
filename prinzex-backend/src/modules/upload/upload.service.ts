@@ -3,9 +3,13 @@ import path from 'path';
 import { REDIS_KEYS, REDIS_TTL } from '../../config/redis';
 import { ApiError } from '../../utils/ApiError';
 import { getCache, setCache, invalidateCache } from '../../utils/cache';
-import { DESIGN_DIR, verifyMagicBytes } from '../../utils/fileUpload';
-import { OFFICE_CONVERTIBLE, convertOfficeToPdf } from '../../utils/gotenberg';
-import { countPdfPages } from '../../utils/pdf';
+import {
+  DESIGN_DIR,
+  isEvidenceVideoExtension,
+  MAX_EVIDENCE_IMAGE_BYTES,
+  verifyEvidenceMagicBytes,
+  verifyMagicBytes,
+} from '../../utils/fileUpload';
 import { getMaxUploadDesignBytes } from '../../utils/uploadLimits';
 
 /**
@@ -26,10 +30,6 @@ export interface UploadResult {
   fileName: string;
   sizeKb: number;
   mimeType: string;
-  /** Office uploads only: exact pages of the converted PDF. */
-  totalPages?: number;
-  /** True when the stored file is a PDF converted from an Office original. */
-  convertedToPdf?: boolean;
 }
 
 export async function registerDesignUpload(
@@ -50,47 +50,23 @@ export async function registerDesignUpload(
   // Throws 415 (and deletes the file) on mismatch.
   await verifyMagicBytes(file.path);
 
-  // Office documents are converted to print-ready PDF before storage: the
-  // shop always receives a PDF and pricing uses its exact page count. A
-  // failed conversion rejects the upload (no file is kept).
-  let storedPath = file.path;
-  let storedName = file.filename;
-  let storedMime = file.mimetype;
-  let storedSize = file.size;
-  let totalPages: number | undefined;
-  const extension = path.extname(file.filename).toLowerCase();
-  if (OFFICE_CONVERTIBLE.has(extension)) {
-    try {
-      storedPath = await convertOfficeToPdf(file.path, DESIGN_DIR);
-      totalPages = await countPdfPages(storedPath);
-    } catch (error) {
-      await fs.promises.unlink(file.path).catch(() => undefined);
-      throw error;
-    }
-    storedName = path.basename(storedPath);
-    storedMime = 'application/pdf';
-    storedSize = (await fs.promises.stat(storedPath)).size;
-  }
-
+  // The file is stored as-is. Office→PDF conversion (Gotenberg) was removed
+  // for now: the upload lane only accepts PDF and images, so there is
+  // nothing left to convert — the shop receives exactly what was uploaded.
   const metadata: UploadMetadata = {
     userId,
     originalName: file.originalname,
-    sizeBytes: storedSize,
-    mimeType: storedMime,
+    sizeBytes: file.size,
+    mimeType: file.mimetype,
     uploadedAt: new Date().toISOString(),
   };
-  // Register BEFORE dropping the original, so a cache failure keeps a retry path.
-  await setCache(REDIS_KEYS.UPLOAD_METADATA(storedName), metadata, REDIS_TTL.UPLOAD_METADATA);
-  if (storedPath !== file.path) {
-    await fs.promises.unlink(file.path).catch(() => undefined);
-  }
+  await setCache(REDIS_KEYS.UPLOAD_METADATA(file.filename), metadata, REDIS_TTL.UPLOAD_METADATA);
 
   return {
-    fileUrl: `/uploads/designs/${storedName}`,
+    fileUrl: `/uploads/designs/${file.filename}`,
     fileName: file.originalname,
-    sizeKb: Math.round(storedSize / 1024),
-    mimeType: storedMime,
-    ...(totalPages !== undefined ? { totalPages, convertedToPdf: true } : {}),
+    sizeKb: Math.round(file.size / 1024),
+    mimeType: file.mimetype,
   };
 }
 
@@ -132,4 +108,38 @@ export async function deleteDesignUpload(userId: string, filename: string): Prom
   await invalidateCache(key);
 
   return { deleted: true };
+}
+
+/**
+ * Complaint evidence (disputes): photos and the mandatory missing-pages
+ * unboxing video. Multer enforces the 100MB video ceiling; images get their
+ * stricter 10MB cap here, and magic bytes are verified per evidence format.
+ */
+export async function registerEvidenceUpload(
+  userId: string,
+  file: Express.Multer.File,
+): Promise<UploadResult> {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!isEvidenceVideoExtension(ext) && file.size > MAX_EVIDENCE_IMAGE_BYTES) {
+    await fs.promises.unlink(file.path).catch(() => undefined);
+    throw new ApiError(413, 'Photo too large — the limit is 10 MB per image');
+  }
+
+  await verifyEvidenceMagicBytes(file.path);
+
+  const metadata: UploadMetadata = {
+    userId,
+    originalName: file.originalname,
+    sizeBytes: file.size,
+    mimeType: file.mimetype,
+    uploadedAt: new Date().toISOString(),
+  };
+  await setCache(REDIS_KEYS.UPLOAD_METADATA(file.filename), metadata, REDIS_TTL.UPLOAD_METADATA);
+
+  return {
+    fileUrl: `/uploads/evidence/${file.filename}`,
+    fileName: file.originalname,
+    sizeKb: Math.round(file.size / 1024),
+    mimeType: file.mimetype,
+  };
 }

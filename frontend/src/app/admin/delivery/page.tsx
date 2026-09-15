@@ -2,12 +2,19 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  fetchDeliveryBoys, 
+import {
+  fetchDeliveryBoys,
   updateDeliveryBoyStatus,
   fetchDeliveryBoyById,
   verifyDeliveryBoyDocument,
 } from '@/lib/api/admin-delivery';
+import {
+  createPincode,
+  fetchPincodeRegistry,
+  pincodeOptionLabel,
+  setRiderCoverage,
+  updatePincode,
+} from '@/lib/api/pincodes';
 import DataTable, { type DataTableColumn } from '@/components/admin/DataTable';
 import StatusBadge from '@/components/admin/StatusBadge';
 import ConfirmModal from '@/components/admin/ConfirmModal';
@@ -15,10 +22,6 @@ import UserDetailDrawer from '@/components/admin/UserDetailDrawer';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { IconStar, IconRefreshCw } from '@/components/icons';
-
-const DELIVERY_ZONES = [
-  'Salt Lake', 'New Town', 'Sector V', 'Esplanade', 'Park Street', 'Gariahat'
-];
 
 export default function AdminDeliveryPage() {
   const { showToast } = useToast();
@@ -59,6 +62,55 @@ export default function AdminDeliveryPage() {
     setSuspendReason('');
   }, []);
 
+  // ── Pincode registry: single source of truth for delivery geography ──────
+  const [newPincode, setNewPincode] = useState('');
+  const [newCity, setNewCity] = useState('Kolkata');
+  const [newZone, setNewZone] = useState('');
+  const [coverageDraft, setCoverageDraft] = useState<string[] | null>(null);
+
+  const { data: registry = [], refetch: refetchRegistry } = useQuery({
+    queryKey: ['pincode-registry'],
+    queryFn: fetchPincodeRegistry,
+  });
+
+  const createPincodeMutation = useMutation({
+    mutationFn: () => createPincode({ pincode: newPincode, city: newCity, zoneLabel: newZone }),
+    onSuccess: () => {
+      showToast('Pincode added to the registry');
+      setNewPincode('');
+      setNewZone('');
+      refetchRegistry();
+    },
+    onError: (err: any) => showToast(err.message, 'error'),
+  });
+
+  const toggleServiceable = useMutation({
+    mutationFn: ({ pincode, serviceable }: { pincode: string; serviceable: boolean }) =>
+      updatePincode(pincode, { serviceable }),
+    onSuccess: () => refetchRegistry(),
+    onError: (err: any) => showToast(err.message, 'error'),
+  });
+
+  const renameZone = useMutation({
+    mutationFn: ({ pincode, zoneLabel }: { pincode: string; zoneLabel: string }) =>
+      updatePincode(pincode, { zoneLabel }),
+    onSuccess: () => {
+      showToast('Zone label updated');
+      refetchRegistry();
+    },
+    onError: (err: any) => showToast(err.message, 'error'),
+  });
+
+  const saveCoverage = useMutation({
+    mutationFn: () => setRiderCoverage(drawerId!, coverageDraft ?? []),
+    onSuccess: () => {
+      showToast('Rider coverage updated — matching is exact pincode from now on');
+      setCoverageDraft(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-delivery-detail', drawerId] });
+    },
+    onError: (err: any) => showToast(err.message, 'error'),
+  });
+
   const handleConfirmSuspend = useCallback(() => {
     if (suspendTarget) {
       suspendMutation.mutate({ id: suspendTarget.id, reason: suspendReason });
@@ -73,6 +125,10 @@ export default function AdminDeliveryPage() {
     },
     onError: (err: any) => showToast(err.message, 'error'),
   });
+
+  // Pincodes currently shown in the drawer (draft while editing, else saved).
+  const activeCoverageCodes: string[] =
+    coverageDraft ?? (currentRider?.coverage ?? []).map((r: { pincode: string }) => r.pincode);
 
   const columns: DataTableColumn<any>[] = [
     { key: 'name', label: 'Name', sortable: true, render: (r) => (
@@ -155,6 +211,88 @@ export default function AdminDeliveryPage() {
         }
       />
 
+      <section className="card mt-6 p-5">
+        <h2 className="text-sm font-semibold text-slate-900">Pincode registry (delivery zones)</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          The single source of truth for delivery geography. Stores and riders can only reference
+          these pincodes; zone labels are display-only and never used for matching — matching is
+          always an exact 6-digit pincode equality.
+        </p>
+
+        <form
+          className="mt-4 grid gap-2 sm:grid-cols-[8rem_1fr_1fr_auto]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            createPincodeMutation.mutate();
+          }}
+        >
+          <input
+            className="input"
+            placeholder="PIN e.g. 700106"
+            value={newPincode}
+            maxLength={6}
+            onChange={(e) => setNewPincode(e.target.value.replace(/\D/g, ''))}
+            aria-label="New pincode"
+          />
+          <input className="input" placeholder="City" value={newCity} onChange={(e) => setNewCity(e.target.value)} aria-label="City" />
+          <input className="input" placeholder="Zone label e.g. New Town" value={newZone} onChange={(e) => setNewZone(e.target.value)} aria-label="Zone label" />
+          <button type="submit" className="btn-primary" disabled={createPincodeMutation.isPending || !/^\d{6}$/.test(newPincode) || !newZone.trim() || !newCity.trim()}>
+            Add pincode
+          </button>
+        </form>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+                <th className="py-2 pr-3">Pincode</th>
+                <th className="py-2 pr-3">Zone label</th>
+                <th className="py-2 pr-3">City</th>
+                <th className="py-2 pr-3">Stores</th>
+                <th className="py-2 pr-3">Riders</th>
+                <th className="py-2">Serviceable</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registry.map((row) => (
+                <tr key={row.pincode} className="border-b border-slate-100">
+                  <td className="py-2 pr-3 font-mono text-xs font-medium text-slate-900">{row.pincode}</td>
+                  <td className="py-2 pr-3">
+                    <input
+                      className="input py-1 text-xs"
+                      defaultValue={row.zoneLabel}
+                      onBlur={(e) => {
+                        const value = e.target.value.trim();
+                        if (value && value !== row.zoneLabel) renameZone.mutate({ pincode: row.pincode, zoneLabel: value });
+                      }}
+                      aria-label={`Zone label for ${row.pincode}`}
+                    />
+                  </td>
+                  <td className="py-2 pr-3 text-slate-600">{row.city}</td>
+                  <td className="py-2 pr-3 text-slate-600">{row.stores}</td>
+                  <td className="py-2 pr-3 text-slate-600">{row.riders}</td>
+                  <td className="py-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={row.serviceable}
+                        onChange={(e) => toggleServiceable.mutate({ pincode: row.pincode, serviceable: e.target.checked })}
+                      />
+                      {row.serviceable ? 'Yes' : 'No'}
+                    </label>
+                  </td>
+                </tr>
+              ))}
+              {registry.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-4 text-center text-sm text-slate-500">Registry is empty — add the first pincode above.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <ConfirmModal
         open={Boolean(suspendTarget)}
         title="Suspend this partner?"
@@ -202,6 +340,64 @@ export default function AdminDeliveryPage() {
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">Email</dt><dd className="break-all text-right text-slate-900">{currentRider.email}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-slate-500">Joined</dt><dd className="text-slate-900">{formatDate(currentRider.createdAt)}</dd></div>
               </dl>
+            </section>
+
+            <section>
+              <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Pincode coverage</h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {activeCoverageCodes.map((code) => {
+                  const label =
+                    registry.find((r) => r.pincode === code)?.zoneLabel ??
+                    (currentRider.coverage ?? []).find((r: { pincode: string }) => r.pincode === code)?.zoneLabel ??
+                    'Zone';
+                  return (
+                    <span key={code} className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                      {label} · {code}
+                    </span>
+                  );
+                })}
+                {activeCoverageCodes.length === 0 && (
+                  <p className="text-sm text-slate-500">
+                    No coverage set — the rider is unrestricted until you assign registry pincodes.
+                  </p>
+                )}
+              </div>
+              <div className="mt-3">
+                <label className="label" htmlFor="coverage-select">Assign coverage from the registry</label>
+                <select
+                  id="coverage-select"
+                  className="input mt-1 py-2 text-sm"
+                  value=""
+                  onChange={(e) => {
+                    const code = e.target.value;
+                    if (!code) return;
+                    setCoverageDraft(
+                      activeCoverageCodes.includes(code)
+                        ? activeCoverageCodes.filter((p) => p !== code)
+                        : [...activeCoverageCodes, code],
+                    );
+                  }}
+                >
+                  <option value="">Toggle a pincode…</option>
+                  {registry
+                    .filter((r) => r.serviceable)
+                    .map((r) => (
+                      <option key={r.pincode} value={r.pincode}>
+                        {activeCoverageCodes.includes(r.pincode) ? '✓ ' : ''}{pincodeOptionLabel(r)}
+                      </option>
+                    ))}
+                </select>
+                {coverageDraft !== null && (
+                  <div className="mt-2 flex gap-2">
+                    <button type="button" className="btn-primary text-xs" disabled={saveCoverage.isPending} onClick={() => saveCoverage.mutate()}>
+                      Save coverage
+                    </button>
+                    <button type="button" className="btn-secondary text-xs" onClick={() => setCoverageDraft(null)}>
+                      Discard
+                    </button>
+                  </div>
+                )}
+              </div>
             </section>
 
             <section>

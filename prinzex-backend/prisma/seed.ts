@@ -40,7 +40,8 @@ async function wipe(): Promise<void> {
   await prisma.sellerDocument.deleteMany();
   await prisma.sellerBankDetails.deleteMany();
   await prisma.sellerService.deleteMany();
-  await prisma.deliveryBoyZone.deleteMany();
+  await prisma.deliveryBoyPincode.deleteMany();
+  await prisma.pincode.deleteMany();
   await prisma.deliveryBoyDocument.deleteMany();
   await prisma.deliveryBoyBankDetails.deleteMany();
   await prisma.deliveryBoy.deleteMany();
@@ -56,6 +57,40 @@ async function wipe(): Promise<void> {
 }
 
 // ─── 1. SUPER ADMIN ────────────────────────────────────────────────────────
+// ─── 0. PINCODE REGISTRY (single source of truth for delivery geography) ──
+// Stores and riders only ever reference these rows; matching is exact
+// pincode equality. zoneLabel is display-only UX ("Salt Lake" etc.).
+const PINCODE_REGISTRY: Array<{ pincode: string; zoneLabel: string }> = [
+  { pincode: '700001', zoneLabel: 'Esplanade' },
+  { pincode: '700006', zoneLabel: 'Burrabazar' },
+  { pincode: '700009', zoneLabel: 'College Street' },
+  { pincode: '700012', zoneLabel: 'Sealdah' },
+  { pincode: '700016', zoneLabel: 'Park Street' },
+  { pincode: '700017', zoneLabel: 'Alipore' },
+  { pincode: '700019', zoneLabel: 'Ballygunge' },
+  { pincode: '700029', zoneLabel: 'Gariahat' },
+  { pincode: '700032', zoneLabel: 'Jadavpur' },
+  { pincode: '700040', zoneLabel: 'Behala' },
+  { pincode: '700064', zoneLabel: 'Salt Lake' },
+  { pincode: '700068', zoneLabel: 'Tollygunge' },
+  { pincode: '700071', zoneLabel: 'Bhowanipore' },
+  { pincode: '700091', zoneLabel: 'Salt Lake Sector V' },
+  { pincode: '700098', zoneLabel: 'New Town' },
+  { pincode: '700106', zoneLabel: 'New Town Action Area I' },
+  { pincode: '700156', zoneLabel: 'New Town Action Area II' },
+];
+
+async function seedPincodeRegistry(): Promise<void> {
+  console.log('… creating the Kolkata pincode registry (delivery geography source of truth)');
+  for (const entry of PINCODE_REGISTRY) {
+    await prisma.pincode.upsert({
+      where: { pincode: entry.pincode },
+      update: { zoneLabel: entry.zoneLabel },
+      create: { pincode: entry.pincode, city: 'Kolkata', zoneLabel: entry.zoneLabel, serviceable: true },
+    });
+  }
+}
+
 async function seedAdmin() {
   console.log('… creating super admin');
   return prisma.admin.create({
@@ -511,7 +546,7 @@ const DELIVERY_BOYS: Array<{
   totalDeliveries: number;
   onTimeRate: number;
   totalEarnings: number;
-  zones: string[];
+  pincodes: string[];
   account: { holder: string; number: string; ifsc: string; pan: string };
 }> = [
   {
@@ -528,7 +563,7 @@ const DELIVERY_BOYS: Array<{
     totalDeliveries: 480,
     onTimeRate: 96.5,
     totalEarnings: 38400,
-    zones: ['Esplanade', 'Park Street'],
+    pincodes: ['700001', '700006', '700009', '700012', '700016', '700017', '700019', '700071'],
     account: { holder: 'Imran Khan', number: '60100678901234', ifsc: 'HDFC0004321', pan: 'QRSTU3456V' },
   },
   {
@@ -545,7 +580,7 @@ const DELIVERY_BOYS: Array<{
     totalDeliveries: 320,
     onTimeRate: 93.9,
     totalEarnings: 24500,
-    zones: ['Ruby', 'Salt Lake'],
+    pincodes: ['700040', '700064', '700091', '700098', '700106', '700156'],
     account: { holder: 'Sunil Verma', number: '60200789012345', ifsc: 'ICIC0008765', pan: 'VWXYZ6789A' },
   },
   {
@@ -562,13 +597,13 @@ const DELIVERY_BOYS: Array<{
     totalDeliveries: 610,
     onTimeRate: 98.1,
     totalEarnings: 52100,
-    zones: ['Gariahat', 'Jadavpur'],
+    pincodes: ['700019', '700029', '700032', '700040', '700068'],
     account: { holder: 'Deepak Yadav', number: '60300890123456', ifsc: 'SBIN0002109', pan: 'BCDEF9012G' },
   },
 ];
 
 async function seedDeliveryBoys() {
-  console.log('… creating 3 active delivery boys with zones');
+  console.log('… creating 3 active delivery boys with pincode coverage');
   const passwordHash = await bcrypt.hash('Delivery@123', 10);
   const created = [];
 
@@ -603,7 +638,7 @@ async function seedDeliveryBoys() {
         totalDeliveries: d.totalDeliveries,
         onTimeRate: d.onTimeRate,
         totalEarnings: d.totalEarnings,
-        zones: { create: d.zones.map((zoneName) => ({ zoneName })) },
+        pincodes: { create: d.pincodes.map((pincode) => ({ pincode })) },
         bankDetails: {
           create: {
             accountHolderName: d.account.holder,
@@ -625,7 +660,7 @@ async function seedDeliveryBoys() {
           ],
         },
       },
-      include: { zones: true },
+      include: { pincodes: true },
     });
     created.push(boy);
   }
@@ -633,7 +668,6 @@ async function seedDeliveryBoys() {
 }
 
 type CustomerWithAddresses = Awaited<ReturnType<typeof seedCustomers>>[number];
-type SellerWithServices = Awaited<ReturnType<typeof seedSellers>>[number];
 
 
 // ─── 9. COUPONS ────────────────────────────────────────────────────────────
@@ -765,6 +799,7 @@ async function main(): Promise<void> {
   console.log('Seeding PostgreSQL…');
   await wipe();
 
+  await seedPincodeRegistry();
   const admin = await seedAdmin();
   const customers = await seedCustomers();
   const sellers = await seedSellers(admin.id);

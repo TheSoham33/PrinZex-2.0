@@ -54,6 +54,17 @@ export const env = cleanEnv(process.env, {
   RAZORPAY_KEY_SECRET: str({ default: '' }),
   RAZORPAY_WEBHOOK_SECRET: str({ default: '' }),
 
+  // FCM push notifications (gap #10) — a Firebase service account drives the
+  // Admin SDK sender. Empty = push is DISABLED (in-app + socket + polling all
+  // keep working); fill these from a service-account JSON to enable pushes.
+  FIREBASE_PROJECT_ID: str({ default: '' }),
+  FIREBASE_CLIENT_EMAIL: str({ default: '' }),
+  // Paste the service-account `private_key` value (its "\n" escapes are fine —
+  // they're un-escaped at load). Optional: FIREBASE_PRIVATE_KEY_FILE wins when
+  // the key is too awkward to inline in env.
+  FIREBASE_PRIVATE_KEY: str({ default: '' }),
+  FIREBASE_PRIVATE_KEY_FILE: str({ default: '' }),
+
   // Platform settings
   PLATFORM_COMMISSION_RATE: num({ default: 0.12 }),
   // Minimum seller pending balance (in ₹) required to request a payout
