@@ -436,10 +436,10 @@ Priority: **P0** = launch blocker · **P1** = strong product/ops need · **P2** 
 |---|---|
 | 13 | `supportEmail`/platform name duplicated in a few screens — single-source from settings. | Sweep frontend for stray literals; settings merge already supports it. |
 | 14 | Admin delivery-zone list is static suggestions; rider zones are free text. | Pincode-based zones or a city-zone registry shared with stores. |
-| 15 | Single-city assumption (Kolkata) in copy; presence is city-keyed already. | City registry table; storefront city picker; per-city settings if fees diverge. |
+| 15 | Single-city assumption (Kolkata) in copy; presence is city-keyed already. **Done** — `City` registry table (migration `20260915000000_city_registry`; pincodes now FK cities via `citySlug`) with admin CRUD (`/api/admin/cities`) and optional per-city `deliveryFees`/`deliveryEtaHours` overrides merged over Settings → Platform defaults at quote time by seller city; public `GET /api/cities` feeds a persisted storefront city picker in the navbar that scopes store listing/featured stores and address-form defaults; customer copy de-Kolkata'd. | City registry table; storefront city picker; per-city settings if fees diverge. |
 | 16 | No metrics/APM (pino logs only). | Prometheus endpoint + Grafana, or a hosted APM; alert on assignment failures, payment webhook errors, refund_failed count. |
 | 17 | Rider payout settlement is manual-request based. | Scheduled batch settlement mirroring the seller payout engine. |
-| 18 | API rate limiting exists only for OTP send. | Global limiter middleware with per-route overrides. |
+| 18 | API rate limiting exists only for OTP send. **Done** — one global limiter middleware (`middlewares/rateLimiter.ts`, mounted once in `app.ts`) counts every request in a Redis fixed window: default 100 req/min/IP, with per-route overrides — logins (customer/seller/admin) 5/15 min/IP, every OTP-send endpoint incl. delivery OTP login and signup OTP 3/10 min per identifier, registrations 5/15 min/IP. `/health` and the Razorpay webhook are exempt; the limiter fails open on Redis loss and skips in tests. Guarded by `check-rate-limits.ts`. | Global limiter middleware with per-route overrides. |
 | 19 | PWA/service-worker caching strategy unverified against the new buyer flows. | Cache audit; bump precache, verify offline fallbacks. |
 | 20 | Accessibility pass beyond form errors (color-contrast, focus traps in modals). | Axe audit in CI. |
 

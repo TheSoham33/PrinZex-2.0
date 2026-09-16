@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate';
-import { loginLimiter, otpSendLimiter } from '../../middlewares/rateLimiter';
 import { validate } from '../../middlewares/validate';
 import * as authController from './auth.controller';
 import {
@@ -22,9 +21,9 @@ customerAuthRouter.post('/register', validate({ body: registerBody }), authContr
 
 customerAuthRouter.post('/send-signup-otp', validate({ body: sendSignupOtpBody }), authController.sendSignupOtp);
 
-customerAuthRouter.post('/login', loginLimiter, validate({ body: loginBody }), authController.login);
+customerAuthRouter.post('/login', validate({ body: loginBody }), authController.login);
 
-customerAuthRouter.post('/send-login-otp', otpSendLimiter, authController.sendLoginOtp);
+customerAuthRouter.post('/send-login-otp', authController.sendLoginOtp);
 
 customerAuthRouter.post('/logout', authenticate, validate({ body: logoutBody }), authController.logout);
 
@@ -32,9 +31,9 @@ customerAuthRouter.post('/refresh', validate({ body: refreshBody }), authControl
 
 customerAuthRouter.post('/verify-email', validate({ body: verifyEmailBody }), authController.verifyEmail);
 
-customerAuthRouter.post('/resend-otp', otpSendLimiter, validate({ body: resendOtpBody }), authController.resendOtp);
+customerAuthRouter.post('/resend-otp', validate({ body: resendOtpBody }), authController.resendOtp);
 
-customerAuthRouter.post('/forgot-password', otpSendLimiter, validate({ body: forgotPasswordBody }), authController.forgotPassword);
+customerAuthRouter.post('/forgot-password', validate({ body: forgotPasswordBody }), authController.forgotPassword);
 
 customerAuthRouter.post('/reset-password', validate({ body: resetPasswordBody }), authController.resetPassword);
 
