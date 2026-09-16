@@ -4,9 +4,11 @@ import { redis, REDIS_KEYS } from '../../config/redis';
 import { NotificationModel } from '../../models/mongo/Notification.model';
 import { TrackingModel } from '../../models/mongo/Tracking.model';
 import { ApiError } from '../../utils/ApiError';
+import { enqueuePush } from '../../utils/fcm';
 import { emitDeliveryAssigned, emitNotificationNew } from '../../realtime/realtime.emitters';
 import { getCache } from '../../utils/cache';
 import { boundingBox, haversineDistanceKm } from '../../utils/geo';
+import { coversPincode, pincodeOfAddress } from '../../utils/pincodes';
 import { getAssignRadiusKm } from '../../utils/platformSettings';
 
 // NOTE: mirrored deliberately instead of imported from delivery.service —
@@ -69,6 +71,7 @@ async function notifyBoy(
     channel: ['push', 'sms'],
   });
   emitNotificationNew('delivery_boy', deliveryBoyId, { type: 'delivery_assigned', title, body, data }); // step 9
+  enqueuePush('delivery_boy', deliveryBoyId, { type: 'delivery_assigned', title, body, data }); // gap #10 FCM
 }
 
 async function createTrackingDoc(deliveryId: string, orderId: string, deliveryBoyId: string | null): Promise<void> {
@@ -100,7 +103,7 @@ interface AssignSocketOrder {
   customer: { phone: string | null } | null;
 }
 
-/** delivery:assigned → the rider's /orders room (safe no-op when sockets down). */
+/** delivery.assigned → the rider's /orders room (safe no-op when sockets down). */
 function emitAssignedSocket(deliveryBoyId: string, deliveryId: string, order: AssignSocketOrder): void {
   const snapshot = order.deliveryAddress as { fullAddress?: string; phone?: string } | null;
   emitDeliveryAssigned(deliveryBoyId, {
@@ -173,6 +176,11 @@ export async function autoAssignDelivery(orderId: string): Promise<AssignmentRes
   const radiusKm = await getAssignRadiusKm();
   const box = storeLat != null && storeLng != null ? boundingBox(storeLat, storeLng, radiusKm) : null;
 
+  // Structured geography (pincode registry): a rider whose coverage rows
+  // exist must cover the order's delivery pincode exactly. Riders without
+  // configured coverage remain unrestricted (ops default).
+  const orderPincode = pincodeOfAddress(order.deliveryAddress);
+
   const candidates: RiderCandidate[] = [];
   for (const riderId of onlineIds) {
     const boy = await prisma.deliveryBoy.findUnique({
@@ -186,6 +194,13 @@ export async function autoAssignDelivery(orderId: string): Promise<AssignmentRes
       where: { deliveryBoyId: riderId, status: { in: [...DELIVERY_ACTIVE_STATUSES] } },
     });
     if (busy > 0) continue;
+
+    // Exact pincode-coverage check against the registry (no fuzzy zones).
+    const coverage = await prisma.deliveryBoyPincode.findMany({
+      where: { deliveryBoyId: riderId },
+      select: { pincode: true },
+    });
+    if (!coversPincode(coverage.map((row) => row.pincode), orderPincode)) continue;
 
     // Fresh position: Redis first, PostgreSQL last-known as fallback.
     const cached = await getCache<CachedRiderLocation>(REDIS_KEYS.DELIVERY_LOCATION(riderId));

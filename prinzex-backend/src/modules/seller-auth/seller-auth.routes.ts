@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeRoles } from '../../middlewares/authorizeRoles';
-import { loginLimiter } from '../../middlewares/rateLimiter';
 import { validate } from '../../middlewares/validate';
 import * as sellerAuthController from './seller-auth.controller';
 import {
@@ -13,7 +12,7 @@ import {
 /** Seller auth — mounted at /api/seller/auth. */
 export const sellerAuthRouter = Router();
 
-sellerAuthRouter.post('/login', loginLimiter, validate({ body: sellerLoginBody }), sellerAuthController.login);
+sellerAuthRouter.post('/login', validate({ body: sellerLoginBody }), sellerAuthController.login);
 
 sellerAuthRouter.post(
   '/logout',

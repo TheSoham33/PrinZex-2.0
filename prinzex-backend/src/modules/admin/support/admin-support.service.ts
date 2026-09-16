@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../../../config/database';
 import { NotificationModel } from '../../../models/mongo/Notification.model';
 import { ApiError } from '../../../utils/ApiError';
+import { enqueuePush } from '../../../utils/fcm';
 import { roundMoney } from '../../../utils/financial';
 import {
   buildPaginatedResponse,
@@ -24,6 +25,7 @@ async function notifyCustomer(
   data: Record<string, unknown>,
 ): Promise<void> {
   await NotificationModel.create({ recipientId: userId, recipientType: 'customer', type, title, body, data, channel: ['push'] });
+  enqueuePush('customer', userId, { type, title, body, data }); // gap #10 FCM
 }
 
 function startOfWeek(): Date {
