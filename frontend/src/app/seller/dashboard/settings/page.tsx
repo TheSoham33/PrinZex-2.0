@@ -10,11 +10,13 @@ import {
   updateNotificationSettings
 } from '@/lib/api/seller-settings';
 import ToggleSwitch from '@/components/seller-dashboard/ToggleSwitch';
+import SellerKycSection from '@/components/seller-dashboard/SellerKycSection';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import { BUSINESS_TYPES, type BusinessType } from '@/lib/seller-types';
+import { fetchServiceablePincodes, pincodeOptionLabel } from '@/lib/api/pincodes';
 import { IconAlertCircle, IconPlus, IconX, IconRefreshCw } from '@/components/icons';
 
-const TABS = ['Store info', 'Service hours', 'Delivery radius', 'Notifications'] as const;
+const TABS = ['Store info', 'Service hours', 'Delivery radius', 'Notifications', 'KYC documents'] as const;
 type Tab = (typeof TABS)[number];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -71,6 +73,14 @@ export default function SellerSettingsPage() {
   const [pincodes, setPincodes] = useState<string[]>([]);
   const [pincodeDraft, setPincodeDraft] = useState('');
   const [pincodeError, setPincodeError] = useState<string | null>(null);
+
+  // Coverage can only reference the platform pincode registry (single source
+  // of truth) — the picker lists serviceable rows, no free text.
+  const { data: registry = [] } = useQuery({
+    queryKey: ['serviceable-pincodes'],
+    queryFn: fetchServiceablePincodes,
+    staleTime: 5 * 60_000,
+  });
 
   const [notifications, setNotifications] = useState<NotificationSetting[]>([
     {
@@ -255,8 +265,8 @@ export default function SellerSettingsPage() {
 
   const addPincode = () => {
     const value = pincodeDraft.trim();
-    if (!/^[1-9][0-9]{5}$/.test(value)) {
-      setPincodeError('Enter a valid 6-digit pincode');
+    if (!value) {
+      setPincodeError('Pick a pincode from the platform registry');
       return;
     }
     if (pincodes.includes(value)) {
@@ -293,7 +303,7 @@ export default function SellerSettingsPage() {
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Settings</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Manage your store profile, hours and delivery area.
+          Manage your store profile, hours, delivery area and verification documents.
         </p>
       </header>
 
@@ -568,7 +578,9 @@ export default function SellerSettingsPage() {
                   key={pincode}
                   className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-1 pl-3 pr-1.5 text-sm font-medium text-slate-700"
                 >
-                  {pincode}
+                  {registry.find((r) => r.pincode === pincode)
+                    ? pincodeOptionLabel(registry.find((r) => r.pincode === pincode)!)
+                    : pincode}
                   <button
                     type="button"
                     onClick={() => setPincodes((previous) => previous.filter((p) => p !== pincode))}
@@ -587,27 +599,26 @@ export default function SellerSettingsPage() {
             <div className="mt-4 flex gap-2">
               <div className="flex-1">
                 <label htmlFor="pincode-add" className="sr-only">
-                  Add a pincode
+                  Add a pincode from the platform registry
                 </label>
-                <input
+                <select
                   id="pincode-add"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
                   value={pincodeDraft}
                   onChange={(event) => {
-                    setPincodeDraft(event.target.value.replace(/\D/g, ''));
+                    setPincodeDraft(event.target.value);
                     setPincodeError(null);
                   }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      addPincode();
-                    }
-                  }}
-                  placeholder="700001"
                   className={`input ${pincodeError ? 'input-error' : ''}`}
-                />
+                >
+                  <option value="">Choose a serviceable pincode…</option>
+                  {registry
+                    .filter((row) => !pincodes.includes(row.pincode))
+                    .map((row) => (
+                      <option key={row.pincode} value={row.pincode}>
+                        {pincodeOptionLabel(row)} · {row.cityName}
+                      </option>
+                    ))}
+                </select>
               </div>
               <button type="button" onClick={addPincode} className="btn-secondary shrink-0">
                 <IconPlus className="h-4 w-4" /> Add
@@ -667,6 +678,8 @@ export default function SellerSettingsPage() {
           </button>
         </form>
       )}
+
+      {tab === 'KYC documents' && <SellerKycSection />}
     </div>
   );
 }

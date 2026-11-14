@@ -28,7 +28,7 @@ function main() {
   assert.equal(
     MAX_DESIGN_SIZE_BYTES,
     MAX_CONFIGURABLE_UPLOAD_MB * MB,
-    'multer ceiling must equal the configurable maximum (== Gotenberg --api-body-limit)',
+    'multer ceiling must equal the configurable maximum',
   );
 }
 

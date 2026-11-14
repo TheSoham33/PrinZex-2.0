@@ -15,6 +15,7 @@ import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useToast } from '@/components/seller-dashboard/Toast';
+import { useDeliveryLocation } from '@/lib/delivery-location';
 import { formatCurrency, getMediaUrl, scrollToField, toApiDeliverySpeed, walletCoverableMax } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
@@ -49,6 +50,7 @@ const TOTAL_STEPS = 3;
 
 export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const router = useRouter();
+  const deliveryLocation = useDeliveryLocation();
   const { showToast } = useToast();
   const reduxDispatch = useAppDispatch();
 
@@ -116,6 +118,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
     city: string;
     state: string;
     pincode: string;
+    lat?: number | null;
+    lng?: number | null;
   }): Promise<boolean> => {
     try {
       const created = await createAddress({
@@ -125,6 +129,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         city: address.city,
         state: address.state,
         pincode: address.pincode,
+        lat: address.lat ?? null,
+        lng: address.lng ?? null,
       });
       await queryClient.invalidateQueries({ queryKey: ['addresses'] });
       dispatch({
@@ -152,10 +158,10 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   // ── Draft persistence: refresh keeps the step + all entered details ──
   // Restore runs AFTER hydration (localStorage is client-only), then every
   // change writes back. Browser-side PDF/image files can't survive refresh
-  // — only Office files already on the server persist, and the customer is
-  // asked to re-attach the rest in step 1. NAVIGATING AWAY from the page
-  // resets the flow (unmount cleanup below) — the draft exists only to
-  // survive a refresh of THIS page.
+  // — only files already on the server persist, and the customer is asked
+  // to re-attach the rest in step 1. NAVIGATING AWAY from the page resets
+  // the flow (unmount cleanup below) — the draft exists only to survive a
+  // refresh of THIS page.
   //
   // NOTE the key includes the user id, and auth rehydrates ASYNC
   // (ClientWrapper#restoreSession runs after this page mounts): the first
@@ -591,8 +597,8 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
         useWallet: methodIsOnline && useWallet && walletBalance > 0 ? true : undefined,
         specialInstructions: state.order.specialInstructions,
         couponCode: couponCode || undefined,
-        // Office files were converted to PDF and stored at attach time;
-        // other types keep the pre-existing client-side stub for now.
+        // Files uploaded at attach time (PDF/images) already live on the
+        // server; anything left browser-side keeps the pre-existing stub.
         fileUrls: fileUrlsForOrder(state.order.files ?? []),
       });
 
@@ -661,6 +667,17 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const handleAddToCart = () => {
     if (!requireLogin('Please sign in to add items to your cart.')) return;
 
+    // No delivery location yet: the shopper could be building a cart for a
+    // store that can't reach them. Block with an under-field message and
+    // point at the stores page prompt (site-wide no-disabled-buttons rule).
+    if (!deliveryLocation.hasLocation) {
+      blockWithFieldError({
+        field: 'service',
+        message: 'Set your delivery location first — enter a pincode on the Browse Shops page to see stores that deliver to you.',
+      });
+      return;
+    }
+
     // Validate current step before allowing add to cart
     const failure = validateStep(state.step);
     if (failure) {
@@ -697,6 +714,15 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   return (
     <div className="container-page py-6">
+      {!deliveryLocation.hasLocation && (
+        <div className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          You haven’t set a delivery location yet — Add to Cart stays blocked until you do.{' '}
+          <Link href="/stores" className="font-semibold underline">
+            Find stores near you
+          </Link>
+          .
+        </div>
+      )}
       <Breadcrumbs
         items={[
           { label: 'Stores', href: '/stores' },

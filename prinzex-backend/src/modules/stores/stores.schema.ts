@@ -14,6 +14,12 @@ export const listStoresQuery = z
     sort: z.enum(['relevance', 'rating', 'distance', 'price_asc', 'price_desc']).default('relevance'),
     lat: z.coerce.number().min(-90).max(90).optional(),
     lng: z.coerce.number().min(-180).max(180).optional(),
+    // Pincode-bounded discovery: "who delivers to 700091?" — checked against
+    // the serviceable pincode registry, then matched to store pincodes.
+    pincode: z.string().regex(/^[1-9][0-9]{5}$/, 'Enter a valid 6-digit pincode').optional(),
+    // Capped popular list for surfaces that must stay alive without a
+    // location (landing highlights). Still carries needsLocation: true.
+    popular: z.coerce.boolean().optional(),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
   })

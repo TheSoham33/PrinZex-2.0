@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deliveryLogout } from '@/store/slices/deliveryAuthSlice';
 import { deliveryLogoutApi } from '@/lib/api/delivery';
 import { IconTruck, IconWallet, IconUser, IconLogOut } from '@/components/icons';
+import DeliveryAssignmentListener from './DeliveryAssignmentListener';
 
 /** Public routes under /delivery that must NOT require a rider session. */
 const PUBLIC_PATHS = ['/delivery/login', '/delivery/register'];
@@ -58,6 +59,8 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
+      {/* Realtime assignment cue (sound + toast); renders nothing itself. */}
+      <DeliveryAssignmentListener />
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
         <div className="container-page flex h-14 items-center justify-between gap-4">
           <Link href="/delivery" className="flex items-center gap-2 font-bold text-slate-900">
