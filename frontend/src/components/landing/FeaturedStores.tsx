@@ -11,7 +11,8 @@ import { IconArrowRight } from '@/components/icons';
 export default function FeaturedStores() {
   const { data, isLoading } = useQuery({
     queryKey: ['featured-stores'],
-    queryFn: () => fetchStores({ sort: 'rating', limit: 3 }),
+    // Landing stays alive without a location: capped popular list.
+    queryFn: () => fetchStores({ sort: 'rating', limit: 3, popular: true }),
   });
 
   const stores = (data?.data ?? (Array.isArray(data) ? data : []))
@@ -28,7 +29,7 @@ export default function FeaturedStores() {
               Top-rated near you
             </h2>
             <p className="mt-2 text-slate-600">
-              Highest rated print shops in Kolkata this month.
+              Highest rated print shops near you this month.
             </p>
           </div>
           <Link

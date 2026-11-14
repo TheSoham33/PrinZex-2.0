@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeRoles } from '../../middlewares/authorizeRoles';
-import { loginLimiter } from '../../middlewares/rateLimiter';
 import { validate } from '../../middlewares/validate';
 import * as adminAuthController from './admin-auth.controller';
 
@@ -23,7 +22,7 @@ const adminLogoutBody = z.object({
 
 export const adminAuthRouter = Router();
 
-adminAuthRouter.post('/login', loginLimiter, validate({ body: adminLoginBody }), adminAuthController.login);
+adminAuthRouter.post('/login', validate({ body: adminLoginBody }), adminAuthController.login);
 
 adminAuthRouter.post(
   '/logout',

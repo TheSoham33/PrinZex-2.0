@@ -47,7 +47,10 @@ export default function DeliveryDashboardPage() {
     queryFn: fetchDeliveryProfile,
   });
 
-  // Polled every 30s; the backend returns 200 + null when the rider is idle,
+  // 30s refetch is now the FALLBACK — the Socket.io `delivery.assigned` push
+  // (DeliveryAssignmentListener in the layout) invalidates this query the moment
+  // an assignment lands, so pickups don't wait on the next poll. Keep polling
+  // for socket outages. The backend returns 200 + null when the rider is idle,
   // so this query never enters an error state for the normal "nothing yet" case.
   const activeQ = useQuery({
     queryKey: ['delivery-active'],
