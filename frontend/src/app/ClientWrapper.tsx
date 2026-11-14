@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { store, type RootState } from '@/store';
 import { setStore } from '@/lib/api/client';
+import { CityProvider } from '@/lib/city-context';
 import { restoreSession, type AuthState } from '@/store/slices/authSlice';
 import { restoreSellerSession, type SellerAuthState } from '@/store/slices/sellerAuthSlice';
 import { restoreAdminSession, type AdminAuthState } from '@/store/slices/adminAuthSlice';
@@ -12,6 +13,7 @@ import { restoreDeliverySession } from '@/store/slices/deliveryAuthSlice';
 import { clearCart, addToCart } from '@/store/slices/cartSlice';
 import { clearAllOrderDrafts } from '@/lib/domain/orderDraft';
 import CartDrawer from '@/components/cart/CartDrawer';
+import PushNotificationManager from '@/lib/fcm/PushNotificationManager';
 import { ToastProvider } from '@/components/seller-dashboard/Toast';
 
 setStore(store);
@@ -132,10 +134,13 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
+          <CityProvider>
           <SessionBridge>
             {children}
             <CartDrawer />
+            <PushNotificationManager />
           </SessionBridge>
+          </CityProvider>
         </ToastProvider>
       </QueryClientProvider>
     </Provider>

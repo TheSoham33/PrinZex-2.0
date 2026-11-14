@@ -1,12 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useCity } from '@/lib/city-context';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { IconMapPin, IconSearch } from '@/components/icons';
 
 export default function Hero() {
   const router = useRouter();
+  const city = useCity();
   const [location, setLocation] = useState('');
   const [query, setQuery] = useState('');
 
@@ -39,7 +41,7 @@ export default function Hero() {
         <div className="mx-auto w-full max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-blue-50 ring-1 ring-inset ring-white/25">
             <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-            Now live across Kolkata
+            Now live in {city.name}
           </span>
 
           <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">
@@ -62,7 +64,7 @@ export default function Hero() {
                 type="text"
                 value={location}
                 onChange={(event) => setLocation(event.target.value)}
-                placeholder="Salt Lake, Kolkata"
+                placeholder={`Your area, ${city.name}`}
                 aria-label="Location"
                 className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
               />

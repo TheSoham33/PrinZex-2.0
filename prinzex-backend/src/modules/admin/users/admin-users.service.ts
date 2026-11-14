@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../../../config/database';
 import { NotificationModel } from '../../../models/mongo/Notification.model';
 import { ApiError } from '../../../utils/ApiError';
+import { enqueuePush } from '../../../utils/fcm';
 import { roundMoney } from '../../../utils/financial';
 import { getWalletLimits } from '../../../utils/platformSettings';
 import {
@@ -28,6 +29,13 @@ async function notifyUser(
 ): Promise<void> {
   const recipientType = role === 'SELLER' ? 'seller' : role === 'DELIVERY_BOY' ? 'delivery_boy' : 'customer';
   await NotificationModel.create({ recipientId: userId, recipientType, type, title, body, data, channel: ['push'] });
+  // gap #10 FCM — this legacy helper keys every role by `userId`, but device
+  // tokens are keyed by the role's own id (sellerId / deliveryBoyId), so push
+  // is only addressable here for customers. Sellers/riders still get the
+  // in-app + socket channels; their push path is the domain notify hooks.
+  if (recipientType === 'customer') {
+    enqueuePush('customer', userId, { type, title, body, data });
+  }
 }
 
 // ── GET /api/admin/users ───────────────────────────────────────────────────

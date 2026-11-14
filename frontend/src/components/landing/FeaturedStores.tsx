@@ -7,11 +7,13 @@ import { mapBackendStoreToFrontend } from '@/lib/api/mappers';
 import StoreCard from '@/components/stores/StoreCard';
 import type { Store } from '@/lib/domain/stores';
 import { IconArrowRight } from '@/components/icons';
+import { useCity } from '@/lib/city-context';
 
 export default function FeaturedStores() {
+  const city = useCity();
   const { data, isLoading } = useQuery({
-    queryKey: ['featured-stores'],
-    queryFn: () => fetchStores({ sort: 'rating', limit: 3 }),
+    queryKey: ['featured-stores', city.slug],
+    queryFn: () => fetchStores({ sort: 'rating', limit: 3, city: city.name || undefined }),
   });
 
   const stores = (data?.data ?? (Array.isArray(data) ? data : []))
@@ -28,7 +30,7 @@ export default function FeaturedStores() {
               Top-rated near you
             </h2>
             <p className="mt-2 text-slate-600">
-              Highest rated print shops in Kolkata this month.
+              Highest rated print shops in {city.name} this month.
             </p>
           </div>
           <Link

@@ -6,22 +6,24 @@ import { fetchAddresses, createAddress, deleteAddress, setDefaultAddress } from 
 import { IconAlertCircle, IconMapPin, IconPlus, IconTrash, IconX, IconRefreshCw } from '@/components/icons';
 import { FieldError, StateCard } from '@/components/ui';
 import { scrollToField } from '@/lib/utils';
+import { useCity } from '@/lib/city-context';
 
 export default function AddressesPage() {
   const queryClient = useQueryClient();
+  const selectedCity = useCity();
   const { data: addresses = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['addresses'],
     queryFn: fetchAddresses,
   });
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ 
-    label: '', 
-    fullAddress: '', 
-    phone: '', 
-    city: 'Kolkata', 
-    state: 'West Bengal', 
-    pincode: '' 
+  const [form, setForm] = useState({
+    label: '',
+    fullAddress: '',
+    phone: '',
+    city: selectedCity.name,
+    state: 'West Bengal',
+    pincode: ''
   });
   const [error, setError] = useState<string | null>(null);
   /** Per-input validation for the add-address modal (messages render under fields). */
@@ -32,13 +34,13 @@ export default function AddressesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       setModalOpen(false);
-      setForm({ 
-        label: '', 
-        fullAddress: '', 
-        phone: '', 
-        city: 'Kolkata', 
-        state: 'West Bengal', 
-        pincode: '' 
+      setForm({
+        label: '',
+        fullAddress: '',
+        phone: '',
+        city: selectedCity.name,
+        state: 'West Bengal',
+        pincode: ''
       });
       setError(null);
     },
