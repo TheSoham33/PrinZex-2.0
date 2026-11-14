@@ -15,7 +15,6 @@ import StoreFilters, {
   type FilterState,
 } from '@/components/stores/StoreFilters';
 import { fetchStores } from '@/lib/api/stores';
-import { fetchAddresses } from '@/lib/api/customer';
 import { mapBackendStoreToFrontend } from '@/lib/api/mappers';
 import { useDeliveryLocation } from '@/lib/delivery-location';
 import DeliveryLocationPrompt from '@/components/stores/DeliveryLocationPrompt';
