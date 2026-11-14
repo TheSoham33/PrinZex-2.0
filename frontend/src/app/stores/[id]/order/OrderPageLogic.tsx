@@ -15,7 +15,6 @@ import { useRazorpay } from '@/hooks/useRazorpay';
 import { addToCart } from '@/store/slices/cartSlice';
 import { fileUrlsForOrder } from '@/lib/domain/files';
 import { useToast } from '@/components/seller-dashboard/Toast';
-import { useDeliveryLocation } from '@/lib/delivery-location';
 import { formatCurrency, getMediaUrl, scrollToField, toApiDeliverySpeed, walletCoverableMax } from '@/lib/utils';
 import OrderStepper from '@/components/order/OrderStepper';
 import OrderSummarySidebar from '@/components/order/OrderSummarySidebar';
@@ -50,7 +49,6 @@ const TOTAL_STEPS = 3;
 
 export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const router = useRouter();
-  const deliveryLocation = useDeliveryLocation();
   const { showToast } = useToast();
   const reduxDispatch = useAppDispatch();
 
@@ -667,17 +665,6 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
   const handleAddToCart = () => {
     if (!requireLogin('Please sign in to add items to your cart.')) return;
 
-    // No delivery location yet: the shopper could be building a cart for a
-    // store that can't reach them. Block with an under-field message and
-    // point at the stores page prompt (site-wide no-disabled-buttons rule).
-    if (!deliveryLocation.hasLocation) {
-      blockWithFieldError({
-        field: 'service',
-        message: 'Set your delivery location first — enter a pincode on the Browse Shops page to see stores that deliver to you.',
-      });
-      return;
-    }
-
     // Validate current step before allowing add to cart
     const failure = validateStep(state.step);
     if (failure) {
@@ -714,15 +701,6 @@ export default function OrderPageLogic({ store }: { store: StoreDetail }) {
 
   return (
     <div className="container-page py-6">
-      {!deliveryLocation.hasLocation && (
-        <div className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          You haven’t set a delivery location yet — Add to Cart stays blocked until you do.{' '}
-          <Link href="/stores" className="font-semibold underline">
-            Find stores near you
-          </Link>
-          .
-        </div>
-      )}
       <Breadcrumbs
         items={[
           { label: 'Stores', href: '/stores' },
