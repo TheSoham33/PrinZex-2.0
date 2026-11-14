@@ -15,13 +15,13 @@ export default function AddressesPage() {
   });
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ 
-    label: '', 
-    fullAddress: '', 
-    phone: '', 
-    city: 'Kolkata', 
-    state: 'West Bengal', 
-    pincode: '' 
+  const [form, setForm] = useState({
+    label: '',
+    fullAddress: '',
+    phone: '',
+    city: '',
+    state: '',
+    pincode: ''
   });
   const [error, setError] = useState<string | null>(null);
   /** Per-input validation for the add-address modal (messages render under fields). */
@@ -32,13 +32,13 @@ export default function AddressesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       setModalOpen(false);
-      setForm({ 
-        label: '', 
-        fullAddress: '', 
-        phone: '', 
-        city: 'Kolkata', 
-        state: 'West Bengal', 
-        pincode: '' 
+      setForm({
+        label: '',
+        fullAddress: '',
+        phone: '',
+        city: '',
+        state: '',
+        pincode: ''
       });
       setError(null);
     },

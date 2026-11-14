@@ -8,6 +8,7 @@ import { toggleCart } from '@/store/slices/cartSlice';
 import { getMediaUrl } from '@/lib/utils';
 import {
   IconBell,
+  IconHome,
   IconLayoutDashboard,
   IconLogOut,
   IconMapPin,
@@ -20,6 +21,9 @@ import {
 } from '@/components/icons';
 
 export const DASHBOARD_NAV = [
+  // Home = the public storefront (browse shops, city picker); exact match so
+  // it doesn't light up on every dashboard route.
+  { href: '/', label: 'Home', icon: IconHome, exact: true },
   { href: '/dashboard', label: 'Dashboard', icon: IconLayoutDashboard, exact: true },
   { href: '/dashboard/orders', label: 'Orders', icon: IconPackage },
   { href: 'cart', label: 'Cart', icon: IconShoppingCart, isCart: true },

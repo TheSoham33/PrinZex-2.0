@@ -11,6 +11,7 @@ import {
 } from '../../utils/pagination';
 import type { ListStoresQuery, StoreReviewsQuery, SuggestionsQuery } from './stores.schema';
 import { getCatalogEntry } from '../catalog/catalog.service';
+import { getStoreDiscoveryRadiusKm } from '../../utils/platformSettings';
 import { searchServiceIds, serviceIsActive } from '../catalog/catalog.schemas';
 
 /**
@@ -103,7 +104,20 @@ export interface CachedResult<T> {
 
 // ── GET /api/stores ────────────────────────────────────────────────────────
 
-export async function listStores(query: ListStoresQuery): Promise<CachedResult<PaginatedResponse<StoreListItem>>> {
+export type StoreListResult = PaginatedResponse<StoreListItem> & {
+  /** Admin-configured discovery radius (km); the filter applies only when
+   *  the shopper shared a location. */
+  radiusKm: number;
+};
+
+export async function listStores(query: ListStoresQuery): Promise<CachedResult<StoreListResult>> {
+  // Storefront discovery radius (Settings → Platform). Fail-open to the code
+  // default inside getPlatformSettingsValues when the settings doc is unreadable.
+  const radiusKm = await getStoreDiscoveryRadiusKm();
+  const hasCoords =
+    typeof query.lat === 'number' && typeof query.lng === 'number' &&
+    Number.isFinite(query.lat) && Number.isFinite(query.lng);
+
   const categoryIds = (query.services ?? '')
     .split(',')
     .map((id) => id.trim())
@@ -120,6 +134,7 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
         sort: query.sort,
         lat: query.lat ?? null,
         lng: query.lng ?? null,
+        radiusKm: hasCoords ? radiusKm : null,
         limit: query.limit,
         deliveryTime: query.deliveryTime ?? null,
       }),
@@ -128,7 +143,7 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
     .slice(0, 12);
   const cacheKey = REDIS_KEYS.STORE_LIST((query.city ?? 'all').toLowerCase(), query.page, `${query.limit}-${fingerprint}`);
 
-  const cached = await getCache<PaginatedResponse<StoreListItem>>(cacheKey);
+  const cached = await getCache<StoreListResult>(cacheKey);
   if (cached) {
     return { result: cached, cacheHit: true };
   }
@@ -176,7 +191,49 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   let rows: StoreListRow[];
   let total: number;
 
-  if (query.sort === 'distance' || query.sort === 'price_asc' || query.sort === 'price_desc') {
+  if (hasCoords) {
+    // Location-bounded discovery: only shops inside the admin-configured
+    // radius around the shopper, sorted in the app layer over the bounded
+    // working set (same cap as the other computed sorts).
+    const WORKING_SET_LIMIT = 200;
+    const candidates = await prisma.seller.findMany({
+      where,
+      orderBy: [{ averageRating: 'desc' }],
+      take: WORKING_SET_LIMIT,
+      select: storeListSelect,
+    });
+
+    const withinRadius = candidates
+      .map((seller) => ({
+        seller,
+        distanceKm: haversineKm(query.lat as number, query.lng as number, seller.lat, seller.lng),
+      }))
+      .filter((entry) => entry.distanceKm <= radiusKm);
+
+    const sortedSellers =
+      query.sort === 'price_desc'
+        ? withinRadius
+            .sort((a, b) => minServicePrice(b.seller.services) - minServicePrice(a.seller.services))
+            .map((entry) => entry.seller)
+        : query.sort === 'price_asc'
+          ? withinRadius
+              .sort((a, b) => minServicePrice(a.seller.services) - minServicePrice(b.seller.services))
+              .map((entry) => entry.seller)
+          : query.sort === 'rating'
+            ? withinRadius
+                .sort(
+                  (a, b) =>
+                    b.seller.averageRating.toNumber() - a.seller.averageRating.toNumber() ||
+                    b.seller.totalOrders - a.seller.totalOrders,
+                )
+                .map((entry) => entry.seller)
+            : withinRadius
+                .sort((a, b) => a.distanceKm - b.distanceKm)
+                .map((entry) => entry.seller); // distance + relevance: nearest first
+
+    total = sortedSellers.length;
+    rows = sortedSellers.slice(skip, skip + take);
+  } else if (query.sort === 'distance' || query.sort === 'price_asc' || query.sort === 'price_desc') {
     // Computed sorts run in the app layer over a bounded working set.
     const WORKING_SET_LIMIT = 200;
     const candidates = await prisma.seller.findMany({
@@ -281,7 +338,10 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
     };
   });
 
-  const result = buildPaginatedResponse(items, total, { page: query.page, limit: query.limit });
+  const result: StoreListResult = {
+    ...buildPaginatedResponse(items, total, { page: query.page, limit: query.limit }),
+    radiusKm,
+  };
   await setCache(cacheKey, result, REDIS_TTL.CACHE_LIST);
   return { result, cacheHit: false };
 }

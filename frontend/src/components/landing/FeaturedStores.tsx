@@ -28,7 +28,7 @@ export default function FeaturedStores() {
               Top-rated near you
             </h2>
             <p className="mt-2 text-slate-600">
-              Highest rated print shops in Kolkata this month.
+              Highest rated print shops near you this month.
             </p>
           </div>
           <Link

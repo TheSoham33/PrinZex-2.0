@@ -47,13 +47,13 @@ export default function DeliveryStep({
 }: DeliveryStepProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ 
-    label: '', 
-    fullAddress: '', 
-    phone: '', 
-    city: 'Kolkata', 
-    state: 'West Bengal', 
-    pincode: '' 
+  const [form, setForm] = useState({
+    label: '',
+    fullAddress: '',
+    phone: '',
+    city: '',
+    state: '',
+    pincode: ''
   });
   const [formError, setFormError] = useState<string | null>(null);
   // Per-field modal validation — each message renders under its input.
@@ -106,8 +106,8 @@ export default function DeliveryStep({
           label: '',
           fullAddress: '',
           phone: '',
-          city: 'Kolkata',
-          state: 'West Bengal',
+          city: '',
+          state: '',
           pincode: '',
         });
         setFormError(null);
