@@ -6,11 +6,9 @@ import { fetchAddresses, createAddress, deleteAddress, setDefaultAddress } from 
 import { IconAlertCircle, IconMapPin, IconPlus, IconTrash, IconX, IconRefreshCw } from '@/components/icons';
 import { FieldError, StateCard } from '@/components/ui';
 import { scrollToField } from '@/lib/utils';
-import { useCity } from '@/lib/city-context';
 
 export default function AddressesPage() {
   const queryClient = useQueryClient();
-  const selectedCity = useCity();
   const { data: addresses = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['addresses'],
     queryFn: fetchAddresses,

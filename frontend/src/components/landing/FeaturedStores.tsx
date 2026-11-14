@@ -7,13 +7,11 @@ import { mapBackendStoreToFrontend } from '@/lib/api/mappers';
 import StoreCard from '@/components/stores/StoreCard';
 import type { Store } from '@/lib/domain/stores';
 import { IconArrowRight } from '@/components/icons';
-import { useCity } from '@/lib/city-context';
 
 export default function FeaturedStores() {
-  const city = useCity();
   const { data, isLoading } = useQuery({
-    queryKey: ['featured-stores', city.slug],
-    queryFn: () => fetchStores({ sort: 'rating', limit: 3, city: city.name || undefined }),
+    queryKey: ['featured-stores'],
+    queryFn: () => fetchStores({ sort: 'rating', limit: 3 }),
   });
 
   const stores = (data?.data ?? (Array.isArray(data) ? data : []))

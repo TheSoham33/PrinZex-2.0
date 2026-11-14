@@ -29,8 +29,6 @@ export default function StoreListing() {
 
   const [location, setLocation] = useState(searchParams.get('location') ?? '');
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
-  // Storefront city picker (multi-city): free-text search wins over the pick.
-  const city = useCity();
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -52,7 +50,7 @@ export default function StoreListing() {
     // the distance-sorted list (the backend sorts by haversine server-side).
     queryKey: ['stores', location, query, filters, page, userLat, userLng],
     queryFn: () => fetchStores({
-      city: location || city.name || undefined,
+      city: location || undefined,
       q: query || undefined,
       services: filters.services.join(','),
       minRating: filters.minRating || undefined,
