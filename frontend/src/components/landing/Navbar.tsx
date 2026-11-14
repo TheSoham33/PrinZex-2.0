@@ -8,10 +8,14 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { toggleCart } from '@/store/slices/cartSlice';
 import { getMediaUrl } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { fetchActiveCities } from '@/lib/api/cities';
+import { useCity } from '@/lib/city-context';
 import {
   IconChevronDown,
   IconLayoutDashboard,
   IconLogOut,
+  IconMapPin,
   IconMenu,
   IconPackage,
   IconPrinter,
@@ -26,6 +30,38 @@ const NAV_LINKS = [
   { href: '/services', label: 'Services' },
   { href: '/#how-it-works', label: 'How it works' },
 ];
+
+/** City picker bound to the platform city registry (active rows only). */
+function CityPicker({ id }: { id: string }) {
+  const city = useCity();
+  const { data: cities = [] } = useQuery({
+    queryKey: ['active-cities'],
+    queryFn: fetchActiveCities,
+    staleTime: 5 * 60_000,
+  });
+  return (
+    <label className="flex items-center gap-1.5" htmlFor={id}>
+      <IconMapPin className="h-4 w-4 shrink-0 text-slate-400" />
+      <select
+        id={id}
+        value={city.slug}
+        onChange={(e) => {
+          const next = cities.find((c) => c.slug === e.target.value);
+          if (next) city.setCity(next.slug, next.name);
+        }}
+        className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-medium text-slate-700 focus:outline-none"
+        aria-label="Your city"
+      >
+        {cities.map((c) => (
+          <option key={c.slug} value={c.slug}>
+            {c.name}
+          </option>
+        ))}
+        {!cities.some((c) => c.slug === city.slug) && <option value={city.slug}>{city.name}</option>}
+      </select>
+    </label>
+  );
+}
 
 export default function Navbar() {
   const user = useAppSelector((state) => state.auth.user);
@@ -108,6 +144,7 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
+          <CityPicker id="city-desktop" />
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -257,6 +294,9 @@ export default function Navbar() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
+              <div className="mb-4">
+                <CityPicker id="city-mobile" />
+              </div>
               {user && (
                 <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
                   <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-sm font-bold text-white shadow-inner">

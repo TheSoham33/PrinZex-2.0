@@ -1,12 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useCity } from '@/lib/city-context';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { IconMapPin, IconSearch } from '@/components/icons';
 
 export default function Hero() {
   const router = useRouter();
+  const city = useCity();
   const [location, setLocation] = useState('');
   const [query, setQuery] = useState('');
 

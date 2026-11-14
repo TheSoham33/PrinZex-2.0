@@ -8,6 +8,7 @@ import {
   type DeliverySpeed,
 } from '@/lib/domain/stores';
 import { formatCurrency, scrollToField } from '@/lib/utils';
+import { useCity } from '@/lib/city-context';
 import type { OrderAction } from './orderReducer';
 import { IconAlertCircle, IconMapPin, IconPlus, IconStore, IconTruck, IconX } from '@/components/icons';
 import { ErrorNote, FieldError } from '@/components/ui';
@@ -45,6 +46,7 @@ export default function DeliveryStep({
   errorField,
   speeds = DELIVERY_SPEEDS,
 }: DeliveryStepProps) {
+  const selectedCity = useCity();
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
