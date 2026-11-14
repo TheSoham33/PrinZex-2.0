@@ -46,7 +46,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-600">
-              A marketplace connecting you with trusted local print shops. Built for Kolkata,
+              A marketplace connecting you with trusted local print shops. Built for your city,
               expanding across India.
             </p>
           </div>
@@ -74,7 +74,7 @@ export default function Footer() {
           <p className="text-sm text-slate-500">
             © {new Date().getFullYear()} PrinZex. All rights reserved.
           </p>
-          <p className="text-sm text-slate-500">Made in Kolkata, India 🇮🇳</p>
+          <p className="text-sm text-slate-500">Made in India 🇮🇳</p>
         </div>
       </div>
     </footer>

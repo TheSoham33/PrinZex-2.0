@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useUserLocation } from '@/hooks/useUserLocation';
 import StoreCard from '@/components/stores/StoreCard';
 import StoreCardSkeleton from '@/components/stores/StoreCardSkeleton';
 import StoreSearchBar from '@/components/stores/StoreSearchBar';
@@ -14,8 +15,12 @@ import StoreFilters, {
   type FilterState,
 } from '@/components/stores/StoreFilters';
 import { fetchStores } from '@/lib/api/stores';
+import { fetchAddresses } from '@/lib/api/customer';
 import { mapBackendStoreToFrontend } from '@/lib/api/mappers';
-import { IconSettings, IconX } from '@/components/icons';
+import { useAppSelector } from '@/store/hooks';
+import { useDeliveryLocation } from '@/lib/delivery-location';
+import DeliveryLocationPrompt from '@/components/stores/DeliveryLocationPrompt';
+import { IconMapPin, IconSettings, IconX } from '@/components/icons';
 
 export default function StoreListing() {
   const router = useRouter();
@@ -30,40 +35,85 @@ export default function StoreListing() {
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>({ lat: 22.5726, lng: 88.3639 }); // Default to Kolkata for demo
 
-  // Get user's current location for distance calculation
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        }
-      );
-    }
-  }, []);
+  // Gap #8: geolocate the shopper for real distances, fall back to Kolkata
+  // gracefully, and remember the last resolved location for the next visit.
+  const {
+    lat: userLat,
+    lng: userLng,
+    source: locationSource,
+  } = useUserLocation();
+
+  // Location precedence: explicit choice (pincode/GPS chip) > remembered GPS >
+  // signed-in default address pincode > fresh GPS grant > prompt.
+  const delivery = useDeliveryLocation();
+  const user = useAppSelector((state) => state.auth.user);
+  const { data: addresses = [] } = useQuery({
+    queryKey: ['addresses'],
+    queryFn: fetchAddresses,
+    enabled: mounted && !!user && !delivery.location,
+  });
+  const defaultAddressPincode: string | undefined =
+    (addresses as any[])?.find((a) => a.isDefault)?.pincode ?? (addresses as any[])?.[0]?.pincode;
+
+  const effective:
+    | { source: 'pincode'; pincode: string; label: string }
+    | { source: 'gps'; lat: number; lng: number; label: string }
+    | null =
+    delivery.location
+      ? delivery.location.source === 'pincode'
+        ? { source: 'pincode', pincode: delivery.location.pincode!, label: delivery.location.label }
+        : { source: 'gps', lat: delivery.location.lat!, lng: delivery.location.lng!, label: delivery.location.label }
+      : locationSource === 'remembered'
+        ? { source: 'gps', lat: userLat, lng: userLng, label: 'your saved location' }
+        : defaultAddressPincode
+          ? { source: 'pincode', pincode: defaultAddressPincode, label: defaultAddressPincode }
+          : locationSource === 'geolocation'
+            ? { source: 'gps', lat: userLat, lng: userLng, label: 'your current location' }
+            : null;
 
   const page = Number(searchParams.get('page')) || 1;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['stores', location, query, filters, page],
+    // Coordinates are part of the key so resolving the real location refetches
+    // the distance-sorted list (the backend sorts by haversine server-side).
+    queryKey: [
+      'stores',
+      location,
+      query,
+      filters,
+      page,
+      effective?.source,
+      effective
+        ? effective.source === 'pincode'
+          ? effective.pincode
+          : `${effective.lat},${effective.lng}`
+        : null,
+    ],
     queryFn: () => fetchStores({
       city: location || undefined,
       q: query || undefined,
       services: filters.services.join(','),
       minRating: filters.minRating || undefined,
       sort: filters.sortBy as any,
-      // Distance sorting (and per-card distance) needs the user's coordinates.
-      lat: userCoords?.lat,
-      lng: userCoords?.lng,
+      pincode: effective?.source === 'pincode' ? effective.pincode : undefined,
+      // Only a REAL location bounds the list to the admin radius; the
+      // geolocation fallback coords must not silently filter the catalog.
+      lat: effective?.source === 'gps' ? effective.lat : undefined,
+      lng: effective?.source === 'gps' ? effective.lng : undefined,
       page,
       limit: 12
     }),
-    enabled: mounted,
+    enabled: mounted && (!!effective || !!location.trim()),
   });
 
   const results = Array.isArray(data?.data) ? data.data : []; 
   const totalCount = data?.pagination?.total ?? results.length;
+  // Admin-configured discovery radius, echoed back by the stores list API.
+  const radiusKm = typeof data?.radiusKm === 'number' ? data.radiusKm : null;
+  const radiusLabel = radiusKm ? `${radiusKm} km` : 'the configured radius';
+  const showPrompt = mounted && !effective && !location.trim();
+  const notServiceable = effective?.source === 'pincode' && data?.serviceable === false;
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -119,13 +169,45 @@ export default function StoreListing() {
     <div className="container-page py-8">
       <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Print shops {location ? `in ${location}` : 'near you'}
+          {effective?.source === 'pincode'
+            ? `Print shops for ${effective.label}`
+            : location
+              ? `Print shops in ${location}`
+              : 'Print shops near you'}
+          {effective && (
+            <button
+              type="button"
+              onClick={delivery.clear}
+              className="ml-3 align-middle text-sm font-semibold text-blue-600 hover:underline"
+            >
+              Change
+            </button>
+          )}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          {!mounted || isLoading ? 'Finding shops…' : `${totalCount} shops available`}
+          {showPrompt || notServiceable
+            ? 'Tell us where you are and we’ll show only shops that deliver to you.'
+            : !mounted || isLoading
+              ? 'Finding shops…'
+              : `${totalCount} shops available`}
         </p>
+        {effective?.source === 'gps' && (
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+            <IconMapPin className="h-3.5 w-3.5 shrink-0" />
+            Showing shops within {radiusLabel} of {effective.label}
+          </p>
+        )}
       </header>
 
+      {showPrompt && <DeliveryLocationPrompt />}
+      {notServiceable && effective?.source === 'pincode' && (
+        <DeliveryLocationPrompt
+          notice={`We don’t deliver to ${effective.pincode} yet — try another pincode or area.`}
+        />
+      )}
+
+      {!showPrompt && !notServiceable && (
+      <>
       <StoreSearchBar
         location={location}
         query={query}
@@ -206,15 +288,21 @@ export default function StoreListing() {
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {results.map((store: any) => (
-                <StoreCard 
-                  key={store.id} 
-                  store={mapBackendStoreToFrontend(store, userCoords?.lat, userCoords?.lng)} 
+                <StoreCard
+                  key={store.id}
+                  store={mapBackendStoreToFrontend(
+                    store,
+                    effective?.source === 'gps' ? effective.lat : undefined,
+                    effective?.source === 'gps' ? effective.lng : undefined,
+                  )}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

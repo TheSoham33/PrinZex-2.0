@@ -222,11 +222,11 @@ export interface UploadedFile {
   size: number;
   type: string;
   previewUrl?: string;
-  /** Set when the file already reached the server (Office uploads convert to
-   *  PDF at attach time) — order placement uses it instead of re-uploading. */
+  /** Set when the file already reached the server at attach time — order
+   *  placement uses it instead of re-uploading. */
   serverFileUrl?: string;
-  /** Pages counted at attach time (PDF exact, image = 1, Office = converted
-   *  server's count). Summed across files into specs.totalPages. */
+  /** Pages counted at attach time (PDF exact, image = 1). Summed across
+   *  files into specs.totalPages. */
   pages?: number;
 }
 
@@ -242,6 +242,10 @@ export interface CostBreakdown {
   rushFee: number;
   deliveryFee: number;
   tax: number;
+  /** Server-computed GST base (₹): subtotal, plus fees when gstOnFees. */
+  taxableAmount?: number;
+  /** Server-side flag: whether fees join the GST base (gap #9). */
+  gstOnFees?: boolean;
   discount: number;
   /** Flat admin-configured platform fee (0 or absent = none). */
   platformFee?: number;

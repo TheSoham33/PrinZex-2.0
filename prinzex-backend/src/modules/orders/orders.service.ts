@@ -28,8 +28,9 @@ import { invalidateAdminStats } from '../admin/analytics/admin-analytics.service
 import { autoAssignDelivery } from '../delivery/delivery.assignment';
 import { refundOrderToSource } from '../payments/payments.service';
 import { roundMoney, splitWalletGateway } from '../../utils/financial';
+import { enqueuePush } from '../../utils/fcm';
 import { getPlatformFeeConfig, walletCoverableMax } from '../../utils/platformFee';
-import { getPlatformSettingsValues } from '../../utils/platformSettings';
+import { getPlatformSettingsValuesForCity } from '../../utils/platformSettings';
 import {
   emitAdminGlobalEvent,
   emitNewOrder,
@@ -114,6 +115,7 @@ async function notifySeller(
     channel: ['push'],
   });
   emitNotificationNew('seller', sellerId, { type, title, body, data }); // step 9 realtime
+  enqueuePush('seller', sellerId, { type, title, body, data }); // gap #10 FCM
 }
 
 /**
@@ -455,7 +457,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
   }
 
   // Platform fee (admin-configured) is part of every quote total.
-  const [feeConfig, platformValues] = await Promise.all([getPlatformFeeConfig(), getPlatformSettingsValues()]);
+  const [feeConfig, platformValues] = await Promise.all([getPlatformFeeConfig(), getPlatformSettingsValuesForCity(seller.city)]);
 
   const quote = computeQuote({
     basePrice: Number(service.basePrice), unit: service.unit,
@@ -468,6 +470,7 @@ export async function createQuote(customerId: string, input: QuoteBody): Promise
     discount,
     platformFee: feeConfig.fee,
     gstRate: platformValues.gstRatePercent / 100,
+    gstOnFees: platformValues.gstOnFees,
     deliveryFees: platformValues.deliveryFees,
     sellerMetadata: seller.metadata,
     pageRateFallback,
@@ -637,6 +640,23 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     // No pincode rows = store hasn't restricted its coverage area; allow.
   }
 
+  // Platform-wide serviceability re-check at order time: once the registry
+  // carries serviceable rows, an order may only land in a serviceable
+  // pincode — a stale client must never bypass the storefront prompt.
+  // Fail OPEN when the registry is empty (coverage unrestricted) or
+  // unreadable (availability over strictness).
+  try {
+    const serviceableCount = await prisma.pincode.count({ where: { serviceable: true } });
+    if (serviceableCount > 0) {
+      const registryRow = await prisma.pincode.findUnique({ where: { pincode: address.pincode } });
+      if (!registryRow || registryRow.serviceable !== true) {
+        throw ApiError.badRequest("We don't deliver to this pincode yet");
+      }
+    }
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+  }
+
   let appliedCoupon: string | null = null;
   let discount = 0;
   if (input.couponCode) {
@@ -652,7 +672,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     appliedCoupon = validation.coupon!.code;
   }
 
-  const [feeConfig, platformValues] = await Promise.all([getPlatformFeeConfig(), getPlatformSettingsValues()]);
+  const [feeConfig, platformValues] = await Promise.all([getPlatformFeeConfig(), getPlatformSettingsValuesForCity(seller.city)]);
 
   const quote = computeQuote({
     basePrice: Number(service.basePrice), unit: service.unit,
@@ -665,6 +685,7 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
     discount,
     platformFee: feeConfig.fee,
     gstRate: platformValues.gstRatePercent / 100,
+    gstOnFees: platformValues.gstOnFees,
     deliveryFees: platformValues.deliveryFees,
     sellerMetadata: seller.metadata,
     pageRateFallback,
@@ -783,6 +804,11 @@ export async function createOrder(customerId: string, input: CreateOrderInput): 
         deliveryFee: quote.deliveryFee,
         rushFee: quote.rushFee,
         tax: quote.tax,
+        // GST snapshot (gap #9): the taxable base and the rate the tax was
+        // computed with, so the invoice stays reproducible even if the admin
+        // later retunes the GST rate or the fee-taxability toggle.
+        taxableAmount: quote.taxableAmount,
+        gstRatePercent: platformValues.gstRatePercent,
         discount: quote.discount,
         commissionAmount: quote.commissionAmount,
         deliverySpeed: input.deliverySpeed,

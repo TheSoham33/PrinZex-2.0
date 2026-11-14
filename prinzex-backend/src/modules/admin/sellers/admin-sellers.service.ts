@@ -5,6 +5,7 @@ import { logger } from '../../../config/logger';
 import { NotificationModel } from '../../../models/mongo/Notification.model';
 import { ApiError } from '../../../utils/ApiError';
 import { invalidateCachePattern } from '../../../utils/cache';
+import { enqueuePush } from '../../../utils/fcm';
 import { sendSellerApprovalEmail } from '../../../utils/email';
 import { roundMoney } from '../../../utils/financial';
 import {
@@ -33,6 +34,7 @@ async function notifySeller(
   data: Record<string, unknown>,
 ): Promise<void> {
   await NotificationModel.create({ recipientId: sellerId, recipientType: 'seller', type, title, body, data, channel: ['push'] });
+  enqueuePush('seller', sellerId, { type, title, body, data }); // gap #10 FCM
 }
 
 async function runSideEffects(label: string, effects: Array<() => Promise<unknown>>): Promise<void> {

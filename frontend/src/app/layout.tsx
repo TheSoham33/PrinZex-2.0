@@ -8,8 +8,8 @@ export const metadata: Metadata = {
     template: '%s · PrinZex',
   },
   description:
-    'Find trusted print shops near you, upload your files and get prints delivered to your door. Documents, banners, business cards and more across Kolkata.',
-  keywords: ['printing', 'print shop', 'xerox', 'Kolkata', 'banners', 'business cards'],
+    'Find trusted print shops near you, upload your files and get prints delivered to your door. Documents, banners, business cards and more.',
+  keywords: ['printing', 'print shop', 'xerox', 'banners', 'business cards'],
 };
 
 export const viewport: Viewport = {

@@ -8,9 +8,9 @@
  *
  * The one thing a refresh CANNOT keep is a browser-side file (raw PDF or
  * image picked from disk — the browser revokes it); only files that already
- * reached the server (Office uploads converted at attach time) are kept in
- * the draft. The count of dropped browser files rides along so the page can
- * ask the user to re-attach just those.
+ * reached the server at attach time are kept in the draft. The count of
+ * dropped browser files rides along so the page can ask the user to
+ * re-attach just those.
  */
 
 import type { OrderState } from '@/components/order/orderReducer';

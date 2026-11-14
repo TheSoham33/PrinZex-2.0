@@ -8,10 +8,12 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
 import { toggleCart } from '@/store/slices/cartSlice';
 import { getMediaUrl } from '@/lib/utils';
+import { useDeliveryLocation } from '@/lib/delivery-location';
 import {
   IconChevronDown,
   IconLayoutDashboard,
   IconLogOut,
+  IconMapPin,
   IconMenu,
   IconPackage,
   IconPrinter,
@@ -26,6 +28,27 @@ const NAV_LINKS = [
   { href: '/services', label: 'Services' },
   { href: '/#how-it-works', label: 'How it works' },
 ];
+
+/** Persistent "Delivering to … · Change" chip (pincode/GPS choice). */
+function DeliveringToChip() {
+  const delivery = useDeliveryLocation();
+  const router = useRouter();
+  if (!delivery.location) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        delivery.clear();
+        router.push('/stores');
+      }}
+      className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+      title="Change delivery location"
+    >
+      <IconMapPin className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+      Delivering to {delivery.location.label} · Change
+    </button>
+  );
+}
 
 export default function Navbar() {
   const user = useAppSelector((state) => state.auth.user);
@@ -120,6 +143,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
+          <DeliveringToChip />
           {user && (
             <button
               type="button"
@@ -257,6 +281,9 @@ export default function Navbar() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
+              <div className="mb-4">
+                <DeliveringToChip />
+              </div>
               {user && (
                 <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
                   <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-sm font-bold text-white shadow-inner">
