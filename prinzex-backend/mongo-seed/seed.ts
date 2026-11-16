@@ -38,47 +38,15 @@ async function main(): Promise<void> {
     ContentModel.deleteMany({}),
   ]);
 
-  const [customers, admin] = await Promise.all([
-    prisma.user.findMany({ where: { role: 'CUSTOMER' } }),
-    prisma.admin.findFirst({ where: { role: 'SUPER_ADMIN' } }),
-  ]);
+  const admin = await prisma.admin.findFirst({ where: { role: 'SUPER_ADMIN' } });
 
   if (!admin) throw new Error('No super admin found — run `npm run db:seed` first.');
 
-  // 1. Notifications — 10 per customer ──────────────────────────────────────
-  console.log(`… creating notifications for ${customers.length} customers`);
-  const notificationTemplate: Array<{
-    type: string;
-    title: string;
-    body: string;
-    channel: string[];
-  }> = [
-    { type: 'order_update', title: 'Order confirmed', body: 'Your print order has been confirmed by the store.', channel: ['push'] },
-    { type: 'order_update', title: 'Printing in progress', body: 'The store has started printing your documents.', channel: ['push'] },
-    { type: 'order_update', title: 'Out for delivery', body: 'Your prints are on the way to your address.', channel: ['push', 'sms'] },
-    { type: 'order_update', title: 'Delivered', body: 'Your order was delivered. Enjoy your prints!', channel: ['push'] },
-    { type: 'promo', title: '10% off your next order', body: 'Use code WELCOME10 on orders above ₹199.', channel: ['push', 'email'] },
-    { type: 'promo', title: 'Weekend rush special', body: 'Same-day delivery at no extra rush fee this weekend.', channel: ['push'] },
-    { type: 'payout', title: 'Cashback credited', body: '₹25 welcome cashback added to your PrinZex wallet.', channel: ['push'] },
-    { type: 'review_reply', title: 'Store replied to your review', body: 'PrintHub Studios replied: "Thank you for the feedback!"', channel: ['push'] },
-    { type: 'order_update', title: 'Rate your order', body: 'How was your recent order? Tap to rate.', channel: ['push'] },
-    { type: 'promo', title: 'Refer & earn', body: 'Share PrinZex with friends and earn wallet credits.', channel: ['email'] },
-  ];
-
-  const notifications = customers.flatMap((customer) =>
-    notificationTemplate.map((template, templateIndex) => ({
-      recipientId: customer.id,
-      recipientType: 'customer' as const,
-      type: template.type,
-      title: template.title,
-      body: template.body,
-      data: {},
-      isRead: templateIndex % 3 === 0,
-      readAt: templateIndex % 3 === 0 ? new Date() : undefined,
-      channel: template.channel,
-    })),
-  );
-  await NotificationModel.insertMany(notifications);
+  // 1. Notifications — NONE seeded: the inbox is real-time only. Real
+  //    notifications are written by the operational modules (orders,
+  //    payments, payouts, delivery) and pushed over Socket.IO. The wipe
+  //    above still runs so re-seeding clears any legacy fake rows.
+  console.log('… notifications: none seeded (real-time inbox only)');
 
   // 2. Activity logs ────────────────────────────────────────────────────────
   console.log('… creating 4 admin activity log entries');

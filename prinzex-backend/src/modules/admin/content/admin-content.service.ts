@@ -375,18 +375,26 @@ export interface PlatformSettingsDto {
   platformFeeFromWallet: boolean;
   /** Validation ceiling for the platformFee input itself (₹). */
   platformFeeMax: number;
-  /** GST charged on the order subtotal, in percent. */
+  /** GST charged on the order, in percent. */
   gstRatePercent: number;
+  /** Gap #9 tax decision: when true (default), GST applies to the composite
+   *  supply — subtotal + rush/delivery/platform fees; when false, to the
+   *  subtotal only. Flagged as pending CA sign-off in orders/taxation.ts. */
+  gstOnFees: boolean;
   /** Customer-facing delivery charge per speed (₹). */
   deliveryFees: Record<'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP', number>;
   /** Promised delivery time per speed, in whole hours. */
   deliveryEtaHours: Record<'STANDARD' | 'EXPRESS' | 'SAME_DAY' | 'PICKUP', number>;
   /** Rider search radius for auto-assignment, in km. */
   assignRadiusKm: number;
+  /** Storefront discovery radius (km) around the shopper's location. */
+  storeDiscoveryRadiusKm: number;
   /** Max ₹ a single admin wallet credit may carry. */
   walletMaxCredit: number;
   /** Max users per bulk wallet credit call. */
   walletMaxBatchSize: number;
+  /** Disputes: seller response window before auto-escalation, in hours. */
+  complaintResponseWindowHours: number;
 }
 
 export async function getSettings(): Promise<PlatformSettingsDto> {
@@ -405,11 +413,14 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
       platformFeeFromWallet: false,
       platformFeeMax: defaults.platformFeeMax,
       gstRatePercent: defaults.gstRatePercent,
+      gstOnFees: defaults.gstOnFees,
       deliveryFees: defaults.deliveryFees,
       deliveryEtaHours: defaults.deliveryEtaHours,
       assignRadiusKm: defaults.assignRadiusKm,
+      storeDiscoveryRadiusKm: defaults.storeDiscoveryRadiusKm,
       walletMaxCredit: defaults.walletMaxCredit,
       walletMaxBatchSize: defaults.walletMaxBatchSize,
+      complaintResponseWindowHours: defaults.complaintResponseWindowHours,
     };
   }
   const values = platformValuesFromMetadata((doc.metadata ?? {}) as Record<string, unknown>);
@@ -429,11 +440,14 @@ export async function getSettings(): Promise<PlatformSettingsDto> {
     platformFeeFromWallet: doc.metadata?.platformFeeFromWallet === true,
     platformFeeMax: values.platformFeeMax,
     gstRatePercent: values.gstRatePercent,
+    gstOnFees: values.gstOnFees,
     deliveryFees: values.deliveryFees,
     deliveryEtaHours: values.deliveryEtaHours,
     assignRadiusKm: values.assignRadiusKm,
+    storeDiscoveryRadiusKm: values.storeDiscoveryRadiusKm,
     walletMaxCredit: values.walletMaxCredit,
     walletMaxBatchSize: values.walletMaxBatchSize,
+    complaintResponseWindowHours: values.complaintResponseWindowHours,
   };
 }
 
@@ -451,10 +465,25 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
   if (platformFeeMax === null) throw ApiError.badRequest('platformFeeMax must be a number between 1 and 1000000 with at most 2 decimal places');
   const assignRadiusKm = parseBoundedNumber(input.assignRadiusKm, SETTING_BOUNDS.assignRadiusKm.min, SETTING_BOUNDS.assignRadiusKm.max, 1);
   if (assignRadiusKm === null) throw ApiError.badRequest('assignRadiusKm must be a number between 1 and 100 (at most 1 decimal)');
+  const storeDiscoveryRadiusKm = parseBoundedNumber(input.storeDiscoveryRadiusKm, SETTING_BOUNDS.storeDiscoveryRadiusKm.min, SETTING_BOUNDS.storeDiscoveryRadiusKm.max, 1);
+  if (storeDiscoveryRadiusKm === null) throw ApiError.badRequest('storeDiscoveryRadiusKm must be a number between 1 and 100 (at most 1 decimal)');
   const walletMaxCredit = parseBoundedNumber(input.walletMaxCredit, SETTING_BOUNDS.walletMaxCredit.min, SETTING_BOUNDS.walletMaxCredit.max);
   if (walletMaxCredit === null) throw ApiError.badRequest('walletMaxCredit must be a number between 1 and 10000000 with at most 2 decimal places');
   const walletMaxBatchSize = parseBoundedNumber(input.walletMaxBatchSize, SETTING_BOUNDS.walletMaxBatchSize.min, SETTING_BOUNDS.walletMaxBatchSize.max, 0);
   if (walletMaxBatchSize === null) throw ApiError.badRequest('walletMaxBatchSize must be a whole number between 1 and 2000');
+  // Older clients omit the field — keep the code default rather than 400ing.
+  const complaintResponseWindowHours =
+    input.complaintResponseWindowHours === undefined
+      ? PLATFORM_SETTING_DEFAULTS.complaintResponseWindowHours
+      : parseBoundedNumber(
+          input.complaintResponseWindowHours,
+          SETTING_BOUNDS.complaintResponseWindowHours.min,
+          SETTING_BOUNDS.complaintResponseWindowHours.max,
+          0,
+        );
+  if (complaintResponseWindowHours === null) {
+    throw ApiError.badRequest('complaintResponseWindowHours must be a whole number of hours between 1 and 168');
+  }
   const deliveryFees = parseSpeedMapStrict(input.deliveryFees, SETTING_BOUNDS.deliveryFee);
   if (deliveryFees === null) throw ApiError.badRequest('deliveryFees must give every speed a charge between 0 and 10000 (at most 2 decimals)');
   const deliveryEtaHours = parseSpeedMapStrict(input.deliveryEtaHours, SETTING_BOUNDS.deliveryEtaHours);
@@ -483,11 +512,14 @@ export async function updateSettings(adminId: string, input: PlatformSettingsDto
           platformFeeFromWallet: input.platformFeeFromWallet === true,
           platformFeeMax,
           gstRatePercent,
+          gstOnFees: input.gstOnFees === true,
           deliveryFees,
           deliveryEtaHours,
           assignRadiusKm,
+          storeDiscoveryRadiusKm,
           walletMaxCredit,
           walletMaxBatchSize,
+          complaintResponseWindowHours,
         },
         updatedBy: adminId,
       },

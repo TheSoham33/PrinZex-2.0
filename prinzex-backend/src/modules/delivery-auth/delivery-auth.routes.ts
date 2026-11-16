@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeRoles } from '../../middlewares/authorizeRoles';
-import { otpSendLimiter } from '../../middlewares/rateLimiter';
 import { validate } from '../../middlewares/validate';
 import { otpField, phoneField } from '../auth/auth.schema';
 import * as deliveryAuthController from './delivery-auth.controller';
@@ -26,10 +25,9 @@ const deliveryLogoutBody = z.object({
 
 export const deliveryAuthRouter = Router();
 
-// Request an OTP (rate limited per phone number).
+// Request an OTP (rate limited per phone number by the global limiter).
 deliveryAuthRouter.post(
   '/login',
-  otpSendLimiter,
   validate({ body: deliveryLoginBody }),
   deliveryAuthController.login,
 );

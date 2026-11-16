@@ -8,6 +8,8 @@ export interface StoreListQuery {
   sort?: 'relevance' | 'rating' | 'distance' | 'price_asc' | 'price_desc';
   lat?: number;
   lng?: number;
+  pincode?: string;
+  popular?: boolean;
   page?: number;
   limit?: number;
 }

@@ -33,7 +33,6 @@ import {
   countColorPages,
   formatCurrency,
   formatFileSize,
-  getMediaUrl,
 } from '@/lib/utils';
 import { useToast } from '@/components/seller-dashboard/Toast';
 import type { OrderAction } from './orderReducer';
@@ -150,7 +149,7 @@ export default function SpecificationsStep({
   const maxFiles = maxFilesForService(serviceCategories, specs.serviceId);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [processing, setProcessing] = useState<'pdf' | 'office' | null>(null);
+  const [processing, setProcessing] = useState<'pdf' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const customerToken = useAppSelector((state) => state.auth.accessToken);
 
@@ -171,7 +170,7 @@ export default function SpecificationsStep({
     const strategy = pageCountStrategy(selected.name);
     if (!strategy) {
       setLocalError(
-        `That file type isn't supported. Please upload ${ACCEPTED_DOCUMENT_DESCRIPTION}.`,
+        `That file type isn't supported. Convert it to PDF first, then upload ${ACCEPTED_DOCUMENT_DESCRIPTION}.`,
       );
       if (inputRef.current) inputRef.current.value = '';
       return;
@@ -195,11 +194,12 @@ export default function SpecificationsStep({
       return;
     }
 
-    // Office files are uploaded and converted to print-ready PDF on the
-    // server; at this point the customer is always signed in (attach gate
-    // above), so the conversion upload can proceed.
+    // PDF and images are the only accepted types; both are parked on the
+    // server best-effort so the order-page draft survives refresh. At this
+    // point the customer is always signed in (attach gate above), so the
+    // upload can proceed.
     setLocalError(null);
-    setProcessing(strategy === 'office' ? 'office' : 'pdf');
+    setProcessing('pdf');
 
     try {
       let totalPages: number;
@@ -220,21 +220,15 @@ export default function SpecificationsStep({
         } catch {
           /* keep the browser-only file — current pre-upload flow works */
         }
-      } else if (strategy === 'image') {
-        totalPages = 1; // one sheet per image
+      } else {
+        // Image: one sheet per file.
+        totalPages = 1;
         previewUrl = URL.createObjectURL(selected);
         try {
           serverFileUrl = (await uploadDesign(selected)).fileUrl;
         } catch {
           /* keep the browser-only file — current pre-upload flow works */
         }
-      } else {
-        // Backend converts the Office file to PDF (LibreOffice) and returns
-        // its exact page count; the stored PDF URL rides along for checkout.
-        const uploaded = await uploadDesign(selected);
-        totalPages = uploaded.totalPages ?? 0;
-        serverFileUrl = uploaded.fileUrl;
-        previewUrl = getMediaUrl(uploaded.fileUrl) ?? '';
       }
 
       // Seller page minimum: reject the file instead of attaching it (every
@@ -269,13 +263,7 @@ export default function SpecificationsStep({
       });
     } catch (e) {
       console.error('File processing failed:', e);
-      setLocalError(
-        strategy === 'office'
-          ? (e instanceof Error && e.message
-              ? e.message
-              : 'Upload failed — please try again.')
-          : 'Failed to process PDF. Please ensure it is not password protected.',
-      );
+      setLocalError('Failed to process PDF. Please ensure it is not password protected.');
     } finally {
       setProcessing(null);
     }
@@ -749,16 +737,19 @@ export default function SpecificationsStep({
         </label>
         <FieldError message={fieldErrorOf('order-files')} />
 
+        <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+          To upload any other file type that is not listed here, please convert it to PDF
+          first, then upload the PDF.
+        </p>
+
         {processing ? (
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 bg-slate-50 py-6 text-center">
             <span className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
             <p className="mt-3 font-semibold text-slate-900">
-              {processing === 'office' ? 'Converting to PDF…' : 'Analyzing document…'}
+              Analyzing document…
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {processing === 'office'
-                ? 'One-time conversion on our server — this can take a few seconds'
-                : 'Calculating final page count for pricing'}
+              Calculating final page count for pricing
             </p>
           </div>
         ) : files.length > 0 ? (
@@ -835,11 +826,9 @@ export default function SpecificationsStep({
                   <p className="text-xs text-slate-500">
                     {files.length > 1
                       ? `Sum across ${files.length} files — all share these specifications`
-                      : attachedStrategy === 'office'
-                        ? 'Converted to PDF on our server — pages counted exactly'
-                        : attachedStrategy === 'image'
-                          ? 'Each image prints as one sheet'
-                          : 'Automatically calculated from PDF'}
+                      : attachedStrategy === 'image'
+                        ? 'Each image prints as one sheet'
+                        : 'Automatically calculated from PDF'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -893,6 +882,10 @@ export default function SpecificationsStep({
           onChange={(event) => acceptFile(event.target.files?.[0])}
           className="hidden"
         />
+
+        <p className="text-[11px] text-slate-400">
+          Document (doc, docx) direct upload coming soon.
+        </p>
       </section>
 
       <section>

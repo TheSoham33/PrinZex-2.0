@@ -11,6 +11,7 @@ import {
 } from '../../utils/pagination';
 import type { ListStoresQuery, StoreReviewsQuery, SuggestionsQuery } from './stores.schema';
 import { getCatalogEntry } from '../catalog/catalog.service';
+import { getStoreDiscoveryRadiusKm } from '../../utils/platformSettings';
 import { searchServiceIds, serviceIsActive } from '../catalog/catalog.schemas';
 
 /**
@@ -103,7 +104,39 @@ export interface CachedResult<T> {
 
 // ── GET /api/stores ────────────────────────────────────────────────────────
 
-export async function listStores(query: ListStoresQuery): Promise<CachedResult<PaginatedResponse<StoreListItem>>> {
+export type StoreListResult = PaginatedResponse<StoreListItem> & {
+  /** Admin-configured discovery radius (km); the filter applies only when
+   *  the shopper shared a location. */
+  radiusKm: number;
+  /** True when the request carried no location at all — the storefront
+   *  then renders the pincode/GPS prompt instead of a store list. */
+  needsLocation: boolean;
+  /** Pincode mode: whether the registry says we serve that pincode. */
+  serviceable: boolean | null;
+  /** How the bounding location was resolved, for UI copy. */
+  locationSource: 'gps' | 'pincode' | null;
+};
+
+export async function listStores(query: ListStoresQuery): Promise<CachedResult<StoreListResult>> {
+  // Storefront discovery radius (Settings → Platform). Fail-open to the code
+  // default inside getPlatformSettingsValues when the settings doc is unreadable.
+  const radiusKm = await getStoreDiscoveryRadiusKm();
+  const hasCoords =
+    typeof query.lat === 'number' && typeof query.lng === 'number' &&
+    Number.isFinite(query.lat) && Number.isFinite(query.lng);
+  const hasPincode = typeof query.pincode === 'string' && /^[1-9][0-9]{5}$/.test(query.pincode);
+  const hasCityText = !!query.city && query.city.trim().length >= 1;
+  // Precedence: explicit pincode > GPS coords > free-text browse > prompt.
+  const mode: 'pincode' | 'gps' | 'browse' | 'popular' | 'none' = hasPincode
+    ? 'pincode'
+    : hasCoords
+      ? 'gps'
+      : hasCityText
+        ? 'browse'
+        : query.popular
+          ? 'popular'
+          : 'none';
+
   const categoryIds = (query.services ?? '')
     .split(',')
     .map((id) => id.trim())
@@ -120,6 +153,9 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
         sort: query.sort,
         lat: query.lat ?? null,
         lng: query.lng ?? null,
+        radiusKm: hasCoords ? radiusKm : null,
+        pincode: query.pincode ?? null,
+        popular: query.popular === true,
         limit: query.limit,
         deliveryTime: query.deliveryTime ?? null,
       }),
@@ -128,7 +164,7 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
     .slice(0, 12);
   const cacheKey = REDIS_KEYS.STORE_LIST((query.city ?? 'all').toLowerCase(), query.page, `${query.limit}-${fingerprint}`);
 
-  const cached = await getCache<PaginatedResponse<StoreListItem>>(cacheKey);
+  const cached = await getCache<StoreListResult>(cacheKey);
   if (cached) {
     return { result: cached, cacheHit: true };
   }
@@ -163,8 +199,17 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   // deliveryTime is accepted for forward compatibility — per-store delivery
   // options are defined in the ordering step; no filtering applied yet.
 
+  // Pincode serviceability comes from the registry; the store set is the
+  // sellers registered in that pincode.
+  let pincodeServiceable: boolean | null = null;
+  if (mode === 'pincode') {
+    const registryRow = await prisma.pincode.findUnique({ where: { pincode: query.pincode } });
+    pincodeServiceable = registryRow?.serviceable === true;
+  }
+
   const where: Prisma.SellerWhereInput = {
     status: 'APPROVED',
+    ...(mode === 'pincode' && pincodeServiceable ? { pincode: query.pincode } : {}),
     ...(query.city && query.city.trim().length >= 1 && query.city.trim().toLowerCase() !== 'location'
       ? { city: { contains: query.city.trim(), mode: 'insensitive' } }
       : {}),
@@ -176,7 +221,67 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
   let rows: StoreListRow[];
   let total: number;
 
-  if (query.sort === 'distance' || query.sort === 'price_asc' || query.sort === 'price_desc') {
+  if (mode === 'none' || (mode === 'pincode' && pincodeServiceable === false)) {
+    // No location at all (the storefront shows its prompt), or a pincode we
+    // don't serve yet — the server stays the source of truth: empty list.
+    rows = [];
+    total = 0;
+  } else if (mode === 'popular') {
+    const cappedTake = Math.min(take, 6);
+    const [count, page] = await prisma.$transaction([
+      prisma.seller.count({ where }),
+      prisma.seller.findMany({
+        where,
+        orderBy: [{ averageRating: 'desc' }, { totalOrders: 'desc' }],
+        take: cappedTake,
+        select: storeListSelect,
+      }),
+    ]);
+    rows = page;
+    total = Math.min(count, cappedTake);
+  } else if (hasCoords) {
+    // Location-bounded discovery: only shops inside the admin-configured
+    // radius around the shopper, sorted in the app layer over the bounded
+    // working set (same cap as the other computed sorts).
+    const WORKING_SET_LIMIT = 200;
+    const candidates = await prisma.seller.findMany({
+      where,
+      orderBy: [{ averageRating: 'desc' }],
+      take: WORKING_SET_LIMIT,
+      select: storeListSelect,
+    });
+
+    const withinRadius = candidates
+      .map((seller) => ({
+        seller,
+        distanceKm: haversineKm(query.lat as number, query.lng as number, seller.lat, seller.lng),
+      }))
+      .filter((entry) => entry.distanceKm <= radiusKm);
+
+    const sortedSellers =
+      query.sort === 'price_desc'
+        ? withinRadius
+            .sort((a, b) => minServicePrice(b.seller.services) - minServicePrice(a.seller.services))
+            .map((entry) => entry.seller)
+        : query.sort === 'price_asc'
+          ? withinRadius
+              .sort((a, b) => minServicePrice(a.seller.services) - minServicePrice(b.seller.services))
+              .map((entry) => entry.seller)
+          : query.sort === 'rating'
+            ? withinRadius
+                .sort(
+                  (a, b) =>
+                    b.seller.averageRating.toNumber() - a.seller.averageRating.toNumber() ||
+                    b.seller.totalOrders - a.seller.totalOrders,
+                )
+                .map((entry) => entry.seller)
+            : withinRadius
+                .sort((a, b) => a.distanceKm - b.distanceKm)
+                .map((entry) => entry.seller); // distance + relevance: nearest first
+
+    total = sortedSellers.length;
+    rows = sortedSellers.slice(skip, skip + take);
+  } else if (query.sort === 'distance' || query.sort === 'price_asc' || query.sort === 'price_desc') {
     // Computed sorts run in the app layer over a bounded working set.
     const WORKING_SET_LIMIT = 200;
     const candidates = await prisma.seller.findMany({
@@ -281,7 +386,13 @@ export async function listStores(query: ListStoresQuery): Promise<CachedResult<P
     };
   });
 
-  const result = buildPaginatedResponse(items, total, { page: query.page, limit: query.limit });
+  const result: StoreListResult = {
+    ...buildPaginatedResponse(items, total, { page: query.page, limit: query.limit }),
+    radiusKm,
+    needsLocation: mode === 'none' || mode === 'popular',
+    serviceable: mode === 'pincode' ? pincodeServiceable : mode === 'gps' ? true : null,
+    locationSource: mode === 'pincode' ? 'pincode' : mode === 'gps' ? 'gps' : null,
+  };
   await setCache(cacheKey, result, REDIS_TTL.CACHE_LIST);
   return { result, cacheHit: false };
 }

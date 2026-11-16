@@ -10,7 +10,7 @@ import { RT_NAMESPACES, RT_ROOMS } from '../realtime.emitters';
  *
  *   CUSTOMER     → customer:{userId}       (order:status_changed, notification:new)
  *   SELLER       → seller:{sellerId}       (order:new, order:status_changed, payout:processed)
- *   DELIVERY_BOY → delivery:{deliveryBoyId}(delivery:assigned, payout:processed)
+ *   DELIVERY_BOY → delivery:{deliveryBoyId}(delivery.assigned, payout:processed)
  *   ADMIN        → (no room — admins use the /admin namespace)
  */
 export function initOrdersNamespace(io: Server): void {
