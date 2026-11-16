@@ -19,6 +19,9 @@ export interface NewAddressInput {
   city: string;
   state: string;
   pincode: string;
+  /** Optional GPS capture — anchors the server-side delivery-radius check. */
+  lat?: number | null;
+  lng?: number | null;
 }
 
 interface DeliveryStepProps {
@@ -47,14 +50,34 @@ export default function DeliveryStep({
 }: DeliveryStepProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ 
-    label: '', 
-    fullAddress: '', 
-    phone: '', 
-    city: 'Kolkata', 
-    state: 'West Bengal', 
-    pincode: '' 
+  const [form, setForm] = useState({
+    label: '',
+    fullAddress: '',
+    phone: '',
+    city: '',
+    state: '',
+    pincode: '',
+    lat: null as number | null,
+    lng: null as number | null,
   });
+
+  /** Capture GPS coords so the address can anchor the server-side radius
+   *  check at order time (browsing stays a guess; the address is the anchor). */
+  const [locNote, setLocNote] = useState<string | null>(null);
+  const captureLocation = () => {
+    if (!('geolocation' in navigator)) {
+      setLocNote('Location is unavailable in this browser — the pincode will be used instead.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setForm((prev) => ({ ...prev, lat: position.coords.latitude, lng: position.coords.longitude }));
+        setLocNote(null);
+      },
+      () => setLocNote('Could not get your location — the pincode will be used instead.'),
+      { timeout: 8000 },
+    );
+  };
   const [formError, setFormError] = useState<string | null>(null);
   // Per-field modal validation — each message renders under its input.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -99,6 +122,8 @@ export default function DeliveryStep({
         city: form.city.trim(),
         state: form.state.trim(),
         pincode: form.pincode.trim(),
+        lat: form.lat,
+        lng: form.lng,
       });
 
       if (saved) {
@@ -106,9 +131,11 @@ export default function DeliveryStep({
           label: '',
           fullAddress: '',
           phone: '',
-          city: 'Kolkata',
-          state: 'West Bengal',
+          city: '',
+          state: '',
           pincode: '',
+          lat: null,
+          lng: null,
         });
         setFormError(null);
         setModalOpen(false);
@@ -334,6 +361,19 @@ export default function DeliveryStep({
                     className={`input ${fieldErrors['addr-pincode'] ? 'input-error' : ''}`}
                   />
                   <FieldError message={fieldErrors['addr-pincode']} />
+                  <button
+                    type="button"
+                    onClick={captureLocation}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline"
+                  >
+                    <IconMapPin className="h-3.5 w-3.5" /> Use my current location for this address
+                  </button>
+                  {form.lat !== null && form.lng !== null && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Location captured ({form.lat.toFixed(4)}, {form.lng.toFixed(4)}).
+                    </p>
+                  )}
+                  {locNote && <p className="mt-1 text-xs text-amber-600">{locNote}</p>}
                 </div>
                 <div>
                   <label htmlFor="addr-phone" className="label">

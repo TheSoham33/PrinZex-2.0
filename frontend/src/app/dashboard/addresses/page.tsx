@@ -15,14 +15,34 @@ export default function AddressesPage() {
   });
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ 
-    label: '', 
-    fullAddress: '', 
-    phone: '', 
-    city: 'Kolkata', 
-    state: 'West Bengal', 
-    pincode: '' 
+  const [form, setForm] = useState({
+    label: '',
+    fullAddress: '',
+    phone: '',
+    city: '',
+    state: '',
+    pincode: '',
+    lat: null as number | null,
+    lng: null as number | null,
   });
+
+  /** Capture GPS coords so the address can anchor the server-side radius
+   *  check at order time (browsing stays a guess; the address is the anchor). */
+  const [locNote, setLocNote] = useState<string | null>(null);
+  const captureLocation = () => {
+    if (!('geolocation' in navigator)) {
+      setLocNote('Location is unavailable in this browser — the pincode will be used instead.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setForm((prev) => ({ ...prev, lat: position.coords.latitude, lng: position.coords.longitude }));
+        setLocNote(null);
+      },
+      () => setLocNote('Could not get your location — the pincode will be used instead.'),
+      { timeout: 8000 },
+    );
+  };
   const [error, setError] = useState<string | null>(null);
   /** Per-input validation for the add-address modal (messages render under fields). */
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -32,13 +52,15 @@ export default function AddressesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['addresses'] });
       setModalOpen(false);
-      setForm({ 
-        label: '', 
-        fullAddress: '', 
-        phone: '', 
-        city: 'Kolkata', 
-        state: 'West Bengal', 
-        pincode: '' 
+      setForm({
+        label: '',
+        fullAddress: '',
+        phone: '',
+        city: '',
+        state: '',
+        pincode: '',
+        lat: null,
+        lng: null,
       });
       setError(null);
     },
@@ -263,6 +285,19 @@ export default function AddressesPage() {
                   className={`input ${fieldErrors.pincode ? 'input-error' : ''}`}
                 />
                 <FieldError message={fieldErrors.pincode} />
+                <button
+                  type="button"
+                  onClick={captureLocation}
+                  className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  <IconMapPin className="h-3.5 w-3.5" /> Use my current location for this address
+                </button>
+                {form.lat !== null && form.lng !== null && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Location captured ({form.lat.toFixed(4)}, {form.lng.toFixed(4)}).
+                  </p>
+                )}
+                {locNote && <p className="mt-1 text-xs text-amber-600">{locNote}</p>}
               </div>
               <div>
                 <label htmlFor="phone" className="label">Phone number</label>

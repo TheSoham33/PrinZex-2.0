@@ -64,9 +64,17 @@ export interface DeliveryProfile {
     accountNumberMasked: string;
     ifscCode: string;
   } | null;
-  zones: string[];
+  coverage: PincodeCoverage[];
   documents: { id: string; docType: string; isVerified: boolean; uploadedAt: string }[];
   createdAt: string;
+}
+
+/** Registry-backed rider coverage (exact pincodes, labels are display-only). */
+export interface PincodeCoverage {
+  pincode: string;
+  zoneLabel: string;
+  city: string;
+  serviceable: boolean;
 }
 
 export const fetchDeliveryProfile = async (): Promise<DeliveryProfile> => get('/delivery/profile');

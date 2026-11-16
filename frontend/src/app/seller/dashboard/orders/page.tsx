@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { COMPLAINT_TYPE_LABELS, fetchSellerComplaints } from '@/lib/api/complaints';
 import { fetchSellerOrders } from '@/lib/api/seller-orders';
 import {
   ACTIVE_STATUSES,
@@ -32,6 +34,14 @@ export default function SellerOrdersPage() {
     queryKey: ['seller-orders'],
     queryFn: () => fetchSellerOrders({}),
   });
+
+  // Open claims needing a decision inside the response window.
+  const { data: claims } = useQuery({
+    queryKey: ['seller-complaints'],
+    queryFn: fetchSellerComplaints,
+    refetchInterval: 60_000,
+  });
+  const openClaims = (claims ?? []).filter((c) => c.status === 'pending_seller');
 
   const rawOrders = data?.data || (Array.isArray(data) ? data : []);
 
@@ -75,6 +85,29 @@ export default function SellerOrdersPage() {
           <IconRefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </header>
+
+      {openClaims.length > 0 && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">
+            {openClaims.length} customer claim{openClaims.length > 1 ? 's' : ''} awaiting your decision
+          </p>
+          <ul className="mt-2 space-y-1">
+            {openClaims.map((claim) => (
+              <li key={claim.id}>
+                <Link
+                  href={`/seller/dashboard/orders/${claim.orderId}`}
+                  className="text-sm font-medium text-amber-800 underline hover:text-amber-900"
+                >
+                  Order #{claim.orderId.slice(-6).toUpperCase()} — {COMPLAINT_TYPE_LABELS[claim.type]}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-amber-700">
+            Accept or reject with a reason before the window expires — silence auto-escalates to admin.
+          </p>
+        </div>
+      )}
 
       <div
         role="tablist"

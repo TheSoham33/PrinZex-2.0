@@ -4,7 +4,7 @@
  *   policy lookup   → maxFilesForService: absent/junk data fails back to 1
  *                     (single-file), a configured count clamps to 1..10
  *   aggregation     → totalPagesOf sums pages across files for pricing
- *   order payload   → fileUrlsForOrder keeps the real converted URLs and
+ *   order payload   → fileUrlsForOrder keeps the real server URLs and
  *                     stubs browser-side files, one entry per file
  *   order flow      → the reducer carries a files[] list through SET_FILES
  *

@@ -209,6 +209,7 @@ export const getPublicSettings = asyncHandler(async (_req, res) => {
         platformFee: config.fee,
         platformFeeFromWallet: config.fromWallet,
         gstRatePercent: values.gstRatePercent,
+        gstOnFees: values.gstOnFees,
         deliveryFees: values.deliveryFees,
         deliveryEtaHours: values.deliveryEtaHours,
       },

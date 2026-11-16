@@ -116,6 +116,12 @@ describe('platformValuesFromMetadata: defaults on empty, overrides win', () => {
     expect(over.deliveryFees.SAME_DAY).toBe(D.deliveryFees.SAME_DAY);
     expect(over.deliveryEtaHours.STANDARD).toBe(D.deliveryEtaHours.STANDARD);
   });
+
+  test('gstOnFees toggle (gap #9): missing keys keep the taxable default', () => {
+    expect(platformValuesFromMetadata({}).gstOnFees).toBe(true);
+    expect(platformValuesFromMetadata({ gstOnFees: false }).gstOnFees).toBe(false);
+    expect(platformValuesFromMetadata({ gstOnFees: true }).gstOnFees).toBe(true);
+  });
 });
 
 describe('defaults must mirror the order helpers’ fallback constants', () => {
